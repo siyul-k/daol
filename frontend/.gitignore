@@ -1,24 +1,12 @@
-# Logs
-logs
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-lerna-debug.log*
+# ✅ frontend/.gitignore 최소 버전 예시
 
-node_modules
+# React/Vite 빌드 출력 폴더 (중복되어도 무해)
 dist
-dist-ssr
-*.local
 
-# Editor directories and files
+# 로컬 개발 설정 무시
+.local
 .vscode/*
 !.vscode/extensions.json
+
+# IDE 설정
 .idea
-.DS_Store
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?

@@ -88,4 +88,43 @@ router.get('/sponsor', async (req, res) => {
   }
 });
 
+// ✅ 추천인 계보 조직도 API (회원 전용): /api/tree/recommend
+router.get('/recommend', async (req, res) => {
+  const { username } = req.query;
+
+  try {
+    const [rows] = await connection.promise().query(`
+      SELECT username, name, recommender, created_at,
+        IFNULL((
+          SELECT SUM(pv) FROM purchases 
+          WHERE member_id = m.id AND status = 'approved'
+        ), 0) AS sales
+      FROM members m
+      WHERE is_admin = 0
+    `);
+
+    if (!username) {
+      return res.status(400).json({ success: false, message: "username 필수" });
+    }
+
+    const root = rows.find(m => m.username === username);
+    if (!root) {
+      return res.status(404).json({ success: false, message: "사용자 없음" });
+    }
+
+    const tree = {
+      username: root.username,
+      name: root.name,
+      created_at: root.created_at,
+      sales: root.sales,
+      children: buildRecommenderTree(rows, root.username)
+    };
+
+    res.json({ success: true, tree });
+  } catch (err) {
+    console.error("❌ 추천 계보 트리 오류:", err);
+    res.status(500).json({ success: false, message: "서버 오류" });
+  }
+});
+
 module.exports = router;
