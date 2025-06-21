@@ -1,18 +1,18 @@
-// ✅ 파일 위치: src/components/UserLayout.jsx 
+// ✅ 파일 위치: src/components/UserLayout.jsx
 
-import { useNavigate, useLocation, Link } from "react-router-dom"
+import { useNavigate, useLocation, Link } from "react-router-dom";
 import {
   NavigationMenu,
   NavigationMenuItem,
   NavigationMenuList,
-} from "@/components/ui/navigation-menu"
+} from "@/components/ui/navigation-menu";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { Button } from "@/components/ui/button"
+} from "@/components/ui/dropdown-menu";
+import { Button } from "@/components/ui/button";
 import {
   Home,
   DollarSign,
@@ -22,16 +22,16 @@ import {
   Package,
   Bell,
   Settings,
-} from "lucide-react"
+} from "lucide-react";
 
 export default function UserLayout({ children }) {
-  const navigate = useNavigate()
-  const location = useLocation()
+  const navigate = useNavigate();
+  const location = useLocation();
 
   const handleLogout = () => {
-    localStorage.removeItem("user")
-    navigate("/login")
-  }
+    localStorage.removeItem("user");
+    navigate("/login");
+  };
 
   const navItems = [
     { label: "대시보드", path: "/dashboard", icon: <Home size={16} /> },
@@ -40,7 +40,7 @@ export default function UserLayout({ children }) {
       icon: <DollarSign size={16} />,
       children: [
         { label: "포인트 내역", path: "/point" },
-        { label: "포인트 요약", path: "/point/summary" }
+        { label: "포인트 요약", path: "/point/summary" },
       ],
     },
     {
@@ -48,7 +48,7 @@ export default function UserLayout({ children }) {
       icon: <Share2 size={16} />,
       children: [
         { label: "후원조직도", path: "/tree/sponsor" },
-        { label: "추천조직도", path: "/tree/recommend" }
+        { label: "추천조직도", path: "/tree/recommend" },
       ],
     },
     {
@@ -78,7 +78,7 @@ export default function UserLayout({ children }) {
     { label: "공지사항", path: "/notices", icon: <Bell size={16} /> },
     { label: "프로필 설정", path: "/settings", icon: <Settings size={16} /> },
     { label: "로그아웃", action: handleLogout, icon: <LogOut size={16} /> },
-  ]
+  ];
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -94,7 +94,10 @@ export default function UserLayout({ children }) {
                     <NavigationMenuItem key={idx}>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" className="text-sm font-medium inline-flex items-center gap-1">
+                          <Button
+                            variant="ghost"
+                            className="text-sm font-medium inline-flex items-center gap-1"
+                          >
                             {item.icon} {item.label}
                           </Button>
                         </DropdownMenuTrigger>
@@ -121,7 +124,9 @@ export default function UserLayout({ children }) {
                         <Button
                           variant="ghost"
                           className={`text-sm font-medium inline-flex items-center gap-1 ${
-                            location.pathname === item.path ? "text-blue-600 font-bold" : ""
+                            location.pathname === item.path
+                              ? "text-blue-600 font-bold"
+                              : ""
                           }`}
                           onClick={() => navigate(item.path)}
                         >
@@ -140,5 +145,5 @@ export default function UserLayout({ children }) {
       {/* ✅ 본문 콘텐츠 */}
       <main className="max-w-screen-xl mx-auto px-4 py-6">{children}</main>
     </div>
-  )
+  );
 }
