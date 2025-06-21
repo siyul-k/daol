@@ -3,51 +3,37 @@ const express = require('express');
 const router = express.Router();
 const connection = require('../db.cjs');
 
-// ✅ 재귀로 추천인 기준 트리 생성
-function buildRecommenderTree(members, username) {
+// ✅ 추천인 기준 조직도 트리 구성 함수
+function buildRecommenderTree(members, parentUsername = null) {
   return members
-    .filter((m) => m.recommender === username)
-    .map((child) => ({
-      username: child.username,
-      name: child.name,
-      created_at: child.created_at,
-      sales: child.sales || 0,
-      children: buildRecommenderTree(members, child.username),
+    .filter(m => m.recommender === parentUsername)
+    .map(m => ({
+      username: m.username,
+      name: m.name,
+      created_at: m.created_at,
+      sales: m.sales,
+      children: buildRecommenderTree(members, m.username)
     }));
 }
 
-// ✅ 재귀로 후원인 기준 트리 생성 (좌/우 순서 고정)
-function buildSponsorTree(members, username) {
-  const children = members.filter((m) => m.sponsor === username);
-  const left = children.find((c) => c.sponsor_direction === 'left');
-  const right = children.find((c) => c.sponsor_direction === 'right');
-
-  const nodes = [];
-  if (left)
-    nodes.push({
-      username: left.username,
-      name: left.name,
-      created_at: left.created_at,
-      sales: left.sales || 0,
-      children: buildSponsorTree(members, left.username),
-    });
-  if (right)
-    nodes.push({
-      username: right.username,
-      name: right.name,
-      created_at: right.created_at,
-      sales: right.sales || 0,
-      children: buildSponsorTree(members, right.username),
-    });
-
-  return nodes;
+// ✅ 후원인 기준 조직도 트리 구성 함수
+function buildSponsorTree(members, parentUsername = null) {
+  return members
+    .filter(m => m.sponsor === parentUsername)
+    .map(m => ({
+      username: m.username,
+      name: m.name,
+      created_at: m.created_at,
+      sales: m.sales,
+      children: buildSponsorTree(members, m.username)
+    }));
 }
 
-// ✅ 관리자용: 전체 추천인 조직도
+// ✅ 추천인 계보 조직도 API (관리자용 전체 트리): /api/tree/full
 router.get('/full', async (req, res) => {
   try {
     const [rows] = await connection.promise().query(`
-      SELECT m.id, username, name, recommender, created_at,
+      SELECT username, name, recommender, created_at,
         IFNULL((
           SELECT SUM(pv) FROM purchases 
           WHERE member_id = m.id AND status = 'approved'
@@ -56,32 +42,21 @@ router.get('/full', async (req, res) => {
       WHERE is_admin = 0
     `);
 
-    const root = rows.find((m) => !m.recommender);
-    if (!root) return res.json({ success: false, message: "루트 노드 없음", tree: [] });
-
-    const tree = {
-      username: root.username,
-      name: root.name,
-      created_at: root.created_at,
-      sales: root.sales,
-      children: buildRecommenderTree(rows, root.username),
-    };
-
-    res.json({ success: true, tree: [tree] });
+    const tree = buildRecommenderTree(rows, null);
+    res.json({ success: true, tree });
   } catch (err) {
     console.error("❌ 추천 계보 트리 오류:", err);
     res.status(500).json({ success: false, message: "서버 오류" });
   }
 });
 
-// ✅ 회원/관리자 겸용: 본인 기준 추천인 트리
-router.get('/recommend', async (req, res) => {
-  const username = req.query.username;
-  if (!username) return res.status(400).json({ success: false, message: "username 필요" });
+// ✅ 후원인 계보 조직도 API (관리자 전체 or 특정 사용자 하위): /api/tree/sponsor
+router.get('/sponsor', async (req, res) => {
+  const { username } = req.query;
 
   try {
     const [rows] = await connection.promise().query(`
-      SELECT m.id, username, name, recommender, created_at,
+      SELECT username, name, sponsor, created_at,
         IFNULL((
           SELECT SUM(pv) FROM purchases 
           WHERE member_id = m.id AND status = 'approved'
@@ -90,32 +65,36 @@ router.get('/recommend', async (req, res) => {
       WHERE is_admin = 0
     `);
 
-    const root = rows.find((m) => m.username === username);
-    if (!root) return res.json({ success: false, message: "해당 회원 없음", tree: [] });
+    if (username) {
+      const root = rows.find(m => m.username === username);
+      if (!root) return res.status(404).json({ success: false, message: "사용자 없음" });
 
-    const tree = {
-      username: root.username,
-      name: root.name,
-      created_at: root.created_at,
-      sales: root.sales,
-      children: buildRecommenderTree(rows, root.username),
-    };
+      const tree = {
+        username: root.username,
+        name: root.name,
+        created_at: root.created_at,
+        sales: root.sales,
+        children: buildSponsorTree(rows, root.username)
+      };
+      return res.json({ success: true, tree });
+    } else {
+      const tree = buildSponsorTree(rows, null);
+      return res.json({ success: true, tree });
+    }
 
-    res.json({ success: true, tree: [tree] });
   } catch (err) {
-    console.error("❌ 추천 트리 오류:", err);
+    console.error("❌ 후원 계보 트리 오류:", err);
     res.status(500).json({ success: false, message: "서버 오류" });
   }
 });
 
-// ✅ 회원/관리자 겸용: 본인 기준 후원인 트리
-router.get('/sponsor', async (req, res) => {
-  const username = req.query.username;
-  if (!username) return res.status(400).json({ success: false, message: "username 필요" });
+// ✅ 추천인 계보 조직도 API (회원 전용): /api/tree/recommend
+router.get('/recommend', async (req, res) => {
+  const { username } = req.query;
 
   try {
     const [rows] = await connection.promise().query(`
-      SELECT m.id, username, name, sponsor, sponsor_direction, created_at,
+      SELECT username, name, recommender, created_at,
         IFNULL((
           SELECT SUM(pv) FROM purchases 
           WHERE member_id = m.id AND status = 'approved'
@@ -124,20 +103,26 @@ router.get('/sponsor', async (req, res) => {
       WHERE is_admin = 0
     `);
 
-    const root = rows.find((m) => m.username === username);
-    if (!root) return res.json({ success: false, message: "해당 회원 없음", tree: [] });
+    if (!username) {
+      return res.status(400).json({ success: false, message: "username 필수" });
+    }
+
+    const root = rows.find(m => m.username === username);
+    if (!root) {
+      return res.status(404).json({ success: false, message: "사용자 없음" });
+    }
 
     const tree = {
       username: root.username,
       name: root.name,
       created_at: root.created_at,
       sales: root.sales,
-      children: buildSponsorTree(rows, root.username),
+      children: buildRecommenderTree(rows, root.username)
     };
 
-    res.json({ success: true, tree: [tree] });
+    res.json({ success: true, tree });
   } catch (err) {
-    console.error("❌ 후원 트리 오류:", err);
+    console.error("❌ 추천 계보 트리 오류:", err);
     res.status(500).json({ success: false, message: "서버 오류" });
   }
 });
