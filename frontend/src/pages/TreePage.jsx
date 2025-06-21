@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
-import './TreePage.css';
+import './TreeStyle.css';
 
 export default function TreePage() {
   const [treeData, setTreeData] = useState(null);
