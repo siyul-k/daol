@@ -75,11 +75,11 @@ export default function App() {
         {/* ✅ 조직도: 후원 / 추천 각각 구성 */}
         <Route
           path="/tree/sponsor"
-          element={<UserLayout><TreePage /></UserLayout>}
+          element={<UserLayout><SponsorTreePage /></UserLayout>}
         />
         <Route
           path="/tree/recommend"
-          element={<UserLayout><TreePage /></UserLayout>}
+          element={<UserLayout><RecommendTreePage /></UserLayout>}
         />
         <Route
           path="/deposit"
