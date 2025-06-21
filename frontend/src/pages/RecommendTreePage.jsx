@@ -2,13 +2,15 @@
 import React, { useEffect, useState, useRef } from 'react';
 import Tree from 'react-d3-tree';
 import axios from '../axiosConfig';
+import { useAuth } from '../hooks/useAuth'; // ✅ 추가
 
 const containerStyles = {
   width: '100%',
   height: '100vh',
 };
 
-const RecommendTreePage = ({ username, isAdmin = false }) => {
+const RecommendTreePage = ({ isAdmin = false }) => {
+  const { username } = useAuth(); // ✅ 현재 로그인 사용자 정보 가져오기
   const [treeData, setTreeData] = useState(null);
   const treeRef = useRef();
 

@@ -40,7 +40,8 @@ import WithdrawHistoryPage from "./pages/WithdrawHistoryPage";
 import NoticePage from "./pages/NoticePage";
 import ProductPage from "./pages/ProductPage";
 import ProductHistoryPage from "./pages/ProductHistoryPage";
-import TreePage from "./pages/TreePage"; // ✅ 조직도 공용 렌더링
+import SponsorTreePage from "./pages/SponsorTreePage";
+import RecommendTreePage from "./pages/RecommendTreePage";
 
 // ─ 로그인 정보 훅 ─
 import { useAuth } from "./hooks/useAuth";
