@@ -1,0 +1,25 @@
+.summary-cards {
+  display: flex;
+  gap: 16px;
+  margin: 20px 0;
+}
+.card {
+  flex: 1;
+  background: #fff;
+  border-radius: 8px;
+  padding: 16px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+.card__title {
+  font-size: 1rem;
+  color: #666;
+}
+.card__value {
+  font-size: 1.8rem;
+  font-weight: bold;
+  margin: 8px 0;
+}
+.card__subtitle {
+  font-size: 0.85rem;
+  color: #999;
+}

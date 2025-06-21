@@ -1,0 +1,14 @@
+.member-filter-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  padding: 20px;
+  background: #fff;
+}
+.form-group {
+  display: flex;
+  flex-direction: column;
+}
+.form-actions {
+  align-self: flex-end;
+}

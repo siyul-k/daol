@@ -1,0 +1,60 @@
+/* ─── 전체 래퍼 ─── */
+.org-wrapper {
+  background: #111827;
+  color: #f1f5f9;
+  text-align: center;
+  padding: 2rem;
+  min-height: 100vh;
+}
+.org-wrapper h1 {
+  margin-bottom: 1.5rem;
+  font-size: 1.5rem;
+  font-weight: 500;
+}
+
+/* ─── 스크롤 가능한 트리 컨테이너 ─── */
+.org-container {
+  overflow-x: auto;
+  padding: 1rem 0;
+}
+
+/* ─── 노드 박스 (4줄) ─── */
+.org-box {
+  width: 180px;
+  padding: 0.75rem;
+  background: #0f172a;
+  border: 1px solid #f1f5f9;
+  border-radius: 8px;
+  box-sizing: border-box;
+  display: inline-block;
+  text-align: center;
+  cursor: default;
+}
+
+/* 1. 아이디 */
+.org-id {
+  font-size: 16px;
+  font-weight: 700;
+  color: #38bdf8;
+}
+
+/* 2. 이름 */
+.org-name {
+  margin-top: 4px;
+  font-size: 14px;
+  color: #f1f5f9;
+}
+
+/* 3. 날짜 */
+.org-date {
+  margin-top: 4px;
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+/* 4. 매출 */
+.org-sales {
+  margin-top: 2px;
+  font-size: 12px;
+  color: #94a3b8;
+}

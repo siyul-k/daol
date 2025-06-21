@@ -1,0 +1,17 @@
+.member-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 1000px; /* 넓은 테이블 */
+}
+
+.member-table th,
+.member-table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid #e0e0e0;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.member-table th {
+  background-color: #f8f8f8;
+}
