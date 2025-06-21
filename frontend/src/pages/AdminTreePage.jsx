@@ -1,67 +1,104 @@
-// ✅ 파일 경로: frontend/pages/AdminTreePage.jsx
+// ✅ 파일 경로: frontend/src/pages/AdminTreePage.jsx
 import React, { useEffect, useState } from "react";
 import axios from "../axiosConfig";
-import { Tree, TreeNode } from "react-organizational-chart";
-import "./OrgChart.css";
 
-/** ─── 1) 박스 렌더링 ─── */
-const OrgBox = ({ node }) => (
-  <div className="org-box">
-    <div className="org-id">{node.username}</div>
-    <div className="org-name">{node.name || "-"}</div>
-    <div className="org-date">{node.created_at?.slice(2, 10)}</div>
-    <div className="org-sales">({node.sales.toLocaleString()})</div>
-  </div>
-);
+// ✅ 노드 박스 컴포넌트
+const TreeNode = ({ node }) => {
+  const [isOpen, setIsOpen] = useState(true);
 
-/** ─── 2) 재귀 탐색 ─── */
-const findSubtree = (node, username) => {
-  if (node.username === username) return node;
-  for (const child of node.children || []) {
-    const found = findSubtree(child, username);
-    if (found) return found;
-  }
-  return null;
+  return (
+    <div id={node.username} style={{ marginTop: "2rem", textAlign: "center" }}>
+      <div
+        style={{
+          display: "inline-block",
+          padding: "1rem",
+          backgroundColor: "#1e293b",
+          color: "#d1fae5",
+          borderRadius: "0.75rem",
+          boxShadow: "0 0 8px rgba(0,0,0,0.4)",
+          minWidth: "180px",
+          cursor: "pointer",
+        }}
+        onClick={() => setIsOpen(!isOpen)}
+        title="클릭하여 하위 조직 열기/닫기"
+      >
+        <div style={{ fontWeight: "bold", fontSize: "16px" }}>{node.username}</div>
+        <div>{node.name || "-"}</div>
+        <div style={{ fontSize: "12px", marginTop: "4px" }}>
+          {node.created_at?.slice(2, 10)}
+        </div>
+        <div style={{ fontSize: "12px", color: "#a7f3d0" }}>
+          ({node.sales.toLocaleString()})
+        </div>
+        {node.children?.length > 0 && (
+          <div style={{ marginTop: "4px", fontSize: "12px", color: "#38bdf8" }}>
+            {isOpen ? "▼ 닫기" : "▶ 열기"}
+          </div>
+        )}
+      </div>
+
+      {isOpen && node.children?.length > 0 && (
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "center",
+            marginTop: "2rem",
+            borderTop: "1px solid #ccc",
+            paddingTop: "2rem",
+            flexWrap: "wrap",
+            gap: "2rem",
+          }}
+        >
+          {node.children.map((child) => (
+            <TreeNode key={child.username} node={child} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
 };
-
-/** ─── 3) 재귀 렌더링 ─── */
-const renderNode = (node) => (
-  <TreeNode key={node.username} label={<OrgBox node={node} />}>
-    {node.children?.map(renderNode)}
-  </TreeNode>
-);
 
 export default function AdminTreePage() {
   const [tree, setTree] = useState(null);
-  const currentUser = JSON.parse(localStorage.getItem("user"))?.username;
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    axios
-      .get("/api/tree/recommend")
-      .then((res) => {
-        if (!res.data.success || !res.data.tree.length) return;
-        const fullRoot = res.data.tree[0];
-
-        if (currentUser) {
-          const subtree = findSubtree(fullRoot, currentUser);
-          setTree(subtree || { ...fullRoot, children: [] });
-        } else {
-          setTree(fullRoot);
-        }
-      })
-      .catch(console.error);
+    fetchTree();
   }, []);
 
-  if (!tree) return <div className="org-wrapper"><p>조직도 데이터가 없습니다.</p></div>;
+  const fetchTree = async () => {
+    try {
+      const res = await axios.get("/tree/full");
+      if (res.data.success) {
+        setTree(res.data.tree);
+      }
+    } catch (err) {
+      console.error("트리 불러오기 실패:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
-    <div className="org-wrapper">
-      <h1>추천 계보 조직도</h1>
-      <div className="org-container">
-        <Tree lineWidth="1px" lineColor="#ffffff" lineBorderRadius="4px">
-          {renderNode(tree)}
-        </Tree>
-      </div>
+    <div
+      style={{
+        padding: "2rem",
+        backgroundColor: "#111827",
+        minHeight: "100vh",
+        color: "#fff",
+      }}
+    >
+      <h1 style={{ fontSize: "20px", fontWeight: "bold", marginBottom: "1.5rem" }}>
+        추천 계보 조직도
+      </h1>
+
+      {loading ? (
+        <p>불러오는 중...</p>
+      ) : tree && tree.username ? (
+        <TreeNode node={tree} />
+      ) : (
+        <p>조직도 데이터가 없습니다.</p>
+      )}
     </div>
   );
 }
