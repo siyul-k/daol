@@ -1,0 +1,68 @@
+// ✅ 파일 위치: backend/routes/adminSettingsAdmins.cjs
+const express = require('express');
+const router = express.Router();
+const connection = require('../db.cjs');
+const bcrypt = require('bcrypt');
+
+// ✅ 관리자 목록 조회
+router.get('/', async (req, res) => {
+  try {
+    const [rows] = await connection.promise().query(
+      'SELECT id, username, name FROM members WHERE is_admin = 1'
+    );
+    res.json(rows);
+  } catch (err) {
+    console.error('관리자 조회 오류:', err);
+    res.status(500).json({ error: 'DB 오류' });
+  }
+});
+
+// ✅ 관리자 추가
+router.post('/', async (req, res) => {
+  const { username, name, password } = req.body;
+  if (!username || !name || !password) {
+    return res.status(400).json({ error: '필수 항목 누락' });
+  }
+
+  try {
+    // 중복 확인
+    const [exist] = await connection.promise().query(
+      'SELECT id FROM members WHERE username = ?',
+      [username]
+    );
+    if (exist.length > 0) {
+      return res.status(409).json({ error: '이미 존재하는 아이디입니다' });
+    }
+
+    // 비밀번호 해싱
+    const hashed = await bcrypt.hash(password, 10);
+
+    // 삽입
+    await connection.promise().query(
+      'INSERT INTO members (username, name, password, is_admin) VALUES (?, ?, ?, 1)',
+      [username, name, hashed]
+    );
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error('관리자 추가 오류:', err);
+    res.status(500).json({ error: 'DB 오류' });
+  }
+});
+
+// ✅ 관리자 삭제
+router.delete('/:id', async (req, res) => {
+  const { id } = req.params;
+  try {
+    await connection.promise().query(
+      'DELETE FROM members WHERE id = ? AND is_admin = 1',
+      [id]
+    );
+    res.json({ success: true });
+  } catch (err) {
+    console.error('관리자 삭제 오류:', err);
+    res.status(500).json({ error: 'DB 오류' });
+  }
+});
+
+module.exports = router;

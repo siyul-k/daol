@@ -1,0 +1,15 @@
+# 공통 무시 항목
+node_modules/
+.env
+*.log
+.DS_Store
+Thumbs.db
+
+# 백엔드/프론트엔드 각각의 node_modules도 무시
+backend/node_modules/
+frontend/node_modules/
+
+# 컴파일된 결과물 및 기타 임시 파일
+dist/
+build/
+.cache/
