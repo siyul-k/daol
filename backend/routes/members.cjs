@@ -125,7 +125,7 @@ router.get('/by-username/:username', (req, res) => {
 router.get('/rank/:username', (req, res) => {
   const { username } = req.params;
 
-  const sql = `SELECT rank FROM members WHERE username = ?`;
+  const sql = `SELECT \`rank\` FROM members WHERE username = ?`;
 
   connection.query(sql, [username], (err, results) => {
     if (err) {
