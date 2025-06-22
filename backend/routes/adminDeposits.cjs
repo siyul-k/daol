@@ -90,10 +90,12 @@ router.post('/complete', (req, res) => {
       return res.status(500).json({ message: '완료 처리 오류' });
     }
 
+    // ✅ member_points 삽입 (member_id 기준으로 수정됨)
     const insertSql = `
-      INSERT INTO member_points (username, amount, type, reason, created_at)
-      SELECT d.username, d.amount, 'add', '입금 완료로 포인트 지급', NOW()
+      INSERT INTO member_points (member_id, point, type, description, created_at)
+      SELECT m.id, d.amount, 'add', '입금 완료', NOW()
       FROM deposit_requests d
+      JOIN members m ON d.username = m.username
       WHERE d.id IN (${placeholders})
     `;
     connection.query(insertSql, ids, (err2) => {
@@ -175,9 +177,8 @@ router.delete('/:id', async (req, res) => {
           .json({ message: '보유 포인트가 부족하여 입금 내역을 삭제할 수 없습니다.' });
       }
 
-      // 포인트 로그 및 적립 기록 삭제
       await connection.promise().query(
-        `DELETE FROM member_points WHERE username = ? AND amount = ? AND type = 'add' AND reason LIKE '입금%'`,
+        `DELETE FROM member_points WHERE member_id = (SELECT id FROM members WHERE username = ?) AND point = ? AND type = 'add' AND description LIKE '입금%'`,
         [username, amount]
       );
 
@@ -192,7 +193,6 @@ router.delete('/:id', async (req, res) => {
       );
     }
 
-    // 입금요청 삭제 (마지막)
     await connection.promise().query(
       `DELETE FROM deposit_requests WHERE id = ?`,
       [depositId]

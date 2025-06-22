@@ -8,12 +8,9 @@ router.get('/:username', async (req, res) => {
   const { username } = req.params;
 
   const sql = `
-    SELECT IFNULL(SUM(mp.point), 0) AS total_deposit
-    FROM member_points mp
-    JOIN members m ON mp.member_id = m.id
-    WHERE m.username = ?
-      AND mp.type = 'add'
-      AND mp.description LIKE '입금%'
+    SELECT IFNULL(SUM(amount), 0) AS total_deposit
+    FROM deposit_requests
+    WHERE username = ? AND status = '완료'
   `;
 
   try {
