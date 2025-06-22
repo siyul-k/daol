@@ -54,7 +54,7 @@ export default function AdminLayout() {
             <button className="py-2">조직도 ▾</button>
             {menuOpen === 'org' && (
               <div className="absolute bg-gray-800 shadow mt-1 rounded z-40">
-                <Link to="/admin/tree/recommend" className={dropdownItemClass('/admin/tree/recommend')}>추천 조직도</Link>
+                <Link to="/admin/tree/recommend" className={dropdownItemClass('/admin/tree')}>추천 조직도</Link>
                 <Link to="/admin/tree/sponsor" className={dropdownItemClass('/admin/tree/sponsor')}>후원 조직도</Link>
               </div>
             )}
