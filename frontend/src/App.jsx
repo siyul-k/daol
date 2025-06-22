@@ -118,6 +118,7 @@ export default function App() {
         <Route path="/admin" element={<AdminLayout />}>
           <Route index element={<Navigate to="notices" replace />} />
           <Route path="members" element={<AdminMembersPage />} />
+          <Route path="tree" element={<AdminTreePage />} />
           <Route path="tree/recommend" element={<AdminTreePage />} />
           <Route path="tree/sponsor" element={<AdminTreeSponsorPage />} />
           <Route path="deposit" element={<AdminDepositPage />} />

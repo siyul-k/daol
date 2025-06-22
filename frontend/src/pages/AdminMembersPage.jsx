@@ -7,7 +7,7 @@ export default function AdminMembersPage() {
   const [members, setMembers] = useState([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
-  const [limit] = useState(10);
+  const [limit, setLimit] = useState(10);
   const [filters, setFilters] = useState({
     username: '', name: '', recommender: '', center: '', date: ''
   });
@@ -23,7 +23,7 @@ export default function AdminMembersPage() {
       .then(r => setCenters(r.data))
       .catch(() => {});
     fetchMembers();
-  }, [page]);
+  }, [page, limit]);
 
   const fetchMembers = async () => {
     setLoading(true);
@@ -162,6 +162,15 @@ export default function AdminMembersPage() {
         ))}
         <button onClick={handleSearch} className="bg-blue-600 text-white px-3 py-1">검색</button>
         <button onClick={handleDownloadExcel} className="bg-green-600 text-white px-3 py-1">엑셀 다운로드</button>
+        <select
+          value={limit}
+          onChange={e => { setLimit(Number(e.target.value)); setPage(1); }}
+          className="border p-1"
+        >
+          {[10, 20, 30, 50, 100].map(n => (
+            <option key={n} value={n}>{n}개씩 보기</option>
+          ))}
+        </select>
       </div>
 
       {/* 📋 테이블 */}

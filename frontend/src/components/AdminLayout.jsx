@@ -54,7 +54,7 @@ export default function AdminLayout() {
             </button>
             {menuOpen === 'org' && (
               <div className="absolute bg-gray-800 shadow mt-1 rounded z-40">
-                <Link to="/admin/tree" className={dropdownItemClass('/admin/tree')}>
+                <Link to="/admin/tree" className={dropdownItemClass('/admin/tree/full')}>
                   추천 조직도
                 </Link>
                 <Link to="/admin/tree/sponsor" className={dropdownItemClass('/admin/tree/sponsor')}>
