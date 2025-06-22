@@ -8,7 +8,7 @@ import WithdrawStats from '../pages/WithdrawStats';
 export default function AdminLayout() {
   const { pathname } = useLocation();
   const navigate = useNavigate();
-  const [menuOpen, setMenuOpen] = useState(null);
+  const [menuOpen, setMenuOpen] = useState(null); // 클릭용 토글
 
   const navLinkClass = (path) =>
     `px-4 py-2 text-sm font-medium hover:text-yellow-300 ${
@@ -20,17 +20,19 @@ export default function AdminLayout() {
       pathname.startsWith(path) ? 'text-yellow-300' : 'text-white'
     }`;
 
-  // 로그아웃 처리 함수
   const handleLogout = () => {
     localStorage.removeItem('admin');
     navigate('/admin/login');
   };
 
-  // 통계 컴포넌트
   let StatsComponent = null;
   if (pathname.startsWith('/admin/members')) StatsComponent = MemberStats;
   else if (pathname.startsWith('/admin/deposit')) StatsComponent = DepositStats;
   else if (pathname.startsWith('/admin/withdraws')) StatsComponent = WithdrawStats;
+
+  const toggleMenu = (menuKey) => {
+    setMenuOpen((prev) => (prev === menuKey ? null : menuKey));
+  };
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -46,31 +48,35 @@ export default function AdminLayout() {
           <Link to="/admin/members" className={navLinkClass('/admin/members')}>회원관리</Link>
 
           {/* 조직도 */}
-          <div
-            className="relative group"
-            onMouseEnter={() => setMenuOpen('org')}
-            onMouseLeave={() => setMenuOpen(null)}
-          >
-            <button className="py-2">조직도 ▾</button>
+          <div className="relative">
+            <button className="py-2" onClick={() => toggleMenu('org')}>
+              조직도 ▾
+            </button>
             {menuOpen === 'org' && (
               <div className="absolute bg-gray-800 shadow mt-1 rounded z-40">
-                <Link to="/admin/tree/recommend" className={dropdownItemClass('/admin/tree')}>추천 조직도</Link>
-                <Link to="/admin/tree/sponsor" className={dropdownItemClass('/admin/tree/sponsor')}>후원 조직도</Link>
+                <Link to="/admin/tree" className={dropdownItemClass('/admin/tree')}>
+                  추천 조직도
+                </Link>
+                <Link to="/admin/tree/sponsor" className={dropdownItemClass('/admin/tree/sponsor')}>
+                  후원 조직도
+                </Link>
               </div>
             )}
           </div>
 
           {/* 지급관리 */}
-          <div
-            className="relative group"
-            onMouseEnter={() => setMenuOpen('reward')}
-            onMouseLeave={() => setMenuOpen(null)}
-          >
-            <button className="py-2">지급관리 ▾</button>
+          <div className="relative">
+            <button className="py-2" onClick={() => toggleMenu('reward')}>
+              지급관리 ▾
+            </button>
             {menuOpen === 'reward' && (
               <div className="absolute bg-gray-800 shadow mt-1 rounded z-40">
-                <Link to="/admin/code-rewards" className={dropdownItemClass('/admin/code-rewards')}>코드지급</Link>
-                <Link to="/admin/points" className={dropdownItemClass('/admin/points')}>포인트지급</Link>
+                <Link to="/admin/code-rewards" className={dropdownItemClass('/admin/code-rewards')}>
+                  코드지급
+                </Link>
+                <Link to="/admin/points" className={dropdownItemClass('/admin/points')}>
+                  포인트지급
+                </Link>
               </div>
             )}
           </div>
@@ -82,16 +88,18 @@ export default function AdminLayout() {
           <Link to="/admin/rewards" className={navLinkClass('/admin/rewards')}>수당관리</Link>
 
           {/* 환경설정 */}
-          <div
-            className="relative group"
-            onMouseEnter={() => setMenuOpen('setting')}
-            onMouseLeave={() => setMenuOpen(null)}
-          >
-            <button className="py-2">환경설정 ▾</button>
+          <div className="relative">
+            <button className="py-2" onClick={() => toggleMenu('setting')}>
+              환경설정 ▾
+            </button>
             {menuOpen === 'setting' && (
               <div className="absolute bg-gray-800 shadow mt-1 rounded z-40">
-                <Link to="/admin/settings" className={dropdownItemClass('/admin/settings')}>수당퍼센트</Link>
-                <Link to="/admin/settings/admins" className={dropdownItemClass('/admin/settings/admins')}>관리자계정</Link>
+                <Link to="/admin/settings" className={dropdownItemClass('/admin/settings')}>
+                  수당퍼센트
+                </Link>
+                <Link to="/admin/settings/admins" className={dropdownItemClass('/admin/settings/admins')}>
+                  관리자계정
+                </Link>
                 <button
                   onClick={handleLogout}
                   className="block w-full text-left px-4 py-1 text-sm text-red-400 hover:text-red-300"

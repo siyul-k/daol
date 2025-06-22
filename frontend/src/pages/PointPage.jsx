@@ -6,6 +6,7 @@ import axios from "../axiosConfig";
 export default function PointPage() {
   const [rewards, setRewards] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [perPageMap, setPerPageMap] = useState({});
   const currentUser = JSON.parse(localStorage.getItem("user"));
 
   useEffect(() => {
@@ -23,11 +24,21 @@ export default function PointPage() {
     fetchRewards();
   }, []);
 
-  const groupByType = (type) =>
-    Array.isArray(rewards) ? rewards.filter((r) => r.type?.toLowerCase() === type) : [];
+  // ✅ 항목별 필터링
+  const groupByType = (types) => {
+    return Array.isArray(rewards)
+      ? rewards.filter((r) => types.includes(r.type?.toLowerCase()))
+      : [];
+  };
 
-  const renderTable = (typeLabel, typeKey) => {
-    const data = groupByType(typeKey);
+  // ✅ 테이블 렌더 함수
+  const renderTable = (typeLabel, typeKeys) => {
+    const data = groupByType(Array.isArray(typeKeys) ? typeKeys : [typeKeys]);
+    const key = Array.isArray(typeKeys) ? typeKeys.join("_") : typeKeys;
+
+    const perPage = perPageMap[key] || 10;
+    const visibleData = perPage === "ALL" ? data : data.slice(0, Number(perPage));
+
     return (
       <div className="mb-10 overflow-x-auto">
         <h2 className="text-xl font-bold mb-4">{typeLabel}</h2>
@@ -42,8 +53,8 @@ export default function PointPage() {
             </tr>
           </thead>
           <tbody>
-            {data.length > 0 ? (
-              data.map((item) => (
+            {visibleData.length > 0 ? (
+              visibleData.map((item) => (
                 <tr key={item.id}>
                   <td className="border px-3 py-2">
                     {new Date(item.created_at).toLocaleString("ko-KR")}
@@ -54,7 +65,7 @@ export default function PointPage() {
                     {Number(item.amount).toLocaleString()}
                   </td>
                   <td className="border px-3 py-2">
-                    {typeKey === "adjust" ? item.memo || "포인트가감" : typeLabel}
+                    {typeKeys.includes("adjust") ? item.memo || "포인트가감" : typeLabel}
                   </td>
                 </tr>
               ))
@@ -67,6 +78,34 @@ export default function PointPage() {
             )}
           </tbody>
         </table>
+
+        {/* ✅ Items per page 설정 */}
+        <div className="flex items-center justify-between mt-2">
+          <span className="text-sm text-gray-600">
+            Items per page:
+            <select
+              className="ml-2 border px-2 py-1 rounded"
+              value={perPage}
+              onChange={(e) => {
+                const newVal = e.target.value;
+                setPerPageMap((prev) => ({ ...prev, [key]: newVal }));
+              }}
+            >
+              {[10, 25, 50, 100, "ALL"].map((n) => (
+                <option key={n} value={n}>
+                  {n}
+                </option>
+              ))}
+            </select>
+          </span>
+          <span className="text-sm text-gray-600">
+            {data.length === 0
+              ? "0-0 of 0"
+              : perPage === "ALL"
+              ? `1-${data.length} of ${data.length}`
+              : `1-${visibleData.length} of ${data.length}`}
+          </span>
+        </div>
       </div>
     );
   };
@@ -80,10 +119,8 @@ export default function PointPage() {
         <>
           {renderTable("데일리", "daily")}
           {renderTable("매칭", "daily_matching")}
-          {renderTable("추천", "referral")}
           {renderTable("후원", "sponsor")}
-          {renderTable("센터피", "center")}
-          {renderTable("센터추천", "center_recommend")}
+          {renderTable("센터", ["center", "center_recommend"])}
           {renderTable("직급", "rank")}
           {renderTable("포인트가감", "adjust")}
         </>

@@ -1,4 +1,5 @@
 // ✅ 파일 위치: src/pages/PointSummaryPage.jsx
+
 import React, { useEffect, useState } from "react";
 import axios from "../axiosConfig";
 
@@ -57,7 +58,7 @@ export default function PointSummaryPage() {
         );
         limit += pv * (hasReferral ? 2.5 : 2);
       } else if (pkg.type === "bcode") {
-        limit += pv; // bcode = 100%
+        limit += pv;
       }
     });
 
@@ -67,9 +68,9 @@ export default function PointSummaryPage() {
   const rewardNames = {
     daily: "데일리",
     daily_matching: "매칭",
-    referral: "추천",
     sponsor: "후원",
     rank: "직급"
+    // ✅ 'referral': "추천", // 제거됨
   };
 
   const sumByDate = () => {
@@ -118,7 +119,7 @@ export default function PointSummaryPage() {
               <div className="text-2xl font-bold text-green-700">{total.toLocaleString()}</div>
             </div>
 
-            {/* ✅ 항목별 요약 */}
+            {/* ✅ 항목별 요약 (추천 제거됨) */}
             {Object.keys(rewardNames).map((key) => (
               <div key={key} className="bg-white shadow p-4 rounded border text-center">
                 <div className="text-gray-500 mb-1">{rewardNames[key]}</div>
@@ -126,7 +127,7 @@ export default function PointSummaryPage() {
               </div>
             ))}
 
-            {/* ✅ 센터(센터피 + 센터추천) */}
+            {/* ✅ 센터 (센터피 + 센터추천 합산) */}
             <div className="bg-white shadow p-4 rounded border text-center">
               <div className="text-gray-500 mb-1">센터</div>
               <div className="font-semibold">{sumCenterTotal().toLocaleString()}</div>

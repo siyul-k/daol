@@ -1,5 +1,4 @@
 // ✅ 파일 위치: frontend/src/pages/AdminMembersPage.jsx
-
 import React, { useEffect, useState } from 'react';
 import axios from '../axiosConfig';
 import { Trash2, Edit } from 'lucide-react';
@@ -31,7 +30,10 @@ export default function AdminMembersPage() {
     try {
       const params = { page, limit };
       Object.keys(enabled).forEach(key => {
-        if (enabled[key] && filters[key]) params[key] = filters[key];
+        const value = filters[key]?.trim();
+        if (enabled[key] && value !== '') {
+          params[key] = value;
+        }
       });
       const { data } = await axios.get(`/admin/members`, { params });
       setMembers(data.data);
@@ -51,7 +53,8 @@ export default function AdminMembersPage() {
   const handleDownloadExcel = () => {
     const params = {};
     Object.keys(enabled).forEach(k => {
-      if (enabled[k] && filters[k]) params[k] = filters[k];
+      const value = filters[k]?.trim();
+      if (enabled[k] && value !== '') params[k] = value;
     });
     axios.get(`/admin/members/export`, { params, responseType: 'blob' })
       .then(res => {
