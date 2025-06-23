@@ -1,5 +1,4 @@
 // ✅ 파일 경로: backend/routes/adminDeposits.cjs
-
 const express = require('express');
 const router = express.Router();
 const connection = require('../db.cjs');
@@ -14,48 +13,24 @@ router.get('/stats', (req, res) => {
     FROM deposit_requests
   `;
   connection.query(sql, (err, rows) => {
-    if (err) {
-      console.error('❌ 입금 통계 조회 실패:', err);
-      return res.status(500).json({ message: '통계 조회 실패' });
-    }
-    res.json({
-      total: rows[0].totalCount,
-      today: rows[0].todayCount,
-    });
+    if (err) return res.status(500).json({ message: '통계 조회 실패' });
+    res.json({ total: rows[0].totalCount, today: rows[0].todayCount });
   });
 });
 
 // ✅ 2. 입금 목록 조회
 router.get('/', (req, res) => {
   const { username, status, date } = req.query;
-  let cond = [];
-  let params = [];
+  const cond = [], params = [];
 
-  if (username) {
-    cond.push('d.username = ?');
-    params.push(username);
-  }
-  if (status) {
-    cond.push('d.status = ?');
-    params.push(status);
-  }
-  if (date) {
-    cond.push('DATE(d.created_at) = ?');
-    params.push(date);
-  }
+  if (username) { cond.push('d.username = ?'); params.push(username); }
+  if (status) { cond.push('d.status = ?'); params.push(status); }
+  if (date) { cond.push('DATE(d.created_at) = ?'); params.push(date); }
 
   const where = cond.length ? 'WHERE ' + cond.join(' AND ') : '';
   const sql = `
-    SELECT
-      d.id,
-      d.created_at,
-      d.username,
-      m.name AS name,
-      d.status,
-      d.account_holder,
-      d.amount,
-      d.memo,
-      d.completed_at
+    SELECT d.id, d.created_at, d.username, m.name,
+           d.status, d.account_holder, d.amount, d.memo, d.completed_at
     FROM deposit_requests d
     LEFT JOIN members m ON d.username = m.username
     ${where}
@@ -63,15 +38,12 @@ router.get('/', (req, res) => {
   `;
 
   connection.query(sql, params, (err, rows) => {
-    if (err) {
-      console.error('❌ 입금 목록 조회 실패:', err);
-      return res.status(500).json({ message: '입금 내역 조회 실패' });
-    }
+    if (err) return res.status(500).json({ message: '입금 내역 조회 실패' });
     res.json(rows);
   });
 });
 
-// ✅ 3. 입금 완료 처리 + 포인트 지급 + balance 반영
+// ✅ 3. 입금 완료 처리 + 포인트 지급
 router.post('/complete', (req, res) => {
   const { ids } = req.body;
   if (!Array.isArray(ids) || !ids.length) {
@@ -79,108 +51,73 @@ router.post('/complete', (req, res) => {
   }
 
   const placeholders = ids.map(() => '?').join(',');
+
   const updateSql = `
     UPDATE deposit_requests
     SET status = '완료', completed_at = NOW()
     WHERE id IN (${placeholders}) AND status = '요청'
   `;
-  connection.query(updateSql, ids, (err, result) => {
-    if (err) {
-      console.error('❌ 완료 처리 실패:', err);
-      return res.status(500).json({ message: '완료 처리 오류' });
-    }
 
-    // ✅ member_points 삽입 (member_id 기준으로 수정됨)
-    const insertSql = `
-      INSERT INTO member_points (member_id, point, type, description, created_at)
-      SELECT m.id, d.amount, 'add', '입금 완료', NOW()
+  connection.query(updateSql, ids, (err, result) => {
+    if (err) return res.status(500).json({ message: '완료 처리 오류' });
+
+    const logSql = `
+      INSERT INTO point_logs (username, before_point, after_point, diff, reason)
+      SELECT 
+        m.username, m.point_balance, m.point_balance + d.amount,
+        d.amount, '입금 완료로 포인트 지급'
       FROM deposit_requests d
       JOIN members m ON d.username = m.username
-      WHERE d.id IN (${placeholders})
+      WHERE d.id = ?
     `;
-    connection.query(insertSql, ids, (err2) => {
-      if (err2) {
-        console.error('❌ 포인트 로그 지급 실패:', err2);
-        return res.status(500).json({ message: '포인트 로그 오류' });
-      }
 
-      const logSql = `
-        INSERT INTO point_logs (username, before_point, after_point, diff, reason)
-        SELECT 
-          m.username,
-          m.point_balance,
-          m.point_balance + d.amount,
-          d.amount,
-          '입금 완료로 포인트 지급'
-        FROM deposit_requests d
-        JOIN members m ON d.username = m.username
-        WHERE d.id = ?
-      `;
+    const updateBalanceSql = `
+      UPDATE members m
+      JOIN deposit_requests d ON m.username = d.username
+      SET m.point_balance = m.point_balance + d.amount
+      WHERE d.id = ? AND d.status = '완료'
+    `;
 
-      const updateBalanceSql = `
-        UPDATE members m
-        JOIN deposit_requests d ON m.username = d.username
-        SET m.point_balance = m.point_balance + d.amount
-        WHERE d.id = ? AND d.status = '완료'
-      `;
-
-      Promise.all(
-        ids.map(
-          (id) =>
-            new Promise((resolve, reject) => {
-              connection.query(logSql, [id], (e1) => {
-                if (e1) return reject(e1);
-                connection.query(updateBalanceSql, [id], (e2) =>
-                  e2 ? reject(e2) : resolve()
-                );
-              });
-            })
-        )
-      )
-        .then(() => {
-          res.json({ success: true, updatedRows: result.affectedRows });
+    Promise.all(
+      ids.map(id =>
+        new Promise((resolve, reject) => {
+          connection.query(logSql, [id], err1 => {
+            if (err1) return reject(err1);
+            connection.query(updateBalanceSql, [id], err2 =>
+              err2 ? reject(err2) : resolve()
+            );
+          });
         })
-        .catch((e) => {
-          console.error('❌ 잔액 반영 실패:', e);
-          res.status(500).json({ message: '잔액 반영 오류' });
-        });
+      )
+    ).then(() => {
+      res.json({ success: true, updatedRows: result.affectedRows });
+    }).catch(e => {
+      console.error('❌ 포인트 반영 실패:', e);
+      res.status(500).json({ message: '포인트 반영 오류' });
     });
   });
 });
 
-// ✅ 4. 입금요청 삭제 + 포인트 연동 삭제 (point 부족 시 삭제 차단)
+// ✅ 4. 입금 요청 삭제 + 포인트 복구 (포인트 부족 시 차단)
 router.delete('/:id', async (req, res) => {
   const depositId = req.params.id;
-
   try {
-    const [rows] = await connection.promise().query(
-      `SELECT username, amount, status FROM deposit_requests WHERE id = ?`,
-      [depositId]
+    const [[row]] = await connection.promise().query(
+      `SELECT username, amount, status FROM deposit_requests WHERE id = ?`, [depositId]
     );
 
-    if (!rows.length) {
-      return res.status(404).json({ message: '존재하지 않는 요청' });
-    }
+    if (!row) return res.status(404).json({ message: '존재하지 않는 요청' });
 
-    const { username, amount, status } = rows[0];
+    const { username, amount, status } = row;
 
     if (status === '완료') {
-      const [balanceRows] = await connection
-        .promise()
-        .query(`SELECT point_balance FROM members WHERE username = ?`, [username]);
-
-      const current = balanceRows[0]?.point_balance || 0;
-
-      if (current < amount) {
-        return res
-          .status(400)
-          .json({ message: '보유 포인트가 부족하여 입금 내역을 삭제할 수 없습니다.' });
-      }
-
-      await connection.promise().query(
-        `DELETE FROM member_points WHERE member_id = (SELECT id FROM members WHERE username = ?) AND point = ? AND type = 'add' AND description LIKE '입금%'`,
-        [username, amount]
+      const [[member]] = await connection.promise().query(
+        `SELECT point_balance FROM members WHERE username = ?`, [username]
       );
+
+      if (!member || member.point_balance < amount) {
+        return res.status(400).json({ message: '포인트 부족으로 삭제 불가' });
+      }
 
       await connection.promise().query(
         `DELETE FROM point_logs WHERE username = ? AND diff = ? AND reason LIKE '입금%'`,
@@ -194,39 +131,28 @@ router.delete('/:id', async (req, res) => {
     }
 
     await connection.promise().query(
-      `DELETE FROM deposit_requests WHERE id = ?`,
-      [depositId]
+      `DELETE FROM deposit_requests WHERE id = ?`, [depositId]
     );
 
     res.json({ success: true });
   } catch (err) {
-    console.error('❌ 입금 삭제 처리 실패:', err);
-    res.status(500).json({ message: '삭제 중 오류 발생' });
+    console.error('❌ 입금 삭제 오류:', err);
+    res.status(500).json({ message: '삭제 실패' });
   }
 });
 
 // ✅ 5. 엑셀 다운로드
-router.get('/export', async (req, res) => {
+router.get('/export', (req, res) => {
   const sql = `
-    SELECT
-      d.id,
-      d.username,
-      m.name AS name,
-      d.status,
-      d.account_holder,
-      d.amount,
-      d.created_at,
-      d.completed_at,
-      d.memo
+    SELECT d.id, d.username, m.name, d.status,
+           d.account_holder, d.amount, d.created_at, d.completed_at, d.memo
     FROM deposit_requests d
     LEFT JOIN members m ON d.username = m.username
     ORDER BY d.created_at DESC
   `;
+
   connection.query(sql, async (err, rows) => {
-    if (err) {
-      console.error('❌ 엑셀 다운로드 실패:', err);
-      return res.status(500).json({ message: '엑셀 다운로드 오류' });
-    }
+    if (err) return res.status(500).json({ message: '엑셀 다운로드 오류' });
     try {
       const wb = new ExcelJS.Workbook();
       const ws = wb.addWorksheet('입금내역');
@@ -241,7 +167,7 @@ router.get('/export', async (req, res) => {
         { header: '완료일', key: 'completed_at', width: 20 },
         { header: '비고', key: 'memo', width: 20 },
       ];
-      rows.forEach((r) => ws.addRow(r));
+      rows.forEach(row => ws.addRow(row));
       res.setHeader(
         'Content-Disposition',
         `attachment; filename=deposits_${Date.now()}.xlsx`

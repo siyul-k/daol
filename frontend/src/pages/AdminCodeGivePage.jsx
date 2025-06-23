@@ -1,27 +1,31 @@
 // ✅ 파일 경로: frontend/src/pages/AdminCodeGivePage.jsx
+
 import React, { useEffect, useState } from 'react';
 import axios from '../axiosConfig';
 import { PlusCircle, Trash2, Pencil } from 'lucide-react';
 
 export default function AdminCodeGivePage() {
   const [codes, setCodes] = useState([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
+
   const [showModal, setShowModal] = useState(false);
   const [newCode, setNewCode] = useState({ username: '', product_id: '' });
   const [usernameCheck, setUsernameCheck] = useState({ name: '', valid: false });
   const [products, setProducts] = useState([]);
   const [filters, setFilters] = useState({ username: '', name: '' });
 
-  // 전체 내역 조회
-  useEffect(() => {
-    fetchCodes();
-    fetchProducts();
-  }, []);
-
   const fetchCodes = async () => {
     try {
-      const query = new URLSearchParams(filters).toString();
+      const query = new URLSearchParams({
+        ...filters,
+        page,
+        limit,
+      }).toString();
       const res = await axios.get(`/api/admin/code-give?${query}`);
-      setCodes(res.data);
+      setCodes(res.data.rows);
+      setTotal(res.data.total);
     } catch (err) {
       console.error('코드 내역 조회 실패:', err);
     }
@@ -84,12 +88,24 @@ export default function AdminCodeGivePage() {
     }
   };
 
+  const handleSearch = () => {
+    setPage(1);
+    fetchCodes();
+  };
+
+  const totalPages = limit === 'all' ? 1 : Math.ceil(total / limit);
+
+  useEffect(() => {
+    fetchCodes();
+    fetchProducts();
+  }, [page, limit]);
+
   return (
     <div className="p-4">
       <h2 className="text-xl font-bold mb-4">코드 상품 지급</h2>
 
       {/* 필터 영역 */}
-      <div className="flex gap-2 mb-4">
+      <div className="flex gap-2 mb-4 items-center">
         <input
           type="text"
           placeholder="아이디 검색"
@@ -104,14 +120,21 @@ export default function AdminCodeGivePage() {
           value={filters.name}
           onChange={(e) => setFilters({ ...filters, name: e.target.value })}
         />
-        <button
-          className="px-4 bg-gray-700 text-white rounded"
-          onClick={fetchCodes}
-        >
+        <button className="px-4 bg-gray-700 text-white rounded" onClick={handleSearch}>
           검색
         </button>
+        <select
+          className="border px-2 py-1 ml-auto"
+          value={limit}
+          onChange={(e) => setLimit(e.target.value === 'all' ? 'all' : Number(e.target.value))}
+        >
+          <option value={10}>10개씩</option>
+          <option value={25}>25개씩</option>
+          <option value={50}>50개씩</option>
+          <option value="all">전체보기</option>
+        </select>
         <button
-          className="ml-auto px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+          className="ml-2 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
           onClick={() => setShowModal(true)}
         >
           <PlusCircle className="inline-block mr-2" size={18} />
@@ -119,6 +142,7 @@ export default function AdminCodeGivePage() {
         </button>
       </div>
 
+      {/* 테이블 */}
       <table className="w-full border text-sm text-center">
         <thead className="bg-gray-100">
           <tr>
@@ -156,6 +180,23 @@ export default function AdminCodeGivePage() {
         </tbody>
       </table>
 
+      {/* 페이지네이션 */}
+      {totalPages > 1 && (
+        <div className="mt-4 flex justify-center gap-2 text-sm">
+          {Array.from({ length: totalPages }, (_, i) => (
+            <button
+              key={i}
+              onClick={() => setPage(i + 1)}
+              className={`px-3 py-1 border rounded ${
+                page === i + 1 ? 'bg-blue-600 text-white' : ''
+              }`}
+            >
+              {i + 1}
+            </button>
+          ))}
+        </div>
+      )}
+
       {/* 등록 모달 */}
       {showModal && (
         <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center">
@@ -175,7 +216,9 @@ export default function AdminCodeGivePage() {
             >
               아이디 확인
             </button>
-            {usernameCheck.valid && <p className="mb-2 text-green-600">이름: {usernameCheck.name}</p>}
+            {usernameCheck.valid && (
+              <p className="mb-2 text-green-600">이름: {usernameCheck.name}</p>
+            )}
 
             <select
               className="border w-full p-2 mb-2"

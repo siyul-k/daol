@@ -68,6 +68,8 @@ app.use('/api/purchase-points',        require('./routes/purchasePoints.cjs'));
 app.use('/api/members/rank',           require('./routes/rank.cjs'));
 app.use('/api/members/referrals',      require('./routes/referrals.cjs'));
 app.use('/api/deposit-total',          require('./routes/depositTotal.cjs'));
+app.use('/api/reward-limit', require('./routes/rewardLimit.cjs'));
+
 
 // ✅ 공지사항 (회원용)
 app.use('/api/rewards',                require('./routes/rewards.cjs'));

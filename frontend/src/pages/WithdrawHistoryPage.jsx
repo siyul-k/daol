@@ -34,7 +34,7 @@ export default function WithdrawHistoryPage() {
         <p>출금 내역이 없습니다.</p>
       ) : (
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[1000px] border border-gray-300 text-center">
+          <table className="w-full min-w-[1100px] border border-gray-300 text-center">
             <thead className="bg-gray-100">
               <tr>
                 <th className="border px-3 py-2">등록일시</th>
@@ -43,6 +43,7 @@ export default function WithdrawHistoryPage() {
                 <th className="border px-3 py-2">출금신청금액</th>
                 <th className="border px-3 py-2">수수료</th>
                 <th className="border px-3 py-2">출금액</th>
+                <th className="border px-3 py-2">쇼핑포인트</th> {/* ✅ 추가 */}
                 <th className="border px-3 py-2">입금은행</th>
                 <th className="border px-3 py-2">예금주</th>
                 <th className="border px-3 py-2">계좌번호</th>
@@ -68,6 +69,9 @@ export default function WithdrawHistoryPage() {
                   <td className="border px-3 py-2 text-right">
                     {Number(row.payout).toLocaleString()}
                   </td>
+                  <td className="border px-3 py-2 text-right">
+                    {Number(row.shopping_point || 0).toLocaleString()}
+                  </td> {/* ✅ 쇼핑포인트 표시 */}
                   <td className="border px-3 py-2">{row.bank_name}</td>
                   <td className="border px-3 py-2">{row.account_holder}</td>
                   <td className="border px-3 py-2">{row.account_number}</td>

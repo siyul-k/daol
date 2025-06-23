@@ -1,5 +1,4 @@
 // ✅ 파일 위치: backend/routes/purchasePoints.cjs
-
 const express = require('express');
 const router = express.Router();
 const connection = require('../db.cjs');

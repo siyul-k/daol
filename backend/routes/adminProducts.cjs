@@ -1,4 +1,3 @@
-// ✅ 파일 경로: backend/routes/adminProducts.cjs
 const express = require('express');
 const router = express.Router();
 const connection = require('../db.cjs');
@@ -50,7 +49,7 @@ router.get('/', (req, res) => {
   });
 });
 
-// ✅ 상태 토글 (active 기준으로 통일)
+// ✅ 상태 토글 (bcode만)
 router.put('/:id/toggle', (req, res) => {
   const { id } = req.params;
 
@@ -71,7 +70,7 @@ router.put('/:id/toggle', (req, res) => {
   });
 });
 
-// ✅ 상품 삭제 (일반상품일 경우 포인트 복원 처리 포함)
+// ✅ 상품 삭제 (포인트 복원 및 로그 기록 포함)
 router.delete('/:id', async (req, res) => {
   const { id } = req.params;
 
@@ -79,7 +78,7 @@ router.delete('/:id', async (req, res) => {
     // 1. 삭제 대상 조회
     const [rows] = await connection.promise().query(
       `
-      SELECT p.amount, p.type, m.username
+      SELECT p.amount, p.type, m.id AS member_id, m.username
       FROM purchases p
       JOIN members m ON p.member_id = m.id
       WHERE p.id = ?
@@ -91,7 +90,7 @@ router.delete('/:id', async (req, res) => {
       return res.status(404).send('상품을 찾을 수 없습니다.');
     }
 
-    const { amount, type, username } = rows[0];
+    const { amount, type, member_id, username } = rows[0];
 
     if (type === 'normal') {
       // 2. point_balance 복원
@@ -100,13 +99,13 @@ router.delete('/:id', async (req, res) => {
         [amount, username]
       );
 
-      // 3. 복원 로그 기록
+      // 3. point_logs 기록
       await connection.promise().query(
         `
-        INSERT INTO member_points (username, amount, type, reason)
-        VALUES (?, ?, 'add', '상품 삭제로 포인트 복원')
+        INSERT INTO point_logs (member_id, point, type, description)
+        VALUES (?, ?, 'restore', '상품 삭제로 인한 포인트 복원')
         `,
-        [username, amount]
+        [member_id, amount]
       );
     }
 
@@ -122,7 +121,6 @@ router.delete('/:id', async (req, res) => {
     res.status(500).send('삭제 실패');
   }
 });
-
 
 // ✅ 엑셀 다운로드
 router.get('/export', async (req, res) => {
