@@ -136,7 +136,7 @@ export default function AdminWithdrawPage() {
         상태: r.status,
         신청금액: r.amount,
         수수료: r.fee,
-        출금액: r.payout,
+        출금액: r.amount - r.fee,
         쇼핑포인트: r.shopping_point || 0,
         은행: r.bank_name,
         예금주: r.account_holder,
@@ -265,15 +265,16 @@ export default function AdminWithdrawPage() {
           </thead>
           <tbody>
             {requests.map(r => {
-              const locked = r.status !== '요청';
+              const payout = r.amount - r.fee;
+              const shoppingPoint = r.shopping_point ?? 0;
               return (
                 <tr key={r.id}>
                   <td className="border px-2 py-1">
                     <input
                       type="checkbox"
-                      disabled={locked}
                       checked={selected.includes(r.id)}
                       onChange={() => toggleSelect(r.id)}
+                      disabled={r.status !== '요청'}
                     />
                   </td>
                   <td className="border px-2 py-1">{r.created_at.replace('T', ' ').slice(0, 19)}</td>
@@ -283,7 +284,8 @@ export default function AdminWithdrawPage() {
                   <td className="border px-2 py-1">{r.status}</td>
                   <td className="border px-2 py-1 text-right">{r.amount.toLocaleString()}</td>
                   <td className="border px-2 py-1 text-right">{r.fee.toLocaleString()}</td>
-                  <td className="border px-2 py-1 text-right">{(r.shopping_point || 0).toLocaleString()}</td>
+                  <td className="border px-2 py-1 text-right">{payout.toLocaleString()}</td>
+                  <td className="border px-2 py-1 text-right">{shoppingPoint.toLocaleString()}</td>
                   <td className="border px-2 py-1">{r.bank_name}</td>
                   <td className="border px-2 py-1">{r.account_holder}</td>
                   <td className="border px-2 py-1">{r.account_number}</td>
@@ -293,14 +295,12 @@ export default function AdminWithdrawPage() {
                       className="w-full border px-1 text-sm"
                       defaultValue={r.memo}
                       onChange={e => handleMemoChange(r.id, e.target.value)}
-                      readOnly={locked}
                     />
                   </td>
                   <td className="border px-2 py-1">
                     <button
                       className="px-2 py-1 bg-blue-500 text-white rounded text-sm"
                       onClick={() => saveMemo(r.id, memoEdits[r.id] ?? r.memo)}
-                      disabled={locked}
                     >
                       저장
                     </button>

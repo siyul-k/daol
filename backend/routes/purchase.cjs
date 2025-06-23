@@ -1,3 +1,5 @@
+// ✅ 파일 위치: backend/routes/purchase.cjs
+
 const express = require('express');
 const router = express.Router();
 const connection = require('../db.cjs');

@@ -3,11 +3,12 @@ const express = require('express');
 const router = express.Router();
 const connection = require('../db.cjs');
 
-// ✅ 지급 내역 전체 조회 (검색 필터 포함)
+// ✅ 지급 내역 전체 조회 (검색 + 페이징)
 router.get('/', (req, res) => {
-  const { username, name } = req.query;
+  const { username, name, page = 1, limit = 10 } = req.query;
+  const offset = (parseInt(page) - 1) * parseInt(limit);
 
-  let where = "WHERE p.type = 'bcode'";
+  let where = `WHERE p.type = 'bcode'`;
   const params = [];
 
   if (username) {
@@ -19,21 +20,40 @@ router.get('/', (req, res) => {
     params.push(`%${name}%`);
   }
 
-  const sql = `
+  const countSql = `
+    SELECT COUNT(*) AS total
+    FROM purchases p
+    JOIN members m ON p.member_id = m.id
+    ${where}
+  `;
+
+  const dataSql = `
     SELECT p.id, m.username, m.name, pk.name AS product_name, p.amount, p.pv, p.status, p.active, p.created_at
     FROM purchases p
     JOIN members m ON p.member_id = m.id
     JOIN packages pk ON p.package_id = pk.id
     ${where}
     ORDER BY p.created_at DESC
+    LIMIT ? OFFSET ?
   `;
 
-  connection.query(sql, params, (err, rows) => {
+  // 1️⃣ 총 개수 먼저 조회
+  connection.query(countSql, params, (err, countResult) => {
     if (err) {
-      console.error('코드 지급 내역 조회 실패:', err);
+      console.error('총 개수 조회 실패:', err);
       return res.status(500).send('조회 실패');
     }
-    res.json(rows);
+
+    const total = countResult[0].total;
+
+    // 2️⃣ 데이터 조회
+    connection.query(dataSql, [...params, parseInt(limit), offset], (err2, rows) => {
+      if (err2) {
+        console.error('코드 지급 내역 조회 실패:', err2);
+        return res.status(500).send('조회 실패');
+      }
+      res.json({ rows, total });
+    });
   });
 });
 
@@ -117,7 +137,7 @@ router.delete('/:id', (req, res) => {
   });
 });
 
-// ✅ 지급 상태(활성/비활성) 토글 (수정용)
+// ✅ 지급 상태(활성/비활성) 토글
 router.put('/:id', (req, res) => {
   const { id } = req.params;
   const { active } = req.body;

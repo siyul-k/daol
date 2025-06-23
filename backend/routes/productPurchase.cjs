@@ -1,5 +1,4 @@
 // ✅ 파일 위치: backend/routes/productPurchase.cjs
-
 const express = require('express');
 const router = express.Router();
 const connection = require('../db.cjs');
@@ -50,21 +49,38 @@ router.post('/', (req, res) => {
               res.status(500).json({ error: '구매 등록 실패' });
             });
 
-            // 6. 포인트 차감
-            const updateSql = `UPDATE members SET point_balance = point_balance - ? WHERE id = ?`;
-            connection.query(updateSql, [pkg.price, user.id], (err5) => {
-              if (err5) return connection.rollback(() => {
-                res.status(500).json({ error: '포인트 차감 실패' });
-              });
-
-              connection.commit(err6 => {
+            // 6. 구매 로그 기록
+            const logSql = `
+              INSERT INTO purchase_logs (member_id, package_id, amount, pv, type, created_at)
+              VALUES (?, ?, ?, ?, ?, NOW())
+            `;
+            connection.query(
+              logSql,
+              [user.id, pkg.id, pkg.price, pkg.pv, pkg.type],
+              (err6) => {
                 if (err6) return connection.rollback(() => {
-                  res.status(500).json({ error: '커밋 실패' });
+                  res.status(500).json({ error: '구매 로그 기록 실패' });
                 });
 
-                res.json({ success: true, message: '구매 완료' });
-              });
-            });
+                // 7. 포인트 차감
+                const updateSql = `
+                  UPDATE members SET point_balance = point_balance - ? WHERE id = ?
+                `;
+                connection.query(updateSql, [pkg.price, user.id], (err5) => {
+                  if (err5) return connection.rollback(() => {
+                    res.status(500).json({ error: '포인트 차감 실패' });
+                  });
+
+                  connection.commit(err6 => {
+                    if (err6) return connection.rollback(() => {
+                      res.status(500).json({ error: '커밋 실패' });
+                    });
+
+                    res.json({ success: true, message: '구매 완료' });
+                  });
+                });
+              }
+            );
           }
         );
       });
