@@ -9,9 +9,9 @@ const port = process.env.PORT || 3001;
 // ✅ CORS 설정 (프론트엔드 도메인 명시)
 const corsOptions = {
   origin: [
-    "https://winwin-private.vercel.app", // 배포용
-    "http://localhost:3000",              // 개발용
-    "http://localhost:5173"              // Vite 개발 서버 포트 추가
+    "https://daol-xi.vercel.app",
+    "http://localhost:3000",
+    "http://localhost:5173"
   ],
   credentials: true,
 };
