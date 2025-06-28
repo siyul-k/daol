@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import axios from "../axiosConfig";
+import logo from "../assets/logo.png";  // 로고 이미지 임포트
 
 export default function LoginPage() {
   console.log("📌 일반 LoginPage 렌더링됨");
@@ -22,7 +23,7 @@ export default function LoginPage() {
 
       if (res.data.success) {
         localStorage.setItem("user", JSON.stringify(res.data.user));
-        localStorage.setItem("username", res.data.user.username); // ✅ 입금신청용 username 따로 저장
+        localStorage.setItem("username", res.data.user.username);
         navigate("/dashboard");
       } else {
         setError(res.data.message || "로그인 실패");
@@ -54,6 +55,19 @@ export default function LoginPage() {
           textAlign: "center",
         }}
       >
+        {/* 로그인 박스 내 상단에 로고 넣기, 최대 너비 200px, 여백 설정 */}
+        <img
+          src={logo}
+          alt="로고"
+          style={{
+            maxWidth: "200px",
+            width: "100%",
+            height: "auto",
+            margin: "0 auto 1.5rem",
+            display: "block",
+          }}
+        />
+
         <h1 style={{ fontSize: "20px", marginBottom: "1.5rem", fontWeight: "bold" }}>로그인</h1>
 
         <form onSubmit={handleLogin} style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
