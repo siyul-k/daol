@@ -10,11 +10,14 @@ const port = process.env.PORT || 3001;
 const corsOptions = {
   origin: [
     "https://daol-xi.vercel.app",
-    "http://localhost:3000",
-    "http://localhost:5173"
+    "https://daol-git-main-siyul-ks-projects.vercel.app",
+    "https://daol-8pnooti3a-siyul-ks-projects.app",
+    "http://localhost:3000",    // 개발용
+    "http://localhost:5173"     // Vite 개발용
   ],
   credentials: true,
 };
+
 
 app.use(cors(corsOptions));
 app.use(express.json());
