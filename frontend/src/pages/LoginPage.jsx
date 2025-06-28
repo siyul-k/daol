@@ -68,7 +68,7 @@ export default function LoginPage() {
           }}
         />
 
-        <h1 style={{ fontSize: "20px", marginBottom: "1.5rem", fontWeight: "bold" }}>로그인</h1>
+        <h1 style={{ fontSize: "20px", marginBottom: "1.5rem", fontWeight: "bold" }}></h1>
 
         <form onSubmit={handleLogin} style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
           <input
