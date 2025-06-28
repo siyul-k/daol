@@ -13,7 +13,9 @@ const corsOptions = {
     "https://daol-git-main-siyul-ks-projects.vercel.app",
     "https://daol-8pnooti3a-siyul-ks-projects.app",
     "http://localhost:3000",    // 개발용
-    "http://localhost:5173"     // Vite 개발용
+    "http://localhost:5173",     // Vite 개발용
+    "https://daol.world",       // 추가
+    "https://www.daol.world"    // 추가
   ],
   credentials: true,
 };
