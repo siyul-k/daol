@@ -1,9 +1,10 @@
 // ✅ 파일 위치: backend/routes/productPurchase.cjs
+
 const express = require('express');
 const router = express.Router();
 const connection = require('../db.cjs');
 
-// ✅ 패키지 기반 상품 구매 API
+// ✅ 패키지 기반 상품 구매 API (member_id 기준)
 router.post('/', (req, res) => {
   const { username, package_id } = req.body;
 
@@ -12,7 +13,7 @@ router.post('/', (req, res) => {
   }
 
   // 1. 회원 정보 가져오기
-  const getUserSql = 'SELECT id, point_balance FROM members WHERE username = ?';
+  const getUserSql = 'SELECT id, username, point_balance FROM members WHERE username = ?';
   connection.query(getUserSql, [username], (err, userResult) => {
     if (err) return res.status(500).json({ error: '회원 조회 오류' });
     if (userResult.length === 0) return res.status(404).json({ error: '회원 없음' });
@@ -26,6 +27,7 @@ router.post('/', (req, res) => {
       if (pkgResult.length === 0) return res.status(404).json({ error: '패키지 없음' });
 
       const pkg = pkgResult[0];
+      const pkgType = pkg.type || 'normal';
 
       // 3. 포인트 부족 확인
       if (user.point_balance < pkg.price) {
@@ -36,29 +38,30 @@ router.post('/', (req, res) => {
       connection.beginTransaction(err3 => {
         if (err3) return res.status(500).json({ error: '트랜잭션 시작 실패' });
 
-        // 5. 구매 기록 저장
+        // 5. 구매 기록 저장 (member_id 기반)
         const insertSql = `
           INSERT INTO purchases (member_id, package_id, amount, pv, type, status, created_at)
           VALUES (?, ?, ?, ?, ?, 'approved', NOW())
         `;
         connection.query(
           insertSql,
-          [user.id, pkg.id, pkg.price, pkg.pv, pkg.type],
-          (err4) => {
+          [user.id, pkg.id, pkg.price, pkg.pv, pkgType],
+          (err4, purchaseResult) => {
             if (err4) return connection.rollback(() => {
               res.status(500).json({ error: '구매 등록 실패' });
             });
 
-            // 6. 구매 로그 기록
+            // 6. 구매 로그 기록 (member_id O)
             const logSql = `
               INSERT INTO purchase_logs (member_id, package_id, amount, pv, type, created_at)
               VALUES (?, ?, ?, ?, ?, NOW())
             `;
             connection.query(
               logSql,
-              [user.id, pkg.id, pkg.price, pkg.pv, pkg.type],
+              [user.id, pkg.id, pkg.price, pkg.pv, pkgType],
               (err6) => {
                 if (err6) return connection.rollback(() => {
+                  console.error("❌ 구매 로그 기록 실패:", err6);
                   res.status(500).json({ error: '구매 로그 기록 실패' });
                 });
 
@@ -71,12 +74,24 @@ router.post('/', (req, res) => {
                     res.status(500).json({ error: '포인트 차감 실패' });
                   });
 
-                  connection.commit(err6 => {
-                    if (err6) return connection.rollback(() => {
-                      res.status(500).json({ error: '커밋 실패' });
-                    });
+                  // 8. 최초구매일(first_purchase_at) 업데이트 (처음 구매일만 갱신)
+                  const updateFirstSql = `
+                    UPDATE members 
+                    SET first_purchase_at = 
+                      IF(first_purchase_at IS NULL OR NOW() < first_purchase_at, NOW(), first_purchase_at) 
+                    WHERE id = ?
+                  `;
+                  connection.query(updateFirstSql, [user.id], (err8) => {
+                    if (err8) return connection.rollback(() => res.status(500).json({ error: 'first_purchase_at 갱신 실패' }));
 
-                    res.json({ success: true, message: '구매 완료' });
+                    // 9. 커밋
+                    connection.commit(err7 => {
+                      if (err7) return connection.rollback(() => {
+                        res.status(500).json({ error: '커밋 실패' });
+                      });
+
+                      res.json({ success: true, message: '구매 완료' });
+                    });
                   });
                 });
               }

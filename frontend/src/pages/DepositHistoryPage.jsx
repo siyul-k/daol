@@ -1,7 +1,6 @@
-// ✅ 파일 경로: src/pages/DepositHistoryPage.jsx
-
 import React, { useEffect, useState } from 'react';
 import axios from '../axiosConfig';
+import { formatKST } from '../utils/time';
 
 export default function DepositHistoryPage() {
   const [history, setHistory] = useState([]);
@@ -11,7 +10,7 @@ export default function DepositHistoryPage() {
   useEffect(() => {
     if (!user) return;
     axios
-      .get(`/api/deposit/${user.username}`)
+      .get(`/api/deposit/username/${user.username}`)
       .then((res) => setHistory(res.data))
       .catch((err) => {
         console.error('입금내역 조회 실패:', err);
@@ -45,15 +44,11 @@ export default function DepositHistoryPage() {
             <tbody>
               {history.map((r) => (
                 <tr key={r.id}>
-                  <td className="border px-3 py-2">
-                    {new Date(r.created_at).toLocaleString('ko-KR')}
-                  </td>
+                  <td className="border px-3 py-2">{formatKST(r.created_at)}</td>
                   <td className="border px-3 py-2">{mapStatus(r.status)}</td>
                   <td className="border px-3 py-2">{r.account_holder}</td>
                   <td className="border px-3 py-2">{Number(r.amount).toLocaleString()}</td>
-                  <td className="border px-3 py-2">
-                    {r.completed_at ? new Date(r.completed_at).toLocaleString('ko-KR') : '-'}
-                  </td>
+                  <td className="border px-3 py-2">{r.completed_at ? formatKST(r.completed_at) : '-'}</td>
                   <td className="border px-3 py-2">{r.memo || '-'}</td>
                 </tr>
               ))}

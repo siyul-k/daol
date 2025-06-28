@@ -1,4 +1,4 @@
-// ✅ 파일 경로: frontend/src/pages/AdminWithdrawPage.jsx
+// frontend/src/pages/AdminWithdrawPage.jsx
 
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import axios from '../axiosConfig';
@@ -24,10 +24,12 @@ export default function AdminWithdrawPage() {
   const [memoEdits, setMemoEdits] = useState({});
   const [sortField, setSortField] = useState('created_at');
   const [sortOrder, setSortOrder] = useState('desc');
-
   const [loading, setLoading] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [lastCursor, setLastCursor] = useState(null);
+
+  const [showResultModal, setShowResultModal] = useState(false);
+  const [resultMessage, setResultMessage] = useState('');
 
   const observer = useRef();
   const bottomRef = useCallback(node => {
@@ -77,7 +79,13 @@ export default function AdminWithdrawPage() {
 
       const res = await axios.get('/api/admin/withdraws', { params });
       const newItems = res.data;
-      setRequests(prev => [...prev, ...newItems]);
+
+      setRequests(prev => {
+        const ids = new Set(prev.map(p => p.id));
+        const uniqueItems = newItems.filter(item => !ids.has(item.id));
+        return [...prev, ...uniqueItems];
+      });
+
       setSelected([]);
       if (newItems.length < 20) setHasMore(false);
       if (newItems.length > 0) {
@@ -105,9 +113,15 @@ export default function AdminWithdrawPage() {
 
   const changeStatus = async (action) => {
     if (selected.length === 0) return alert('선택된 항목이 없습니다.');
-    await axios.post(`/api/admin/withdraws/${action}`, { ids: selected });
-    setStatusMsg(action === 'complete' ? '완료 처리되었습니다.' : '취소 처리되었습니다.');
-    resetAndFetch();
+    try {
+      await axios.post(`/api/admin/withdraws/${action}`, { ids: selected });
+      setResultMessage(action === 'complete' ? '완료 처리되었습니다.' : '취소 처리되었습니다.');
+      setShowResultModal(true);
+      resetAndFetch();
+    } catch (err) {
+      console.error(`${action} 처리 실패`, err);
+      alert('처리 중 오류가 발생했습니다.');
+    }
   };
 
   const saveMemo = async (id, memo) => {
@@ -129,14 +143,14 @@ export default function AdminWithdrawPage() {
   const exportExcel = () => {
     const ws = XLSX.utils.json_to_sheet(
       requests.map(r => ({
-        등록일: r.created_at.replace('T', ' ').slice(0, 19),
+        등록일: new Date(r.created_at).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' }),
         아이디: r.username,
         이름: r.name,
         종류: r.type === 'normal' ? '일반' : '센터',
         상태: r.status,
         신청금액: r.amount,
         수수료: r.fee,
-        출금액: r.amount - r.fee,
+        출금액: r.payout ?? (r.amount - r.fee),
         쇼핑포인트: r.shopping_point || 0,
         은행: r.bank_name,
         예금주: r.account_holder,
@@ -167,9 +181,7 @@ export default function AdminWithdrawPage() {
     <div className="p-6">
       <h2 className="text-2xl font-bold mb-4">출금 신청 목록</h2>
 
-      {statusMsg && (
-        <div className="mb-2 text-green-600">{statusMsg}</div>
-      )}
+      {statusMsg && <div className="mb-2 text-green-600">{statusMsg}</div>}
 
       <div className="flex flex-wrap gap-2 items-center mb-4">
         {['username', 'name'].map(key => (
@@ -181,7 +193,7 @@ export default function AdminWithdrawPage() {
             />
             <input
               type="text"
-              placeholder={`${key} 검색`}
+              placeholder={key === 'username' ? '아이디 검색' : '이름 검색'}
               value={filters[key]}
               onChange={e => setFilters(prev => ({ ...prev, [key]: e.target.value }))}
               className="border px-2 py-1 rounded"
@@ -265,7 +277,7 @@ export default function AdminWithdrawPage() {
           </thead>
           <tbody>
             {requests.map(r => {
-              const payout = r.amount - r.fee;
+              const payout = r.payout ?? (r.amount - r.fee);
               const shoppingPoint = r.shopping_point ?? 0;
               return (
                 <tr key={r.id}>
@@ -277,7 +289,7 @@ export default function AdminWithdrawPage() {
                       disabled={r.status !== '요청'}
                     />
                   </td>
-                  <td className="border px-2 py-1">{r.created_at.replace('T', ' ').slice(0, 19)}</td>
+                  <td className="border px-2 py-1">{new Date(r.created_at).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' })}</td>
                   <td className="border px-2 py-1">{r.username}</td>
                   <td className="border px-2 py-1">{r.name}</td>
                   <td className="border px-2 py-1">{r.type === 'normal' ? '일반' : '센터'}</td>
@@ -327,6 +339,21 @@ export default function AdminWithdrawPage() {
         </table>
         <div ref={bottomRef}></div>
       </div>
+
+      {/* 완료/취소 처리 후 모달 */}
+      {showResultModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-lg shadow-xl text-center">
+            <p className="text-xl font-semibold mb-4 text-green-700">{resultMessage}</p>
+            <button
+              className="px-4 py-2 bg-blue-600 text-white rounded"
+              onClick={() => setShowResultModal(false)}
+            >
+              확인
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -9,12 +9,12 @@ const OrgBox = ({ node }) => (
     <div className="org-id">{node.username}</div>
     <div className="org-name">{node.name || "-"}</div>
     <div className="org-date">{node.created_at?.slice(2, 10)}</div>
-    <div className="org-sales">({node.sales.toLocaleString()})</div>
+    <div className="org-sales">({Number(node.sales).toLocaleString()})</div>
   </div>
 );
 
 const renderNode = (node) => (
-  <TreeNode key={node.username} label={<OrgBox node={node} />}>
+  <TreeNode key={node.id} label={<OrgBox node={node} />}>
     {node.children?.map(renderNode)}
   </TreeNode>
 );
@@ -25,9 +25,9 @@ export default function SponsorTreePage() {
 
   useEffect(() => {
     axios
-      .get(`/api/tree/sponsor?username=${currentUser.username}`)
+      .get(`/api/tree/sponsor?id=${currentUser.id}`)
       .then((res) => {
-        if (res.data.success) {
+        if (res.data.success && res.data.tree) {
           setTree(res.data.tree);
         }
       })

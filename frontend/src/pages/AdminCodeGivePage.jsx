@@ -71,6 +71,7 @@ export default function AdminCodeGivePage() {
     if (!window.confirm('정말 삭제하시겠습니까?')) return;
     try {
       await axios.delete(`/api/admin/code-give/${id}`);
+      alert('삭제되었습니다!');
       fetchCodes();
     } catch (err) {
       alert('삭제 실패');
@@ -98,6 +99,7 @@ export default function AdminCodeGivePage() {
   useEffect(() => {
     fetchCodes();
     fetchProducts();
+    // eslint-disable-next-line
   }, [page, limit]);
 
   return (
@@ -157,9 +159,14 @@ export default function AdminCodeGivePage() {
           </tr>
         </thead>
         <tbody>
-          {codes.map((row) => (
+              {codes.map((row) => (
             <tr key={row.id} className="border-t">
-              <td>{row.created_at?.slice(0, 10)}</td>
+             <td>
+             {row.created_at
+                 ? new Date(new Date(row.created_at).getTime() + 9 * 60 * 60 * 1000)
+                .toLocaleString('ko-KR')
+              : ''}
+            </td>
               <td>{row.username}</td>
               <td>{row.name}</td>
               <td>{row.amount.toLocaleString()}</td>

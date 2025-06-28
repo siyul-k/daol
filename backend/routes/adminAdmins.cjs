@@ -1,10 +1,10 @@
-// ✅ 파일 위치: backend/routes/adminSettingsAdmins.cjs
+// ✅ 파일 위치: backend/routes/adminAdmins.cjs
 const express = require('express');
 const router = express.Router();
 const connection = require('../db.cjs');
 const bcrypt = require('bcrypt');
 
-// ✅ 관리자 목록 조회
+// ✅ 관리자 목록 조회 (PK, username, name만 반환)
 router.get('/', async (req, res) => {
   try {
     const [rows] = await connection.promise().query(
@@ -25,7 +25,7 @@ router.post('/', async (req, res) => {
   }
 
   try {
-    // 중복 확인
+    // 아이디 중복 체크
     const [exist] = await connection.promise().query(
       'SELECT id FROM members WHERE username = ?',
       [username]
@@ -34,10 +34,10 @@ router.post('/', async (req, res) => {
       return res.status(409).json({ error: '이미 존재하는 아이디입니다' });
     }
 
-    // 비밀번호 해싱
+    // 비밀번호 해시
     const hashed = await bcrypt.hash(password, 10);
 
-    // 삽입
+    // DB에 관리자 추가
     await connection.promise().query(
       'INSERT INTO members (username, name, password, is_admin) VALUES (?, ?, ?, 1)',
       [username, name, hashed]
@@ -50,7 +50,7 @@ router.post('/', async (req, res) => {
   }
 });
 
-// ✅ 관리자 삭제
+// ✅ 관리자 삭제 (숫자 PK 기준)
 router.delete('/:id', async (req, res) => {
   const { id } = req.params;
   try {

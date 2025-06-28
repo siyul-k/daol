@@ -1,15 +1,14 @@
-// ✅ 파일 경로: backend/routes/adminDeposits.cjs
 const express = require('express');
 const router = express.Router();
 const connection = require('../db.cjs');
 const ExcelJS = require('exceljs');
 
-// ✅ 1. 입금 통계 조회
+// 1. 입금 통계 조회
 router.get('/stats', (req, res) => {
   const sql = `
     SELECT
       COUNT(*) AS totalCount,
-      SUM(CASE WHEN DATE(created_at) = CURDATE() THEN 1 ELSE 0 END) AS todayCount
+      SUM(CASE WHEN DATE(CONVERT_TZ(created_at, '+00:00', '+09:00')) = CURDATE() THEN 1 ELSE 0 END) AS todayCount
     FROM deposit_requests
   `;
   connection.query(sql, (err, rows) => {
@@ -18,21 +17,24 @@ router.get('/stats', (req, res) => {
   });
 });
 
-// ✅ 2. 입금 목록 조회
+// 2. 입금 목록 조회 (시간 KST 변환 포함)
 router.get('/', (req, res) => {
   const { username, status, date } = req.query;
   const cond = [], params = [];
 
-  if (username) { cond.push('d.username = ?'); params.push(username); }
+  if (username) { cond.push('m.username = ?'); params.push(username); }
   if (status) { cond.push('d.status = ?'); params.push(status); }
-  if (date) { cond.push('DATE(d.created_at) = ?'); params.push(date); }
+  if (date) { cond.push('DATE(CONVERT_TZ(d.created_at, "+00:00", "+09:00")) = ?'); params.push(date); }
 
   const where = cond.length ? 'WHERE ' + cond.join(' AND ') : '';
   const sql = `
-    SELECT d.id, d.created_at, d.username, m.name,
-           d.status, d.account_holder, d.amount, d.memo, d.completed_at
+    SELECT d.id, 
+           CONVERT_TZ(d.created_at, '+00:00', '+09:00') AS created_at,
+           m.username, m.name,
+           d.status, d.account_holder, d.amount, d.memo,
+           CONVERT_TZ(d.completed_at, '+00:00', '+09:00') AS completed_at
     FROM deposit_requests d
-    LEFT JOIN members m ON d.username = m.username
+    LEFT JOIN members m ON d.member_id = m.id
     ${where}
     ORDER BY d.created_at DESC
   `;
@@ -43,7 +45,7 @@ router.get('/', (req, res) => {
   });
 });
 
-// ✅ 3. 입금 완료 처리 + 포인트 지급
+// 3. 입금 완료 처리 + 포인트 지급
 router.post('/complete', (req, res) => {
   const { ids } = req.body;
   if (!Array.isArray(ids) || !ids.length) {
@@ -54,7 +56,7 @@ router.post('/complete', (req, res) => {
 
   const updateSql = `
     UPDATE deposit_requests
-    SET status = '완료', completed_at = NOW()
+    SET status = '완료', completed_at = UTC_TIMESTAMP()
     WHERE id IN (${placeholders}) AND status = '요청'
   `;
 
@@ -62,18 +64,18 @@ router.post('/complete', (req, res) => {
     if (err) return res.status(500).json({ message: '완료 처리 오류' });
 
     const logSql = `
-      INSERT INTO point_logs (username, before_point, after_point, diff, reason)
+      INSERT INTO point_logs (before_point, after_point, diff, reason)
       SELECT 
-        m.username, m.point_balance, m.point_balance + d.amount,
+        m.point_balance, m.point_balance + d.amount,
         d.amount, '입금 완료로 포인트 지급'
       FROM deposit_requests d
-      JOIN members m ON d.username = m.username
+      JOIN members m ON d.member_id = m.id
       WHERE d.id = ?
     `;
 
     const updateBalanceSql = `
       UPDATE members m
-      JOIN deposit_requests d ON m.username = d.username
+      JOIN deposit_requests d ON m.id = d.member_id
       SET m.point_balance = m.point_balance + d.amount
       WHERE d.id = ? AND d.status = '완료'
     `;
@@ -98,35 +100,34 @@ router.post('/complete', (req, res) => {
   });
 });
 
-// ✅ 4. 입금 요청 삭제 + 포인트 복구 (포인트 부족 시 차단)
+// 4. 입금 요청 삭제 + 포인트 복구 (포인트 부족 시 차단)
 router.delete('/:id', async (req, res) => {
   const depositId = req.params.id;
   try {
     const [[row]] = await connection.promise().query(
-      `SELECT username, amount, status FROM deposit_requests WHERE id = ?`, [depositId]
+      `SELECT member_id, amount, status FROM deposit_requests WHERE id = ?`, [depositId]
     );
 
     if (!row) return res.status(404).json({ message: '존재하지 않는 요청' });
 
-    const { username, amount, status } = row;
+    const { member_id, amount, status } = row;
+
+    const [[user]] = await connection.promise().query(
+      `SELECT username, point_balance FROM members WHERE id = ?`, [member_id]
+    );
+    if (!user) return res.status(404).json({ message: '회원 정보 없음' });
 
     if (status === '완료') {
-      const [[member]] = await connection.promise().query(
-        `SELECT point_balance FROM members WHERE username = ?`, [username]
-      );
-
-      if (!member || member.point_balance < amount) {
+      if (user.point_balance < amount) {
         return res.status(400).json({ message: '포인트 부족으로 삭제 불가' });
       }
-
       await connection.promise().query(
         `DELETE FROM point_logs WHERE username = ? AND diff = ? AND reason LIKE '입금%'`,
-        [username, amount]
+        [user.username, amount]
       );
-
       await connection.promise().query(
-        `UPDATE members SET point_balance = point_balance - ? WHERE username = ?`,
-        [amount, username]
+        `UPDATE members SET point_balance = point_balance - ? WHERE id = ?`,
+        [amount, member_id]
       );
     }
 
@@ -141,13 +142,16 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
-// ✅ 5. 엑셀 다운로드
+// 5. 엑셀 다운로드 (시간도 KST로 변환)
 router.get('/export', (req, res) => {
   const sql = `
-    SELECT d.id, d.username, m.name, d.status,
-           d.account_holder, d.amount, d.created_at, d.completed_at, d.memo
+    SELECT d.id, m.username, m.name, d.status,
+           d.account_holder, d.amount,
+           CONVERT_TZ(d.created_at, '+00:00', '+09:00') AS created_at,
+           CONVERT_TZ(d.completed_at, '+00:00', '+09:00') AS completed_at,
+           d.memo
     FROM deposit_requests d
-    LEFT JOIN members m ON d.username = m.username
+    LEFT JOIN members m ON d.member_id = m.id
     ORDER BY d.created_at DESC
   `;
 

@@ -4,14 +4,13 @@ const express = require('express');
 const router = express.Router();
 const connection = require('../db.cjs');
 
-// ✅ bonus_config 매핑 정의
+// ✅ sponsor, rank 관련 설정 제거
 const bonusMap = {
   daily_reward_percent: { reward_type: 'daily', level: 0 },
   recommender_reward_percent: { reward_type: 'referral', level: 0 },
-  sponsor_reward_percent: { reward_type: 'sponsor', level: 0 },
   center_fee_percent: { reward_type: 'center', level: 0 },
-  center_recommender_percent: { reward_type: 'center_recommend', level: 0 },
-  rank_reward_percent: { reward_type: 'rank', level: 0 }
+  center_recommender_percent: { reward_type: 'center_recommend', level: 0 }
+  // sponsor_reward_percent, rank_reward_percent 제거
 };
 
 // ✅ 모든 설정 조회

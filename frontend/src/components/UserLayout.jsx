@@ -47,8 +47,8 @@ export default function UserLayout({ children }) {
       label: "조직도",
       icon: <Share2 size={16} />,
       children: [
-        { label: "후원조직도", path: "/tree/sponsor" },
-        { label: "추천조직도", path: "/tree/recommend" },
+        // 후원조직도 메뉴 삭제, 추천조직도만 남김
+        { label: "조직도", path: "/tree/recommend" },
       ],
     },
     {
@@ -80,12 +80,27 @@ export default function UserLayout({ children }) {
     { label: "로그아웃", action: handleLogout, icon: <LogOut size={16} /> },
   ];
 
-  return (
-    <div className="min-h-screen bg-gray-50">
+   return (
+    // ✅ 폰트 클래스 추가 (전체 적용)
+    <div className="min-h-screen bg-gray-50 font-jua">
       {/* ✅ 상단 메뉴 바 */}
       <div className="bg-white border-b shadow-sm">
         <div className="max-w-screen-xl mx-auto px-4 py-3">
-          <div className="text-xl font-bold mb-2">TESTTEST</div>
+          <div className="flex items-center gap-3 mb-3">
+  <div className="backdrop-blur-xl bg-white/60 border border-gray-200 shadow-lg rounded-3xl px-8 py-2 flex items-center">
+    <span
+      className="text-3xl font-extrabold tracking-wider"
+      style={{
+        background: 'linear-gradient(90deg, #4976f7 10%, #1fd1f9 90%)',
+        WebkitBackgroundClip: 'text',
+        WebkitTextFillColor: 'transparent',
+      }}
+    >
+      DAOL
+    </span>
+  </div>
+</div>
+
           <div className="flex flex-wrap gap-4">
             <NavigationMenu>
               <NavigationMenuList className="flex flex-wrap gap-2">
@@ -96,7 +111,7 @@ export default function UserLayout({ children }) {
                         <DropdownMenuTrigger asChild>
                           <Button
                             variant="ghost"
-                            className="text-sm font-medium inline-flex items-center gap-1"
+                            className="text-base font-bold inline-flex items-center gap-1"
                           >
                             {item.icon} {item.label}
                           </Button>
@@ -115,7 +130,7 @@ export default function UserLayout({ children }) {
                       {item.action ? (
                         <Button
                           variant="ghost"
-                          className="text-sm font-medium inline-flex items-center gap-1"
+                          className="text-base font-bold inline-flex items-center gap-1"
                           onClick={item.action}
                         >
                           {item.icon} {item.label}
@@ -123,7 +138,7 @@ export default function UserLayout({ children }) {
                       ) : (
                         <Button
                           variant="ghost"
-                          className={`text-sm font-medium inline-flex items-center gap-1 ${
+                          className={`text-base font-bold inline-flex items-center gap-1 ${
                             location.pathname === item.path
                               ? "text-blue-600 font-bold"
                               : ""
@@ -147,3 +162,4 @@ export default function UserLayout({ children }) {
     </div>
   );
 }
+

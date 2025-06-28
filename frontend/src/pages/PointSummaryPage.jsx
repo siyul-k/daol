@@ -1,23 +1,24 @@
-// ✅ 파일 위치: src/pages/PointSummaryPage.jsx
-
 import React, { useEffect, useState } from "react";
 import axios from "../axiosConfig";
 
 export default function PointSummaryPage() {
   const [rewards, setRewards] = useState([]);
   const [packages, setPackages] = useState([]);
+  const [limit, setLimit] = useState(0);
   const [loading, setLoading] = useState(true);
   const currentUser = JSON.parse(localStorage.getItem("user"));
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [rewardRes, purchaseRes] = await Promise.all([
+        const [rewardRes, purchaseRes, limitRes] = await Promise.all([
           axios.get(`/api/rewards?username=${currentUser.username}`),
-          axios.get(`/api/purchase-history?username=${currentUser.username}`)
+          axios.get(`/api/purchase-history?username=${currentUser.username}`),
+          axios.get(`/api/reward-limit?username=${currentUser.username}`)
         ]);
         setRewards(rewardRes.data || []);
         setPackages(purchaseRes.data || []);
+        setLimit(limitRes.data.limit || 0);
       } catch (err) {
         console.error("❌ 수당 데이터 불러오기 실패:", err);
       } finally {
@@ -35,42 +36,24 @@ export default function PointSummaryPage() {
 
   const total = rewards.reduce((sum, r) => sum + Number(r.amount || 0), 0);
 
+  // 센터와 센터추천 모두 포함해서 총 합계 계산
   const sumCenterTotal = () =>
     rewards
-      .filter((r) => r.type === "center_fee" || r.type === "center_recommend")
+      .filter((r) => r.type === "center" || r.type === "center_recommend")
       .reduce((sum, r) => sum + Number(r.amount || 0), 0);
 
+  // 한도 달성률 계산에서는 센터, 센터추천 제외
   const sumExcludingCenter = () =>
     rewards
-      .filter(
-        (r) => r.type !== "center_fee" && r.type !== "center_recommend"
-      )
+      .filter((r) => r.type !== "center" && r.type !== "center_recommend")
       .reduce((sum, r) => sum + Number(r.amount || 0), 0);
 
-  const calculateLimit = () => {
-    let limit = 0;
-
-    packages.forEach((pkg) => {
-      const pv = Number(pkg.pv || 0);
-      if (pkg.type === "normal") {
-        const hasReferral = packages.some(
-          (p) => p.recommender === currentUser.username && p.type === "normal"
-        );
-        limit += pv * (hasReferral ? 2.5 : 2);
-      } else if (pkg.type === "bcode") {
-        limit += pv;
-      }
-    });
-
-    return limit;
-  };
-
+  // 후원, 직급 삭제. 추천 추가!
   const rewardNames = {
+    referral: "추천",
     daily: "데일리",
-    daily_matching: "매칭",
-    sponsor: "후원",
-    rank: "직급"
-    // ✅ 'referral': "추천", // 제거됨
+    daily_matching: "매칭"
+    // sponsor, rank 제거
   };
 
   const sumByDate = () => {
@@ -84,9 +67,8 @@ export default function PointSummaryPage() {
     return Object.entries(grouped).sort((a, b) => new Date(b[0]) - new Date(a[0]));
   };
 
-  const limit = calculateLimit();
   const received = sumExcludingCenter();
-  const percent = limit > 0 ? Math.min(received / limit * 100, 100) : 0;
+  const percent = limit > 0 ? Math.min((received / limit) * 100, 100) : 0;
 
   return (
     <div className="p-4 md:p-6">
@@ -94,7 +76,7 @@ export default function PointSummaryPage() {
         <p>불러오는 중...</p>
       ) : (
         <>
-          {/* ✅ 수당한도 막대그래프 */}
+          {/* 수당한도 막대그래프 */}
           <div className="bg-white rounded shadow p-4 mb-6">
             <div className="mb-2 text-sm text-gray-700 font-semibold">
               수당 한도 달성률 (센터 제외)
@@ -112,14 +94,14 @@ export default function PointSummaryPage() {
             </div>
           </div>
 
-          {/* ✅ 총 수령 포인트 */}
+          {/* 총 수령 포인트 */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10 text-sm">
             <div className="bg-white shadow p-4 rounded border text-center col-span-2 md:col-span-4">
               <div className="text-gray-500 mb-1">총 수령 포인트</div>
               <div className="text-2xl font-bold text-green-700">{total.toLocaleString()}</div>
             </div>
 
-            {/* ✅ 항목별 요약 (추천 제거됨) */}
+            {/* 항목별 요약 */}
             {Object.keys(rewardNames).map((key) => (
               <div key={key} className="bg-white shadow p-4 rounded border text-center">
                 <div className="text-gray-500 mb-1">{rewardNames[key]}</div>
@@ -127,14 +109,14 @@ export default function PointSummaryPage() {
               </div>
             ))}
 
-            {/* ✅ 센터 (센터피 + 센터추천 합산) */}
+            {/* 센터 수당 */}
             <div className="bg-white shadow p-4 rounded border text-center">
               <div className="text-gray-500 mb-1">센터</div>
               <div className="font-semibold">{sumCenterTotal().toLocaleString()}</div>
             </div>
           </div>
 
-          {/* ✅ 일자별 합계 테이블 */}
+          {/* 일자별 수당 합계 테이블 */}
           <div>
             <h2 className="text-lg font-bold mb-2">📅 일자별 수당 합계</h2>
             <table className="w-full text-sm border text-center">

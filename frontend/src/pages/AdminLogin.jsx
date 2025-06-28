@@ -60,7 +60,7 @@ export default function AdminLogin() {
           color: "#1f2937",
         }}
       >
-        🛡 관리자 로그인 페이지
+        Admin Login
       </h1>
 
       <form
@@ -110,7 +110,7 @@ export default function AdminLogin() {
             cursor: "pointer",
           }}
         >
-          🔐 관리자 로그인
+          🔐 로그인 🔐
         </button>
 
         {error && (

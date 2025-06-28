@@ -1,4 +1,5 @@
-// ✅ 파일 경로: backend/routes/pointAdjust.cjs
+// ✅ 파일 위치: backend/routes/pointAdjust.cjs
+
 const express = require('express');
 const router = express.Router();
 const connection = require('../db.cjs');
@@ -22,66 +23,90 @@ router.get('/', async (req, res) => {
   }
 });
 
-// ✅ 포인트 지급
+// ✅ 포인트 지급(보정) + 출금가능포인트 누적
 router.post('/adjust', async (req, res) => {
   const { member_id, point, type, description } = req.body;
-
-  // ✅ 요청값 로깅
   console.log('📥 포인트 지급 요청:', { member_id, point, type, description });
 
-  const sql = `
-    INSERT INTO member_points (member_id, point, type, description)
-    VALUES (?, ?, ?, ?)
-  `;
-  connection.query(sql, [member_id, point, type, description], async (err, result) => {
-    if (err) {
-      console.error('❌ DB 삽입 오류:', err);
-      return res.status(500).json({ error: 'DB 오류', details: err });
-    }
+  if (!member_id || isNaN(point)) {
+    return res.status(400).json({ error: '필수값 누락 또는 금액 오류' });
+  }
 
-    try {
-      const [userRows] = await connection.promise().query(
-        'SELECT username FROM members WHERE id = ?', [member_id]
-      );
+  try {
+    await connection.promise().beginTransaction();
 
-      if (userRows.length > 0) {
-        const username = userRows[0].username;
+    // 1. 지급 로그(member_points)
+    const [result] = await connection.promise().query(
+      `INSERT INTO member_points (member_id, point, type, description) VALUES (?, ?, ?, ?)`,
+      [member_id, point, type, description]
+    );
 
-        const logSql = `
-          INSERT INTO rewards_log (user_id, type, source, amount, memo, created_at)
-          VALUES (?, 'adjust', ?, ?, ?, NOW())
-        `;
-        await connection.promise().query(logSql, [
-          username,
+    // 2. 출금가능포인트 증가
+    await connection.promise().query(
+      `UPDATE members SET withdrawable_point = withdrawable_point + ? WHERE id = ?`,
+      [point, member_id]
+    );
+
+    // 3. 수당로그도 기록
+    const [[userRow]] = await connection.promise().query(
+      `SELECT username FROM members WHERE id = ?`, [member_id]
+    );
+    if (userRow) {
+      await connection.promise().query(
+        `INSERT INTO rewards_log (member_id, type, source, amount, memo, created_at)
+         VALUES (?, 'adjust', ?, ?, ?, NOW())`,
+        [
+          member_id,
           result.insertId,
           point,
           description || '관리자 보정'
-        ]);
-      }
-
-      console.log('✅ 포인트 지급 완료:', result.insertId);
-      res.json({ success: true });
-    } catch (err) {
-      console.error('❌ 로그 저장 오류:', err);
-      res.status(500).json({ error: '지급은 되었지만 로그 기록 실패' });
+        ]
+      );
     }
-  });
+
+    await connection.promise().commit();
+    console.log('✅ 포인트 지급 완료:', result.insertId);
+    res.json({ success: true });
+  } catch (err) {
+    await connection.promise().rollback();
+    console.error('❌ 지급 실패:', err);
+    res.status(500).json({ error: '포인트 지급 실패', details: err });
+  }
 });
 
-// ✅ 삭제
-router.delete('/delete/:id', (req, res) => {
+// ✅ 지급(보정) 내역 삭제 + 출금가능포인트 복구
+router.delete('/delete/:id', async (req, res) => {
   const id = req.params.id;
-  connection.query('DELETE FROM member_points WHERE id = ?', [id], (err, result) => {
-    if (err) {
-      console.error('❌ 삭제 실패:', err);
-      return res.status(500).json({ error: '삭제 실패', details: err });
-    }
+  try {
+    // 지급내역 조회
+    const [[row]] = await connection.promise().query(
+      'SELECT member_id, point FROM member_points WHERE id = ?', [id]
+    );
+    if (!row) return res.status(404).json({ error: '내역이 존재하지 않습니다.' });
+
+    await connection.promise().beginTransaction();
+
+    // 지급내역 삭제
+    await connection.promise().query(
+      'DELETE FROM member_points WHERE id = ?', [id]
+    );
+    // 포인트 차감(복구)
+    await connection.promise().query(
+      'UPDATE members SET withdrawable_point = withdrawable_point - ? WHERE id = ?',
+      [row.point, row.member_id]
+    );
+
+    await connection.promise().commit();
     console.log('🗑️ 삭제 완료:', id);
     res.json({ success: true });
-  });
+  } catch (err) {
+    await connection.promise().rollback();
+    console.error('❌ 삭제 실패:', err);
+    res.status(500).json({ error: '삭제 실패', details: err });
+  }
 });
 
-// ✅ 엑셀 다운로드
+// ✅ 엑셀 다운로드 (동일)
 router.get('/export', async (req, res) => {
   const sql = `
     SELECT mp.id, mp.point, mp.description, mp.created_at,

@@ -3,17 +3,17 @@ const express = require('express');
 const router = express.Router();
 const connection = require('../db.cjs');
 
+// ✅ 회원의 rank 조회 (username 기반)
 router.get('/:username', (req, res) => {
   const { username } = req.params;
 
   // ✅ 요청 파라미터 검증
-  if (!username || username === 'undefined' || typeof username !== 'string') {
+  if (!username || typeof username !== 'string' || username === 'undefined') {
     return res.status(400).json({ error: '잘못된 요청: username 없음' });
   }
 
-  console.log("🔍 [rank.cjs] username =", username);
+  const sql = 'SELECT id AS member_id, username, rank FROM members WHERE username = ? LIMIT 1';
 
-  const sql = 'SELECT rank FROM members WHERE username = ? LIMIT 1';
   connection.query(sql, [username], (err, rows) => {
     if (err) {
       console.error("❌ [rank.cjs] DB 오류:", err);
@@ -25,7 +25,12 @@ router.get('/:username', (req, res) => {
       return res.status(404).json({ error: '회원 정보 없음' });
     }
 
-    res.json(rows[0]);
+    // rank만 보내지 않고, member_id/username/rank 모두 전달
+    res.json({
+      member_id: rows[0].member_id,
+      username: rows[0].username,
+      rank: rows[0].rank
+    });
   });
 });
 

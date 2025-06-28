@@ -1,4 +1,5 @@
 // ✅ 파일 경로: frontend/src/pages/AdminProductsPage.jsx
+
 import React, { useEffect, useState } from 'react';
 import axios from '../axiosConfig';
 import { Trash2, RotateCcw } from 'lucide-react';
@@ -24,6 +25,7 @@ export default function AdminProductsPage() {
 
   useEffect(() => {
     fetchProducts();
+    // eslint-disable-next-line
   }, []);
 
   const handleSearch = () => {
@@ -35,6 +37,7 @@ export default function AdminProductsPage() {
     try {
       await axios.delete(`/api/admin/products/${id}`);
       fetchProducts();
+      alert('삭제되었습니다'); // ✅ 삭제 성공 알림
     } catch (err) {
       console.error('❌ 삭제 실패:', err);
       alert('삭제 실패');
@@ -45,6 +48,7 @@ export default function AdminProductsPage() {
     try {
       await axios.put(`/api/admin/products/${id}/toggle`);
       fetchProducts();
+      alert('상태가 변경되었습니다'); // ✅ 상태변경 알림
     } catch (err) {
       console.error('❌ 상태 변경 실패:', err);
       alert('상태 변경 실패');
@@ -63,23 +67,31 @@ export default function AdminProductsPage() {
       link.setAttribute('download', 'products.xlsx');
       document.body.appendChild(link);
       link.click();
+      link.remove();
     } catch (err) {
       console.error('❌ 엑셀 다운로드 실패:', err);
     }
   };
 
+  // ✅ 등록일: 항상 Asia/Seoul, 오전/오후 HH:MM:SS
   const formatDate = (dateStr) => {
-    const date = new Date(dateStr);
-    return date.toLocaleString('ko-KR', {
-      year: 'numeric',
-      month: 'numeric',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-      hour12: true,
-    });
-  };
+  if (!dateStr) return '-';
+  const date = new Date(dateStr);
+
+  const year = date.getFullYear();
+  const month = date.getMonth() + 1;
+  const day = date.getDate();
+
+  let hour = date.getHours();
+  const minute = String(date.getMinutes()).padStart(2, '0');
+  const second = String(date.getSeconds()).padStart(2, '0');
+  const ampm = hour >= 12 ? '오후' : '오전';
+  if (hour > 12) hour -= 12;
+  if (hour === 0) hour = 12;
+
+  return `${year}. ${month}. ${day}. ${ampm} ${hour}:${minute}:${second}`;
+};
+
 
   return (
     <div className="p-4">

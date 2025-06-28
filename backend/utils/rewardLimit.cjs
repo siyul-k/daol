@@ -1,86 +1,64 @@
+// ✅ 파일 위치: /utils/rewardLimit.cjs
 const connection = require('../db.cjs');
 
-// ✅ 수당 한도에 포함되는 수당 종류
-const COUNTED_TYPES = ['daily', 'daily_matching', 'sponsor', 'adjust'];
+const COUNTED_TYPES = ['daily', 'daily_matching', 'recommend', 'adjust'];
 
-// ✅ 추천인이 기본상품(normal)을 구매했는지 확인
-async function isRecommenderQualified(username) {
-  if (!username) return false;
-
+async function hasRecommendedUserWithNormalProduct(myMemberId) {
   try {
-    // 1. 추천인 ID 조회
-    const [[member]] = await connection.promise().query(
-      `SELECT id FROM members WHERE username = ? LIMIT 1`,
-      [username]
-    );
-    if (!member) return false;
-
-    // 2. 추천인이 'normal' 상품을 승인받아 구매했는지 확인
     const [rows] = await connection.promise().query(
-      `SELECT 1 FROM purchases 
-       WHERE member_id = ? AND type = 'normal' AND status = 'approved' 
+      `SELECT p.id
+       FROM members m
+       JOIN purchases p ON m.id = p.member_id
+       WHERE m.recommender_id = ?
+         AND p.type = 'normal'
+         AND p.status = 'approved'
        LIMIT 1`,
-      [member.id]
+      [myMemberId]
     );
+    console.log('추천 하위 기본상품 보유 여부:', rows.length > 0);
     return rows.length > 0;
   } catch (err) {
-    console.error('❌ 추천인 자격 확인 실패:', err);
+    console.error('❌ 추천 하위 기본상품 검사 오류:', err);
     return false;
   }
 }
 
-// ✅ 해당 회원의 수당 지급 가능 금액 계산
 async function getAvailableRewardAmount(member_id) {
   try {
-    // 1. 회원 정보 조회
     const [[member]] = await connection.promise().query(
-      `SELECT username, recommender 
-       FROM members 
-       WHERE id = ? AND is_blacklisted = 0`,
+      `SELECT id FROM members WHERE id = ? AND is_blacklisted = 0`,
       [member_id]
     );
     if (!member) return 0;
 
-    const { username, recommender } = member;
-
-    // 2. 추천인 자격 조건 확인
-    let rate = 1.5; // 기본 150%
-    if (recommender) {
-      const qualified = await isRecommenderQualified(recommender);
-      if (qualified) rate = 2.0;
-    }
-
-    // 3. 회원 보유 상품 조회
     const [products] = await connection.promise().query(
-      `SELECT pv, type FROM purchases 
-       WHERE member_id = ? AND status = 'approved'`,
+      `SELECT pv, type FROM purchases WHERE member_id = ? AND status = 'approved'`,
       [member_id]
     );
+
+    const hasRecommendedQualified = await hasRecommendedUserWithNormalProduct(member_id);
+
+    console.log(`회원ID ${member_id} 하위추천기본상품 보유 여부:`, hasRecommendedQualified);
 
     let totalLimit = 0;
     for (const { pv, type } of products) {
       if (type === 'normal') {
+        const rate = hasRecommendedQualified ? 3.6 : 2.0;
         totalLimit += pv * rate;
       } else if (type === 'bcode') {
-        totalLimit += pv;
+        totalLimit += pv * 1.0;
       }
     }
 
-    // 4. 현재까지 발생한 수당 합계 조회
     const [[row]] = await connection.promise().query(
       `SELECT IFNULL(SUM(amount), 0) AS total 
        FROM rewards_log 
-       WHERE user_id = ? AND type IN (?)`,
-      [username, COUNTED_TYPES]
+       WHERE member_id = ? AND type IN (?)`,
+      [member_id, COUNTED_TYPES]
     );
     const totalRewarded = row.total || 0;
 
-    // 5. 수당 한도 계산
     const available = Math.max(totalLimit - totalRewarded, 0);
-
-    // 디버그 로그
-    console.log(`[한도계산] ${username}: 한도=${totalLimit}, 누적=${totalRewarded}, 가능=${available}, 추천인=${recommender}, 추천인자격=${rate === 2.0}`);
-
     return available;
   } catch (err) {
     console.error('❌ 수당한도 계산 오류:', err);
@@ -88,4 +66,79 @@ async function getAvailableRewardAmount(member_id) {
   }
 }
 
-module.exports = { getAvailableRewardAmount };
+async function getAvailableRewardAmountByUsername(username) {
+  try {
+    const [[row]] = await connection.promise().query(
+      `SELECT id FROM members WHERE username = ? AND is_blacklisted = 0 LIMIT 1`,
+      [username]
+    );
+    if (!row) return 0;
+    return await getAvailableRewardAmount(row.id);
+  } catch (err) {
+    console.error('❌ username 기반 한도계산 오류:', err);
+    return 0;
+  }
+}
+
+async function getAvailableRewardAmountByMemberIds(memberIds) {
+  if (!Array.isArray(memberIds) || memberIds.length === 0) return {};
+
+  const qs = memberIds.map(() => '?').join(',');
+  const [members] = await connection.promise().query(
+    `SELECT id FROM members WHERE id IN (${qs}) AND is_blacklisted = 0`,
+    memberIds
+  );
+  if (members.length === 0) return {};
+
+  const [products] = await connection.promise().query(
+    `SELECT member_id, pv, type FROM purchases WHERE member_id IN (${qs}) AND status = 'approved'`,
+    memberIds
+  );
+  const [rewardRows] = await connection.promise().query(
+    `SELECT member_id, IFNULL(SUM(amount),0) AS total
+     FROM rewards_log WHERE member_id IN (${qs}) AND type IN ('daily','daily_matching','recommend','adjust')
+     GROUP BY member_id`,
+    memberIds
+  );
+  const rewardMap = {};
+  for (const r of rewardRows) rewardMap[r.member_id] = r.total || 0;
+
+  const [recRows] = await connection.promise().query(
+    `SELECT m.recommender_id, COUNT(*) as cnt
+     FROM members m
+     JOIN purchases p ON m.id = p.member_id
+     WHERE m.recommender_id IN (${qs})
+       AND p.type = 'normal'
+       AND p.status = 'approved'
+     GROUP BY m.recommender_id`,
+    memberIds
+  );
+  const recMap = {};
+  for (const r of recRows) recMap[r.recommender_id] = r.cnt > 0;
+
+  const availableMap = {};
+  for (const m of members) {
+    const id = m.id;
+    const prods = products.filter(p => p.member_id === id);
+    const hasRecommendedQualified = recMap[id] || false;
+
+    let totalLimit = 0;
+    for (const p of prods) {
+      if (p.type === 'normal') {
+        const rate = hasRecommendedQualified ? 3.6 : 2.0;
+        totalLimit += p.pv * rate;
+      } else if (p.type === 'bcode') {
+        totalLimit += p.pv * 1.0;
+      }
+    }
+    const totalRewarded = rewardMap[id] || 0;
+    availableMap[id] = Math.max(totalLimit - totalRewarded, 0);
+  }
+  return availableMap;
+}
+
+module.exports = {
+  getAvailableRewardAmount,
+  getAvailableRewardAmountByUsername,
+  getAvailableRewardAmountByMemberIds,
+};

@@ -1,7 +1,6 @@
-// ✅ 파일 경로: frontend/src/pages/ProductHistoryPage.jsx
-
 import React, { useEffect, useState } from 'react';
 import axios from '../axiosConfig';
+import { formatKST } from '../utils/time';  // 시간 변환 함수 import
 
 export default function ProductHistoryPage() {
   const [purchases, setPurchases] = useState([]);
@@ -48,7 +47,7 @@ export default function ProductHistoryPage() {
               {purchases.map((item) => (
                 <tr key={item.id}>
                   <td className="border px-3 py-2">
-                    {new Date(item.created_at).toLocaleString('ko-KR')}
+                    {formatKST(item.created_at)}  {/* 시간 변환 적용 */}
                   </td>
                   <td className="border px-3 py-2">
                     {Number(item.amount).toLocaleString()}

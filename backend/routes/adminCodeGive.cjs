@@ -86,42 +86,53 @@ router.get('/check-username/:username', (req, res) => {
   );
 });
 
-// ✅ 코드지급 등록 → purchases 테이블에 추가
+// ✅ 코드지급 등록 → purchases 테이블에 추가 (최초구매일 갱신 포함)
 router.post('/', (req, res) => {
   const { username, product_id } = req.body;
 
-  const memberQuery = `SELECT id FROM members WHERE username = ?`;
-  const packageQuery = `SELECT price, pv FROM packages WHERE id = ?`;
+  // 1. username으로 member_id 조회
+  connection.query(
+    'SELECT id FROM members WHERE username = ?',
+    [username],
+    (err, memberRows) => {
+      if (err) return res.status(500).send('회원 정보 조회 실패');
+      if (memberRows.length === 0) return res.status(404).send('회원 없음');
 
-  connection.query(memberQuery, [username], (err, memberRows) => {
-    if (err || memberRows.length === 0) {
-      console.error('회원 조회 실패:', err);
-      return res.status(400).send('회원 정보 조회 실패');
-    }
+      const member_id = memberRows[0].id;
 
-    const member_id = memberRows[0].id;
+      // 2. 상품정보 조회
+      connection.query(
+        'SELECT price, pv FROM packages WHERE id = ? AND type = "bcode"',
+        [product_id],
+        (err2, packageRows) => {
+          if (err2) return res.status(500).send('상품 정보 조회 실패');
+          if (packageRows.length === 0) return res.status(404).send('상품 없음');
 
-    connection.query(packageQuery, [product_id], (err2, packageRows) => {
-      if (err2 || packageRows.length === 0) {
-        console.error('상품 조회 실패:', err2);
-        return res.status(400).send('상품 정보 조회 실패');
-      }
+          const { price, pv } = packageRows[0];
 
-      const { price, pv } = packageRows[0];
+          // 3. 지급 등록 (member_id, product_id)
+          const insertSql = `
+            INSERT INTO purchases (member_id, package_id, amount, pv, status, type, active)
+            VALUES (?, ?, ?, ?, 'approved', 'bcode', 1)
+          `;
+          connection.query(insertSql, [member_id, product_id, price, pv], (err3) => {
+            if (err3) return res.status(500).send('지급 실패');
 
-      const insertSql = `
-        INSERT INTO purchases (member_id, package_id, amount, pv, status, type, active)
-        VALUES (?, ?, ?, ?, 'approved', 'bcode', 1)
-      `;
-      connection.query(insertSql, [member_id, product_id, price, pv], (err3) => {
-        if (err3) {
-          console.error('구매 등록 실패:', err3);
-          return res.status(500).send('지급 실패');
+            // 4. 최초구매일 갱신 (최초일 때만)
+            const updateSql = `
+              UPDATE members
+              SET first_purchase_at = IF(first_purchase_at IS NULL, NOW(), first_purchase_at)
+              WHERE id = ?
+            `;
+            connection.query(updateSql, [member_id], (err4) => {
+              if (err4) return res.status(500).send('최초구매일 갱신 실패');
+              res.send('ok');
+            });
+          });
         }
-        res.send('ok');
-      });
-    });
-  });
+      );
+    }
+  );
 });
 
 // ✅ 지급 내역 삭제

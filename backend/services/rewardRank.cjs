@@ -2,11 +2,20 @@
 
 const connection = require('../db.cjs');
 const { format, subMonths, endOfMonth } = require('date-fns');
-const { getAvailableRewardAmountByUsername } = require('../utils/rewardLimit.cjs');
+const { getAvailableRewardAmountByMemberId } = require('../utils/rewardLimit.cjs');
+
+// username → member_id 변환 함수
+async function getMemberId(username) {
+  const [[row]] = await connection.promise().query(
+    'SELECT id FROM members WHERE username = ? LIMIT 1',
+    [username]
+  );
+  return row ? row.id : null;
+}
 
 async function runRankReward() {
   try {
-    // ✅ 정산 활성 여부 확인
+    // ✅ 직급 수당 설정값 확인
     const [[setting]] = await connection.promise().query(`
       SELECT value FROM settings WHERE key_name = 'rank_reward_enabled' LIMIT 1
     `);
@@ -15,69 +24,82 @@ async function runRankReward() {
       return;
     }
 
-    // ✅ 전월 기간 계산
+    // ✅ 정산 대상: 전월 1일 ~ 말일
     const now = new Date();
     const period_start = format(subMonths(now, 1), 'yyyy-MM-01');
     const period_end = format(endOfMonth(subMonths(now, 1)), 'yyyy-MM-dd');
 
-    // ✅ 전월 매출 총합 (normal 상품만)
-    const [sumRow] = await connection.promise().query(`
+    // ✅ 전월 normal 상품 매출 합산
+    const [[{ total_pv }]] = await connection.promise().query(`
       SELECT SUM(pv) AS total_pv FROM purchases 
       WHERE status = 'approved' AND type = 'normal'
         AND DATE(created_at) BETWEEN ? AND ?
     `, [period_start, period_end]);
 
-    const total_pv = sumRow[0].total_pv || 0;
-    const total_bonus = Math.floor(total_pv * 0.05);
-
-    if (total_bonus === 0) {
-      console.log('⚠️ 전월 매출 없음, 직급 수당 정산 스킵');
+    if (!total_pv || total_pv === 0) {
+      console.log('⚠️ 전월 매출 없음 → 직급수당 스킵');
       return;
     }
 
-    // ✅ 직급 순서 높은 것부터 계산 (5Star → 1Star)
+    const total_bonus = Math.floor(total_pv * 0.05);
+
+    // ✅ 직급 정보 조회 (상위 → 하위)
     const [ranks] = await connection.promise().query(`
       SELECT * FROM ranks ORDER BY level DESC
     `);
 
+    // ✅ 한도 캐시
+    const availableMap = {};
+
     for (const rank of ranks) {
-      const { id, rank_name, payout_ratio, level } = rank;
+      const { id: rank_id, rank_name, payout_ratio } = rank;
 
-      // ✅ 해당 직급 이상을 달성한 회원 목록
+      // ✅ 해당 직급 이상 회원 조회
       const [users] = await connection.promise().query(`
-        SELECT username FROM rank_achievements 
+        SELECT member_id FROM rank_achievements 
         WHERE rank >= ? AND achieved_at <= ?
-      `, [id, period_end]);
+      `, [rank_id, period_end]);
 
-      if (users.length === 0) continue;
+      if (!users.length) continue;
 
-      const portion = Math.floor((total_bonus * payout_ratio) / 100);
+      const portion = Math.floor(total_bonus * (payout_ratio / 100));
       const per_user = Math.floor(portion / users.length);
 
-      for (const user of users) {
-        // ✅ 중복 지급 방지
-        const [exists] = await connection.promise().query(`
+      for (const { member_id } of users) {
+        // ✅ 중복 지급 여부 확인
+        const [[exists]] = await connection.promise().query(`
           SELECT 1 FROM rank_rewards 
-          WHERE username = ? AND rank = ? AND period_start = ?
-        `, [user.username, id, period_start]);
+          WHERE member_id = ? AND rank = ? AND period_start = ?
+        `, [member_id, rank_id, period_start]);
+        if (exists) continue;
 
-        if (exists.length > 0) continue;
+        // ✅ 한도 확인 (캐시 사용)
+        if (!availableMap[member_id]) {
+          availableMap[member_id] = await getAvailableRewardAmountByMemberId(member_id);
+        }
 
-        // ✅ 수당 한도 검사
-        const available = await getAvailableRewardAmountByUsername(user.username);
-        if (available <= 0) continue;
+        const available = availableMap[member_id];
+        if (available < per_user) continue;
 
-        // ✅ 지급 기록 삽입
-        await connection.promise().query(` 
-          INSERT INTO rank_rewards (username, rank, amount, period_start, period_end, created_at)
-          VALUES (?, ?, ?, ?, ?, NOW())
-        `, [user.username, id, per_user, period_start, period_end]);
-
-        // ✅ 수당 로그 추가
+        // ✅ 지급 기록 (rank_rewards)
         await connection.promise().query(`
-          INSERT INTO rewards_log (user_id, type, source, amount, memo, created_at)
+          INSERT INTO rank_rewards (member_id, rank, amount, period_start, period_end, created_at)
+          VALUES (?, ?, ?, ?, ?, NOW())
+        `, [member_id, rank_id, per_user, period_start, period_end]);
+
+        // ✅ 지급 로그 (rewards_log)
+        await connection.promise().query(`
+          INSERT INTO rewards_log (member_id, type, source, amount, memo, created_at)
           VALUES (?, 'rank', ?, ?, ?, NOW())
-        `, [user.username, `RANK-${id}`, per_user, `${rank_name} 수당 (${period_start})`]);
+        `, [
+          member_id,
+          `RANK-${rank_id}`,
+          per_user,
+          `${rank_name} 수당 (${period_start})`
+        ]);
+
+        // ✅ 한도 차감
+        availableMap[member_id] -= per_user;
       }
     }
 

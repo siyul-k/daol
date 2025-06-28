@@ -8,13 +8,14 @@ const dayKeys = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
 
 const labelMap = {
   daily_reward_percent: '데일리(%)',
-  sponsor_reward_percent: '후원(%)',
+  recommender_reward_percent: '추천(%)',
   center_fee_percent: '센터피(%)',
   center_recommender_percent: '센터추천피(%)',
   withdraw_fee_percent: '출금수수료(%)',
   withdraw_shopping_point_percent: '쇼핑포인트 적립(%)',
   withdraw_min_amount: '최소 출금금액(원)',
-  rank_reward_enabled: '직급수당 정산 허용(ON/OFF)', // ✅ 추가
+  // sponsor, rank 관련 항목 삭제
+  // rank_reward_enabled: '직급수당 정산 허용(ON/OFF)', 
 };
 
 export default function AdminSettingsPage() {
@@ -79,10 +80,12 @@ export default function AdminSettingsPage() {
       {activeTab === 'percent' && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {Object.entries(settings).map(([key, item]) => {
-            // ✅ percent 타입 항목
-            if (item.type === 'percent' &&
-                key !== 'rank_reward_percent' &&
-                key !== 'recommender_reward_percent') {
+            // ✅ percent 타입 항목 (rank/sponsor 관련 제외)
+            if (
+              item.type === 'percent' &&
+              key !== 'rank_reward_percent' &&
+              key !== 'sponsor_reward_percent'
+            ) {
               return (
                 <div key={key}>
                   <label className="block text-sm font-medium mb-1">
@@ -98,22 +101,8 @@ export default function AdminSettingsPage() {
               );
             }
 
-            // ✅ boolean 타입 항목 (예: 직급수당 정산 ON/OFF)
-            if (item.type === 'bool') {
-              return (
-                <div key={key} className="flex items-center space-x-4">
-                  <label className="text-sm font-medium">{labelMap[key] || key}</label>
-                  <select
-                    value={item.value}
-                    onChange={e => updateValue(key, e.target.value)}
-                    className="border p-2"
-                  >
-                    <option value="1">ON</option>
-                    <option value="0">OFF</option>
-                  </select>
-                </div>
-              );
-            }
+            // ✅ boolean 타입 항목 (예: 직급수당 정산 ON/OFF, 삭제)
+            // if (item.type === 'bool' && key === 'rank_reward_enabled') { ... }
 
             return null;
           })}

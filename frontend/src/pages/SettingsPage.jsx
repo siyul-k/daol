@@ -31,7 +31,7 @@ export default function SettingsPage() {
   useEffect(() => {
     const user = JSON.parse(localStorage.getItem("user"));
     if (user) {
-      axios.get(`/members/${user.id}`)
+      axios.get(`/api/members/${user.id}`)
         .then((res) => setForm(res.data))
         .catch(err => console.error(err));
     }

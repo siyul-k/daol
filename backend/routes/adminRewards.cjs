@@ -1,10 +1,9 @@
-// ✅ 파일 위치: backend/routes/adminRewards.cjs
 const express = require('express');
 const router = express.Router();
 const connection = require('../db.cjs');
 const ExcelJS = require('exceljs');
 
-// ✅ 수당 목록 조회
+// 수당 목록 조회 (후원, 직급 내역 제외, created_at 시간 KST 변환 적용)
 router.get('/', (req, res) => {
   const page = parseInt(req.query.page) || 1;
   const limit = parseInt(req.query.limit) || 10;
@@ -17,7 +16,7 @@ router.get('/', (req, res) => {
   const params = [];
 
   if (searchId) {
-    where += ' AND r.user_id LIKE ?';
+    where += ' AND m.username LIKE ?';
     params.push(`%${searchId}%`);
   }
   if (type) {
@@ -25,15 +24,26 @@ router.get('/', (req, res) => {
     params.push(type);
   }
   if (date) {
-    where += ' AND DATE(r.created_at) = ?';
+    where += ' AND DATE(CONVERT_TZ(r.created_at, "+00:00", "+09:00")) = ?';
     params.push(date);
   }
 
-  const countSql = `SELECT COUNT(*) AS total FROM rewards_log r ${where}`;
+  // 후원/직급 내역 제외
+  where += ` AND r.type NOT IN ('sponsor', 'rank')`;
+
+  const countSql = `
+    SELECT COUNT(*) AS total
+    FROM rewards_log r
+    LEFT JOIN members m ON r.member_id = m.id
+    ${where}
+  `;
   const dataSql = `
     SELECT r.*, 
-      COALESCE(m_user.username, m_purchase.username) AS source_username
+      m.username AS member_username,
+      COALESCE(m_user.username, m_purchase.username) AS source_username,
+      CONVERT_TZ(r.created_at, '+00:00', '+09:00') AS created_at_kst
     FROM rewards_log r
+    LEFT JOIN members m ON r.member_id = m.id
     LEFT JOIN purchases p ON r.source = p.id
     LEFT JOIN members m_purchase ON p.member_id = m_purchase.id
     LEFT JOIN members m_user ON r.source = m_user.id
@@ -53,7 +63,7 @@ router.get('/', (req, res) => {
   });
 });
 
-// ✅ 수당 목록 엑셀 다운로드
+// 수당 내역 엑셀 다운로드 (created_at 시간 KST 변환 적용)
 router.get('/export', async (req, res) => {
   const searchId = req.query.searchId || '';
   const type = req.query.type || '';
@@ -63,7 +73,7 @@ router.get('/export', async (req, res) => {
   const params = [];
 
   if (searchId) {
-    where += ' AND r.user_id LIKE ?';
+    where += ' AND m.username LIKE ?';
     params.push(`%${searchId}%`);
   }
   if (type) {
@@ -71,14 +81,20 @@ router.get('/export', async (req, res) => {
     params.push(type);
   }
   if (date) {
-    where += ' AND DATE(r.created_at) = ?';
+    where += ' AND DATE(CONVERT_TZ(r.created_at, "+00:00", "+09:00")) = ?';
     params.push(date);
   }
 
+  // 후원/직급 내역 제외
+  where += ` AND r.type NOT IN ('sponsor', 'rank')`;
+
   const query = `
     SELECT r.*, 
-      COALESCE(m_user.username, m_purchase.username) AS source_username
+      m.username AS member_username,
+      COALESCE(m_user.username, m_purchase.username) AS source_username,
+      CONVERT_TZ(r.created_at, '+00:00', '+09:00') AS created_at_kst
     FROM rewards_log r
+    LEFT JOIN members m ON r.member_id = m.id
     LEFT JOIN purchases p ON r.source = p.id
     LEFT JOIN members m_purchase ON p.member_id = m_purchase.id
     LEFT JOIN members m_user ON r.source = m_user.id
@@ -94,16 +110,23 @@ router.get('/export', async (req, res) => {
       const sheet = workbook.addWorksheet('수당내역');
 
       sheet.columns = [
-        { header: '등록일', key: 'created_at', width: 20 },
+        { header: '등록일', key: 'created_at_kst', width: 20 },
         { header: '종류', key: 'type', width: 15 },
-        { header: '아이디', key: 'user_id', width: 15 },
+        { header: '아이디', key: 'member_username', width: 15 },
         { header: '포인트', key: 'amount', width: 15 },
         { header: '수당원천', key: 'source_username', width: 15 },
         { header: '상세내용', key: 'memo', width: 30 },
       ];
 
       results.forEach((row) => {
-        sheet.addRow(row);
+        sheet.addRow({
+          created_at_kst: new Date(row.created_at_kst).toLocaleString('ko-KR'),
+          type: row.type,
+          member_username: row.member_username,
+          amount: row.amount,
+          source_username: row.source_username,
+          memo: row.memo,
+        });
       });
 
       res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');

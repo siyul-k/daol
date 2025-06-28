@@ -10,7 +10,8 @@ const port = process.env.PORT || 3001;
 const corsOptions = {
   origin: [
     "https://winwin-private.vercel.app", // 배포용
-    "http://localhost:3000"              // 개발용
+    "http://localhost:3000",              // 개발용
+    "http://localhost:5173"              // Vite 개발 서버 포트 추가
   ],
   credentials: true,
 };
@@ -25,6 +26,7 @@ app.use('/api/points', require('./routes/pointAdjust.cjs'));
 app.use('/api/reward-config',      require('./routes/rewardConfig.cjs'));
 
 // ✅ 관리자용 라우터
+app.use('/api/updateRecommender', require('./routes/updateRecommender.cjs'));
 app.use('/api/admin/rewards',          require('./routes/adminRewards.cjs'));
 app.use('/api/admin/notices',          require('./routes/adminNotices.cjs'));
 app.use('/api/admin/members/export',   require('./routes/adminExport.cjs'));
@@ -34,7 +36,7 @@ app.use('/api/admin/deposits/export',  require('./routes/depositExport.cjs'));
 app.use('/api/admin/deposits',         require('./routes/adminDeposits.cjs'));
 app.use('/api/admin/withdraws',        require('./routes/adminWithdraws.cjs'));
 app.use('/api/withdraw/check',         require('./routes/withdrawCheck.cjs'));
-app.use('/api/admin/bcode',            require('./routes/adminBcode.cjs'));
+//app.use('/api/admin/bcode',            require('./routes/adminBcode.cjs'));
 app.use('/api/admin/centers',          require('./routes/adminCenters.cjs'));
 app.use('/api/admin/settings',         require('./routes/adminSettings.cjs'));
 app.use('/api/admin/settings/admins',  require('./routes/adminAdmins.cjs'));
@@ -51,9 +53,12 @@ app.use('/api/login',                  require('./routes/login.cjs'));
 app.use('/api/admin-login',            require('./routes/admin-Login.cjs'));
 app.use('/api/check-user',             require('./routes/check-user.cjs'));
 app.use('/api/members',                require('./routes/members.cjs'));
+app.use('/api/members/sponsor-pv',     require('./routes/sponsorPv.cjs'));  // ✅ 추가된 라우터
 
 // ✅ Lookup API
 app.use('/api/lookup',                 require('./routes/lookup.cjs'));
+app.use('/api/reward-limit', require('./routes/rewardLimitApi.cjs'));
+
 
 // ✅ 입출금 요청
 app.use('/api/deposit',                require('./routes/deposit.cjs'));
@@ -61,6 +66,10 @@ app.use('/api/withdraw',               require('./routes/withdraw.cjs'));
 app.use('/api/withdraw/available',     require('./routes/withdrawAvailable.cjs'));
 
 // ✅ 사용자 대시보드용 통계
+// ✅ 대시보드 통계 API (한 번에 통계 집계)
+app.use('/api/dashboard', require('./routes/dashboard.cjs'));
+app.use('/api/recommender-pv', require('./routes/recommenderPV.cjs'));
+app.use('/api/shopping-point', require('./routes/shoppingPoint.cjs'));
 app.use('/api/withdraw-total',         require('./routes/withdrawStats.cjs'));
 app.use('/api/withdrawable-points',    require('./routes/withdrawablePoints.cjs'));
 app.use('/api/rewards-total',          require('./routes/rewardsTotal.cjs'));
@@ -94,5 +103,8 @@ connection.connect(err => {
   else console.log('✅ MySQL 연결 성공!');
 });
 
+// ✅ 통합 스케줄러 실행
+require('./schedulers/rewardScheduler.cjs');
+
 // ✅ 데일리 수당 스케줄러 실행
-require('./jobs/dailyRewardJob.cjs');
+//require('./jobs/dailyRewardJob.cjs');

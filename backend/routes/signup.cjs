@@ -1,23 +1,21 @@
 // ✅ 파일 경로: backend/routes/signup.cjs
-console.log('▶ signup.cjs 로드됨');
 
 const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcrypt');
 const connection = require('../db.cjs');
 
-// ✅ 추천 계보 15대 추적 함수
-async function getRecommenderLineage(recommenderId) {
+// 계보 추적 (id기반)
+async function getRecommenderLineageIds(startId) {
   const lineage = [];
-  let current = recommenderId;
-  while (current && lineage.length < 15) {
-    const [rows] = await connection.promise().query(
-      'SELECT recommender FROM members WHERE username = ?',
-      [current]
+  let currentId = startId;
+  while (currentId && lineage.length < 15) {
+    const [[row]] = await connection.promise().query(
+      'SELECT recommender_id FROM members WHERE id = ?', [currentId]
     );
-    if (rows.length === 0) break;
-    lineage.push(current);
-    current = rows[0].recommender;
+    lineage.push(currentId);
+    currentId = row?.recommender_id || null;
+    if (!currentId) break;
   }
   while (lineage.length < 15) lineage.push(null);
   return lineage;
@@ -25,74 +23,66 @@ async function getRecommenderLineage(recommenderId) {
 
 router.post('/', async (req, res) => {
   try {
+    // ⭐️ 수정: center_id, recommender_id를 바로 받음!
     const {
-      username,
-      password,
-      name,
-      email,
-      phone,
-      center,
-      recommender,
-      sponsor,
-      sponsor_direction
+      username, password, name, phone, center_id, recommender_id
     } = req.body;
 
-    // ✅ 필수값 검증
-    if (!username || !password || !name || !center || !recommender || !sponsor || !sponsor_direction) {
+    // 필수값만 체크
+    if (!username || !password || !name || !center_id || !recommender_id) {
       return res.status(400).json({ success: false, message: '필수값 누락' });
     }
 
-    // ✅ 중복 아이디 확인
+    // 아이디 중복 체크
     const [existing] = await connection.promise().query(
-      'SELECT id FROM members WHERE username = ?',
-      [username]
+      'SELECT id FROM members WHERE username = ?', [username]
     );
     if (existing.length > 0) {
       return res.status(400).json({ success: false, message: '이미 사용 중인 아이디입니다.' });
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10);
-    const recLineage = await getRecommenderLineage(recommender);
-    const [
-      rec_1, rec_2, rec_3, rec_4, rec_5,
-      rec_6, rec_7, rec_8, rec_9, rec_10,
-      rec_11, rec_12, rec_13, rec_14, rec_15
-    ] = recLineage;
+    // ⭐️ members 테이블에서 추천인 실제 존재 여부만 확인
+    const [[recommenderRow]] = await connection.promise().query(
+      'SELECT id FROM members WHERE id = ? LIMIT 1', [recommender_id]
+    );
+    if (!recommenderRow) {
+      return res.status(400).json({ success: false, message: '존재하지 않는 추천인입니다.' });
+    }
 
-    // ✅ SQL 준비 (컬럼 24개, placeholder 24개)
+    // ⭐️ 센터 실제 존재 여부도 체크 (추가: 안정성)
+    const [[centerRow]] = await connection.promise().query(
+      'SELECT id FROM centers WHERE id = ? LIMIT 1', [center_id]
+    );
+    if (!centerRow) {
+      return res.status(400).json({ success: false, message: '존재하지 않는 센터입니다.' });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const lineage = await getRecommenderLineageIds(recommender_id);
+    const [
+      rec_1_id, rec_2_id, rec_3_id, rec_4_id, rec_5_id,
+      rec_6_id, rec_7_id, rec_8_id, rec_9_id, rec_10_id,
+      rec_11_id, rec_12_id, rec_13_id, rec_14_id, rec_15_id
+    ] = lineage;
+
     const sql = `
       INSERT INTO members (
-        username, password, name, email, phone, center,
-        recommender, sponsor, sponsor_direction,
-        rec_1, rec_2, rec_3, rec_4, rec_5,
-        rec_6, rec_7, rec_8, rec_9, rec_10,
-        rec_11, rec_12, rec_13, rec_14, rec_15
-      )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        username, password, name, phone, center_id, recommender_id,
+        rec_1_id, rec_2_id, rec_3_id, rec_4_id, rec_5_id,
+        rec_6_id, rec_7_id, rec_8_id, rec_9_id, rec_10_id,
+        rec_11_id, rec_12_id, rec_13_id, rec_14_id, rec_15_id
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
-
     const values = [
-      username,
-      hashedPassword,
-      name,
-      email ?? null,
-      phone ?? null,
-      center,
-      recommender,
-      sponsor,
-      sponsor_direction,
-      rec_1, rec_2, rec_3, rec_4, rec_5,
-      rec_6, rec_7, rec_8, rec_9, rec_10,
-      rec_11, rec_12, rec_13, rec_14, rec_15
+      username, hashedPassword, name, phone, center_id, recommender_id,
+      rec_1_id, rec_2_id, rec_3_id, rec_4_id, rec_5_id,
+      rec_6_id, rec_7_id, rec_8_id, rec_9_id, rec_10_id,
+      rec_11_id, rec_12_id, rec_13_id, rec_14_id, rec_15_id
     ];
-
-    console.log('✅ values.length:', values.length);
-    console.log('✅ values:', values);
-    console.log('✅ SQL:', sql);
 
     await connection.promise().query(sql, values);
     res.json({ success: true, message: '가입 완료' });
-
   } catch (err) {
     console.error('❌ 회원가입 오류:', err.sqlMessage || err.message);
     res.status(500).json({ success: false, message: '서버 오류', error: err });

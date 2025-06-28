@@ -1,10 +1,9 @@
-// ✅ 파일 위치: src/App.jsx
-
 import React from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 
 // ─ 관리자 레이아웃 ─
 import AdminLayout from "./components/AdminLayout";
+import AdminProtectedRoute from "./components/AdminProtectedRoute"; // ⭐️추가
 
 // ─ 사용자 레이아웃 ─
 import UserLayout from "./components/UserLayout";
@@ -24,7 +23,7 @@ import AdminRewardsPage from "./pages/AdminRewardsPage";
 import AdminCentersPage from "./pages/AdminCentersPage";
 import AdminSettingsPage from "./pages/AdminSettingsPage";
 import AdminAdminsPage from "./pages/AdminAdminsPage";         // ✅ 관리자계정 설정 페이지
-import ComingSoonPage from "./pages/ComingSoonPage";
+//import ComingSoonPage from "./pages/ComingSoonPage";
 
 // ─ 일반 회원 페이지 ─
 import LoginPage from "./pages/LoginPage";
@@ -40,14 +39,14 @@ import WithdrawHistoryPage from "./pages/WithdrawHistoryPage";
 import NoticePage from "./pages/NoticePage";
 import ProductPage from "./pages/ProductPage";
 import ProductHistoryPage from "./pages/ProductHistoryPage";
-import SponsorTreePage from "./pages/SponsorTreePage";
+//import SponsorTreePage from "./pages/SponsorTreePage";
 import RecommendTreePage from "./pages/RecommendTreePage";
 
 // ─ 로그인 정보 훅 ─
 import { useAuth } from "./hooks/useAuth";
 
 export default function App() {
-  const { username: currentUser } = useAuth();
+  const { member_id: currentUser } = useAuth();
 
   return (
     <Router>
@@ -73,15 +72,12 @@ export default function App() {
           path="/settings"
           element={<UserLayout><SettingsPage /></UserLayout>}
         />
-        {/* ✅ 조직도: 후원 / 추천 각각 구성 */}
-        <Route
-          path="/tree/sponsor"
-          element={<UserLayout><SponsorTreePage /></UserLayout>}
-        />
+        {/* ✅ 조직도: 추천만 회원 메뉴에 유지, 후원 조직도는 관리자만 */}
         <Route
           path="/tree/recommend"
           element={<UserLayout><RecommendTreePage /></UserLayout>}
         />
+        {/* /tree/sponsor는 제거 또는 접근 제한 (회원 메뉴에서는 숨김) */}
         <Route
           path="/deposit"
           element={<UserLayout><DepositPage /></UserLayout>}
@@ -114,8 +110,15 @@ export default function App() {
         {/* ─────────────── 관리자 로그인 ─────────────── */}
         <Route path="/admin/login" element={<AdminLogin />} />
 
-        {/* ─────────── 관리자 공통 레이아웃 ─────────── */}
-        <Route path="/admin" element={<AdminLayout />}>
+        {/* ─────────── 관리자 공통 레이아웃 보호 적용 ─────────── */}
+        <Route
+          path="/admin/*"
+          element={
+            <AdminProtectedRoute>
+              <AdminLayout />
+            </AdminProtectedRoute>
+          }
+        >
           <Route index element={<Navigate to="notices" replace />} />
           <Route path="members" element={<AdminMembersPage />} />
           <Route path="tree" element={<AdminTreePage />} />
@@ -131,7 +134,6 @@ export default function App() {
           <Route path="products" element={<AdminProductsPage />} />
           <Route path="settings" element={<AdminSettingsPage />} />
           <Route path="settings/admins" element={<AdminAdminsPage />} />
-          <Route path="sales" element={<ComingSoonPage title="🛒 판매관리" />} />
         </Route>
 
         {/* ─────────────── Not Found ─────────────── */}

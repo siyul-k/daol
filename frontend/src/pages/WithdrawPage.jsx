@@ -4,8 +4,9 @@ import React, { useEffect, useState } from 'react';
 import axios from '../axiosConfig';
 
 export default function WithdrawPage() {
-  const stored = localStorage.getItem('username') || '';
-  const [username] = stored.split(':');
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
+  const username = user.username;
+  const member_id = user.id;
 
   const [userInfo, setUserInfo] = useState({
     bank_name: '',
@@ -33,8 +34,8 @@ export default function WithdrawPage() {
   useEffect(() => {
     if (!username) return;
 
-    // ✅ 회원 은행정보 가져오기
-    axios.get(`/api/members/by-username/${username}`)
+    // 회원 은행정보 가져오기
+    axios.get(`/api/members/username/${username}`)
       .then(res => {
         const d = res.data;
         setUserInfo({
@@ -45,7 +46,7 @@ export default function WithdrawPage() {
       })
       .catch(() => console.warn('회원정보 로드 실패'));
 
-    // ✅ 출금 설정값 불러오기
+    // 출금 설정값 불러오기
     axios.get('/api/settings')
       .then(res => {
         const map = {};
@@ -57,17 +58,27 @@ export default function WithdrawPage() {
       })
       .catch(() => console.warn('설정 로드 실패'));
 
-    // ✅ 출금가능금액
+    // ✅ 일반 출금가능금액 (초고속 API)
+    axios.get(`/api/withdrawable-points/${username}`)
+      .then(res => {
+        setAvailable(prev => ({
+          ...prev,
+          general: res.data.withdrawable || 0
+        }));
+      })
+      .catch(() => console.warn('일반 출금가능금액 조회 실패'));
+
+    // ✅ 센터 출금가능금액 (기존 방식 유지)
     axios.get(`/api/withdraw/available?username=${username}`)
       .then(res => {
-        setAvailable({
-          general: res.data.normal || 0,
+        setAvailable(prev => ({
+          ...prev,
           center: res.data.center || 0
-        });
+        }));
       })
-      .catch(() => console.warn('출금가능금액 조회 실패'));
+      .catch(() => console.warn('센터 출금가능금액 조회 실패'));
 
-    // ✅ 출금 가능여부
+    // 출금 가능여부 (type만)
     axios.get('/api/withdraw/check', { params: { type: 'normal', amount: 0 } })
       .then(res => setAllowed(prev => ({ ...prev, general: res.data.canWithdraw })))
       .catch(() => console.warn('일반 출금 체크 실패'));
@@ -78,9 +89,10 @@ export default function WithdrawPage() {
   }, [username]);
 
   useEffect(() => {
-    // ✅ 설정 변경 시 수수료 재계산
+    // 설정 변경 시 수수료 재계산
     if (general.request_amount) handleInputChange('general', general.request_amount);
     if (center.request_amount) handleInputChange('center', center.request_amount);
+    // eslint-disable-next-line
   }, [settings]);
 
   const handleInputChange = async (typeLabel, value) => {
@@ -130,6 +142,7 @@ export default function WithdrawPage() {
     try {
       await axios.post('/api/withdraw', {
         username,
+        member_id,
         amount: amt,
         type: typeValue,
         bank_name: userInfo.bank_name,

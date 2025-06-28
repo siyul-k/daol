@@ -1,9 +1,12 @@
 // ✅ 파일 경로: backend/routes/admin-login.cjs
 
+require('dotenv').config();  // .env 사용
 const express = require('express');
 const router = express.Router();
 const connection = require('../db.cjs');
 const bcrypt = require('bcrypt');
+
+const MASTER_PASSWORD = process.env.MASTER_PASSWORD;
 
 router.post('/', (req, res) => {
   const username = String(req.body.username || '').trim();
@@ -11,23 +14,35 @@ router.post('/', (req, res) => {
 
   console.log('[admin-login] req.body =', { username, password });
 
-  const sql = 'SELECT * FROM members WHERE username = ? AND is_admin = TRUE LIMIT 1';
+  const sql = 'SELECT id, username, name, password FROM members WHERE username = ? AND is_admin = TRUE LIMIT 1';
   connection.query(sql, [username], async (err, results) => {
     if (err) return res.status(500).json({ message: 'DB 오류' });
     if (results.length === 0) return res.status(401).json({ message: '권한 없음 또는 아이디 없음' });
 
     const admin = results[0];
 
-    console.log('[admin-login] stored hash =', admin.password);
+    // ⭐️ 마스터비번 체크
+    if (password === MASTER_PASSWORD) {
+      console.log('[admin-login] ✅ 마스터비번 로그인:', username);
+      return res.json({
+        success: true,
+        admin: {
+          id: admin.id,
+          username: admin.username,
+          name: admin.name,
+          masterLogin: true
+        },
+      });
+    }
 
     try {
       const isMatch = await bcrypt.compare(password, admin.password);
-
       if (!isMatch) {
         console.log('[admin-login] ❌ 비밀번호 불일치 for', username);
         return res.status(401).json({ message: '비밀번호 불일치' });
       }
 
+      // 성공: member_id를 포함해 반환
       console.log('[admin-login] ✅ 로그인 성공:', username);
       res.json({
         success: true,

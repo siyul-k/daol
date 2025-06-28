@@ -3,22 +3,40 @@ const express = require('express');
 const router = express.Router();
 const connection = require('../db.cjs');
 
+/**
+ * GET /api/check-user
+ * - username 또는 member_id로 회원 정보 조회
+ * - 반환: { success, member_id, username, name }
+ * 예: /api/check-user?username=test
+ * 예: /api/check-user?member_id=123
+ */
 router.get('/', (req, res) => {
-  const { username } = req.query;
+  const { username, member_id } = req.query;
 
-  if (!username) {
-    return res.status(400).json({ success: false, message: 'No username' });
+  // 최소 하나의 파라미터 필요
+  if (!username && !member_id) {
+    return res.status(400).json({ success: false, message: 'No username or member_id' });
   }
 
-  const sql = `SELECT name FROM members WHERE username = ? LIMIT 1`;
-  connection.query(sql, [username], (err, results) => {
+  let sql = '';
+  let params = [];
+  if (member_id) {
+    sql = `SELECT id AS member_id, username, name FROM members WHERE id = ? LIMIT 1`;
+    params = [member_id];
+  } else {
+    sql = `SELECT id AS member_id, username, name FROM members WHERE username = ? LIMIT 1`;
+    params = [username];
+  }
+
+  connection.query(sql, params, (err, results) => {
     if (err) return res.status(500).json({ success: false, message: 'DB error' });
 
     if (results.length === 0) {
       return res.json({ success: false, message: 'Not found' });
     }
 
-    res.json({ success: true, name: results[0].name });
+    const { member_id, username, name } = results[0];
+    res.json({ success: true, member_id, username, name });
   });
 });
 

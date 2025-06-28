@@ -33,6 +33,7 @@ cron.schedule('0 3 * * *', async () => {
       const pv = member.pv;
       const amount = member.amount;
 
+      // 2.1. 한도 배율(리워드 정책)
       const limitMultiplier = rewardConfig.limits[pv.toString()];
       const maxReward = pv * limitMultiplier;
 
@@ -48,7 +49,7 @@ cron.schedule('0 3 * * *', async () => {
         });
       });
 
-      // 4. 데일리 수당 계산 (PV * 2%)
+      // 4. 데일리 수당 계산 (PV * 2% 등)
       const dailyRate = rewardTypes.daily.rate;
       const todayReward = pv * dailyRate;
 
@@ -56,9 +57,9 @@ cron.schedule('0 3 * * *', async () => {
         // 5. 데일리 수당 로그 기록
         await new Promise((resolve, reject) => {
           connection.query(`
-            INSERT INTO rewards_log (member_id, username, type, amount, description, created_at)
-            VALUES (?, ?, 'daily', ?, '데일리 수당', NOW())
-          `, [memberId, username, todayReward], (err) => {
+            INSERT INTO rewards_log (member_id, type, amount, description, created_at)
+            VALUES (?, 'daily', ?, '데일리 수당', NOW())
+          `, [memberId, todayReward], (err) => {
             if (err) reject(err);
             else resolve();
           });
@@ -83,6 +84,7 @@ cron.schedule('0 3 * * *', async () => {
       if (recommenderUsername) {
         const referralRate = rewardTypes.referral.rate;
 
+        // 추천인을 member_id로 조회
         const [referrerInfo] = await new Promise((resolve, reject) => {
           connection.query(`
             SELECT id, username FROM members WHERE username = ? LIMIT 1
@@ -95,6 +97,7 @@ cron.schedule('0 3 * * *', async () => {
         if (referrerInfo) {
           const recommenderId = referrerInfo.id;
 
+          // 추천수당 중복 지급 방지 (description으로 구분)
           const [alreadyPaid] = await new Promise((resolve, reject) => {
             connection.query(`
               SELECT COUNT(*) AS cnt FROM rewards_log
@@ -110,9 +113,9 @@ cron.schedule('0 3 * * *', async () => {
 
             await new Promise((resolve, reject) => {
               connection.query(`
-                INSERT INTO rewards_log (member_id, username, type, amount, description, created_at)
-                VALUES (?, ?, 'referral', ?, ?, NOW())
-              `, [recommenderId, recommenderUsername, referralReward, `추천수당-${username}`], (err) => {
+                INSERT INTO rewards_log (member_id, type, amount, description, created_at)
+                VALUES (?, 'referral', ?, ?, NOW())
+              `, [recommenderId, referralReward, `추천수당-${username}`], (err) => {
                 if (err) reject(err);
                 else resolve();
               });
@@ -127,7 +130,7 @@ cron.schedule('0 3 * * *', async () => {
               });
             });
 
-            console.log(`🎁 추천수당 → ${recommenderUsername}에게 ${referralReward.toLocaleString()}P 지급 (추천: ${username})`);
+            console.log(`🎁 추천수당 → ${referrerInfo.username}에게 ${referralReward.toLocaleString()}P 지급 (추천: ${username})`);
           }
         }
       }

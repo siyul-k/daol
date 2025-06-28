@@ -3,13 +3,14 @@ const router = express.Router();
 const connection = require('../db.cjs');
 const ExcelJS = require('exceljs');
 
-// ✅ 상품 목록 조회
+// 상품 목록 조회
 router.get('/', (req, res) => {
   const { username, name, product_name, type, date } = req.query;
 
   let sql = `
     SELECT p.id, m.username, m.name, pk.name AS product_name, p.amount, p.pv,
-           p.active, p.type, p.created_at
+           p.active, p.type,
+           CONVERT_TZ(p.created_at, '+00:00', '+09:00') AS created_at
     FROM purchases p
     JOIN members m ON p.member_id = m.id
     JOIN packages pk ON p.package_id = pk.id
@@ -34,7 +35,7 @@ router.get('/', (req, res) => {
     params.push(type);
   }
   if (date) {
-    sql += ' AND DATE(p.created_at) = ?';
+    sql += ' AND DATE(CONVERT_TZ(p.created_at, "+00:00", "+09:00")) = ?';
     params.push(date);
   }
 
@@ -49,7 +50,7 @@ router.get('/', (req, res) => {
   });
 });
 
-// ✅ 상태 토글 (bcode만)
+// 상태 토글 (bcode만)
 router.put('/:id/toggle', (req, res) => {
   const { id } = req.params;
 
@@ -70,7 +71,7 @@ router.put('/:id/toggle', (req, res) => {
   });
 });
 
-// ✅ 상품 삭제 (포인트 복원 및 로그 기록 포함)
+// 상품 삭제 (포인트 복원 및 로그 기록 포함)
 router.delete('/:id', async (req, res) => {
   const { id } = req.params;
 
@@ -78,7 +79,7 @@ router.delete('/:id', async (req, res) => {
     // 1. 삭제 대상 조회
     const [rows] = await connection.promise().query(
       `
-      SELECT p.amount, p.type, m.id AS member_id, m.username
+      SELECT p.amount, p.type, m.id AS member_id, m.username, m.point_balance
       FROM purchases p
       JOIN members m ON p.member_id = m.id
       WHERE p.id = ?
@@ -90,22 +91,25 @@ router.delete('/:id', async (req, res) => {
       return res.status(404).send('상품을 찾을 수 없습니다.');
     }
 
-    const { amount, type, member_id, username } = rows[0];
+    const { amount, type, member_id, username, point_balance } = rows[0];
 
     if (type === 'normal') {
-      // 2. point_balance 복원
+      // 2. point_balance 복원 (삭제 전 잔액 조회 → 복원 후 잔액 계산)
+      const beforePoint = point_balance;
+      const afterPoint = beforePoint + amount;
+
       await connection.promise().query(
-        `UPDATE members SET point_balance = point_balance + ? WHERE username = ?`,
-        [amount, username]
+        `UPDATE members SET point_balance = point_balance + ? WHERE id = ?`,
+        [amount, member_id]
       );
 
-      // 3. point_logs 기록
+      // 3. point_logs 기록 (정확한 필드명/구조)
       await connection.promise().query(
         `
-        INSERT INTO point_logs (member_id, point, type, description)
-        VALUES (?, ?, 'restore', '상품 삭제로 인한 포인트 복원')
+        INSERT INTO point_logs (member_id, username, before_point, after_point, diff, reason, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, NOW())
         `,
-        [member_id, amount]
+        [member_id, username, beforePoint, afterPoint, amount, '상품 삭제로 인한 포인트 복원']
       );
     }
 
@@ -122,13 +126,14 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
-// ✅ 엑셀 다운로드
+// 엑셀 다운로드
 router.get('/export', async (req, res) => {
   const { username, name, product_name, type, date } = req.query;
 
   let sql = `
     SELECT p.id, m.username, m.name, pk.name AS product_name, p.amount, p.pv,
-           p.active, p.type, p.created_at
+           p.active, p.type,
+           CONVERT_TZ(p.created_at, '+00:00', '+09:00') AS created_at
     FROM purchases p
     JOIN members m ON p.member_id = m.id
     JOIN packages pk ON p.package_id = pk.id
@@ -153,7 +158,7 @@ router.get('/export', async (req, res) => {
     params.push(type);
   }
   if (date) {
-    sql += ' AND DATE(p.created_at) = ?';
+    sql += ' AND DATE(CONVERT_TZ(p.created_at, "+00:00", "+09:00")) = ?';
     params.push(date);
   }
 
@@ -168,7 +173,10 @@ router.get('/export', async (req, res) => {
     const workbook = new ExcelJS.Workbook();
     const sheet = workbook.addWorksheet('상품내역');
 
+    // 순서: 번호, 등록일, 아이디, 이름, 상품명, 금액, PV, 상태, 타입
     sheet.columns = [
+      { header: '번호', key: 'no', width: 8 },
+      { header: '등록일', key: 'created_at', width: 20 },
       { header: '아이디', key: 'username', width: 15 },
       { header: '이름', key: 'name', width: 15 },
       { header: '상품명', key: 'product_name', width: 20 },
@@ -176,14 +184,19 @@ router.get('/export', async (req, res) => {
       { header: 'PV', key: 'pv', width: 15 },
       { header: '상태', key: 'active', width: 12 },
       { header: '타입', key: 'type', width: 12 },
-      { header: '등록일', key: 'created_at', width: 20 },
     ];
 
-    rows.forEach((row) => {
+    rows.forEach((row, idx) => {
       sheet.addRow({
-        ...row,
+        no: idx + 1,
+        created_at: new Date(row.created_at).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' }),
+        username: row.username,
+        name: row.name,
+        product_name: row.product_name,
+        amount: row.amount,
+        pv: row.pv,
         active: row.active ? '승인완료' : '비활성화',
-        created_at: new Date(row.created_at).toLocaleString('ko-KR'),
+        type: row.type,
       });
     });
 

@@ -1,53 +1,79 @@
-// ✅ 파일 경로: backend/routes/rewards.cjs
-
 const express = require('express');
 const router = express.Router();
 const connection = require('../db.cjs');
 
-// ✅ 로그인한 회원의 수당 내역 조회 (source → username 매핑)
+// 로그인한 회원의 수당 내역 조회 (source → username 매핑)
 router.get('/', (req, res) => {
   const { username } = req.query;
   if (!username) return res.status(400).json({ error: 'username is required' });
 
-  const sql = `
-    SELECT 
-      r.*, 
-      r.memo,
-      COALESCE(m_user.username, m_purchase.username) AS source_username
-    FROM rewards_log r
-    LEFT JOIN members m_user ON r.source = m_user.id                      -- source가 회원 ID인 경우
-    LEFT JOIN purchases p ON r.source = p.id                             -- source가 구매 ID인 경우
-    LEFT JOIN members m_purchase ON p.member_id = m_purchase.id          -- 구매한 회원의 아이디 조회
-    WHERE r.user_id = ?
-    ORDER BY r.created_at DESC
-  `;
+  connection.query(
+    'SELECT id FROM members WHERE username = ? LIMIT 1',
+    [username],
+    (err, rows) => {
+      if (err || !rows.length) {
+        return res.status(404).json({ error: '회원 없음' });
+      }
+      const member_id = rows[0].id;
 
-  connection.query(sql, [username], (err, results) => {
-    if (err) {
-      console.error('rewards_log 조회 오류:', err);
-      return res.status(500).json({ error: 'DB 오류' });
+      const sql = `
+  SELECT 
+    r.*, 
+    m_self.username AS member_username,
+    r.memo,
+    m_purchase.username AS source_username,
+    CONVERT_TZ(r.created_at, '+00:00', '+09:00') AS created_at_kst
+  FROM rewards_log r
+  LEFT JOIN members m_self ON r.member_id = m_self.id
+  LEFT JOIN purchases p ON r.source = p.id
+  LEFT JOIN members m_purchase ON p.member_id = m_purchase.id
+  WHERE r.member_id = ?
+  ORDER BY r.created_at DESC
+`;
+
+      connection.query(sql, [member_id], (err2, results) => {
+        if (err2) {
+          console.error('rewards_log 조회 오류:', err2);
+          return res.status(500).json({ error: 'DB 오류' });
+        }
+        // 후원(sponsor), 직급(rank) 타입 제외
+        const filtered = results.filter(
+          (r) => r.type !== "sponsor" && r.type !== "rank"
+        );
+        res.json(filtered);
+      });
     }
-    res.json(results);
-  });
+  );
 });
 
-// ✅ 로그인한 회원의 수당 총합 조회
+// 로그인한 회원의 수당 총합 조회
 router.get('/total/:username', (req, res) => {
   const { username } = req.params;
 
-  const sql = `
-    SELECT IFNULL(SUM(point), 0) AS total_reward
-    FROM rewards_log
-    WHERE user_id = ?
-  `;
+  connection.query(
+    'SELECT id FROM members WHERE username = ? LIMIT 1',
+    [username],
+    (err, rows) => {
+      if (err || !rows.length) {
+        return res.status(404).json({ error: '회원 없음' });
+      }
+      const member_id = rows[0].id;
 
-  connection.query(sql, [username], (err, rows) => {
-    if (err) {
-      console.error("총합 조회 오류:", err);
-      return res.status(500).json({ error: 'DB 오류', details: err });
+      const sql = `
+        SELECT IFNULL(SUM(amount), 0) AS total_reward
+        FROM rewards_log
+        WHERE member_id = ?
+      `;
+
+      connection.query(sql, [member_id], (err2, rows2) => {
+        if (err2) {
+          console.error("총합 조회 오류:", err2);
+          return res.status(500).json({ error: 'DB 오류', details: err2 });
+        }
+        res.json(rows2[0]);
+      });
     }
-    res.json(rows[0]);
-  });
+  );
 });
 
 module.exports = router;

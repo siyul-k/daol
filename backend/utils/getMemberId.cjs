@@ -1,15 +1,19 @@
-
 const connection = require('../db.cjs');
 
-function getMemberId(username) {
-  return new Promise((resolve, reject) => {
-    const sql = 'SELECT id FROM members WHERE username = ? LIMIT 1';
-    connection.query(sql, [username], (err, results) => {
-      if (err) return reject(err);
-      if (results.length === 0) return reject(new Error('회원 없음'));
-      resolve(results[0].id);
-    });
-  });
+/**
+ * @param {string} username
+ * @returns {Promise<number|null>}  // member_id or null
+ */
+async function getMemberId(username) {
+  try {
+    const [rows] = await connection.promise().query(
+      'SELECT id FROM members WHERE username = ? LIMIT 1', [username]
+    );
+    if (!rows || rows.length === 0) return null;
+    return rows[0].id;
+  } catch (err) {
+    throw new Error(`DB 조회 오류(getMemberId): ${err.message}`);
+  }
 }
 
 module.exports = getMemberId;

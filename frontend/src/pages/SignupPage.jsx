@@ -1,4 +1,5 @@
 // ✅ 파일 경로: frontend/src/pages/SignupPage.jsx
+
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import axios from "../axiosConfig";
@@ -15,65 +16,86 @@ export default function SignupPage() {
     centerName: "",
     recommender: "",
     recommenderName: "",
-    sponsor: "",
-    sponsorName: "",
-    sponsor_direction: "",
     phone: "",
   });
 
+  // 유저네임: 영어, 숫자만 허용
+  const usernameRegex = /^[a-zA-Z0-9]*$/;
+
+  // 입력 변경 핸들러
   const handleChange = (e) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
-  };
-
-  const checkUser = async (type) => {
-    try {
-      const value = form[type];
-      if (!value) return;
-
-      let res;
-
-      if (type === "center") {
-        res = await axios.get(`/api/lookup/center`, {
-          params: { center: value },
-        });
-      } else if (type === "recommender") {
-        res = await axios.get(`/api/lookup/recommender`, {
-          params: { username: value },
-        });
-      } else if (type === "sponsor") {
-        if (!form.sponsor_direction) {
-          alert("후원 방향을 선택해주세요");
-          return;
-        }
-
-        res = await axios.get(`/api/lookup/sponsor`, {
-          params: {
-            username: value,
-            direction: form.sponsor_direction,
-          },
-        });
-
-        if (!res.data.available) {
-          alert("이미 해당 방향에 하위 회원이 존재합니다");
-          return;
-        }
-      }
-
-      const nameKey = type + "Name";
-      setForm((prev) => ({ ...prev, [nameKey]: res.data.name }));
-    } catch (err) {
-      console.error(err);
-      alert("아이디를 확인하세요");
-      const nameKey = type + "Name";
-      setForm((prev) => ({ ...prev, [nameKey]: "" }));
+    const { name, value } = e.target;
+    if (name === "username") {
+      if (!usernameRegex.test(value)) return; // 영어, 숫자 외 입력 무시
     }
+    setForm({ ...form, [name]: value });
   };
 
+  // 유저 정보 확인 (센터, 추천인)
+  const checkUser = async (type) => {
+  try {
+    const value = form[type];
+    if (!value) return;
+    let res;
+    if (type === "center") {
+      res = await axios.get(`/api/lookup/center`, {
+        params: { center: value },
+      });
+      setForm((prev) => ({ ...prev, centerName: res.data.owner_name }));
+    } else if (type === "recommender") {
+      res = await axios.get(`/api/lookup/recommender`, {
+        params: { username: value },
+      });
+      setForm((prev) => ({ ...prev, recommenderName: res.data.name }));
+    }
+  } catch (err) {
+    alert("아이디를 확인하세요");
+    if (type === "center") {
+      setForm((prev) => ({ ...prev, centerName: "" }));
+    } else if (type === "recommender") {
+      setForm((prev) => ({ ...prev, recommenderName: "" }));
+    }
+  }
+};
+
+
+  // 회원가입 요청
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    // 아이디 입력 체크 (영어+숫자)
+    if (!usernameRegex.test(form.username) || !form.username) {
+      alert("아이디는 영어와 숫자만 입력 가능합니다.");
+      return;
+    }
+
     try {
-      const res = await axios.post(`/api/signup`, form);
+      // 1. username → id 변환 (각 API로 조회)
+      const [centerRes, recommenderRes] = await Promise.all([
+        axios.get(`/api/lookup/center`, { params: { center: form.center } }),
+        axios.get(`/api/lookup/recommender`, { params: { username: form.recommender } }),
+      ]);
+
+      const center_id = centerRes.data.id;
+      const recommender_id = recommenderRes.data.id;
+
+      if (!center_id || !recommender_id) {
+        alert("센터/추천인 아이디를 확인하세요.");
+        return;
+      }
+
+      // 2. id값 기반 회원가입 요청
+      const payload = {
+        username: form.username,
+        password: form.password,
+        name: form.name,
+        email: form.email,
+        phone: form.phone,
+        center_id,
+        recommender_id,
+      };
+
+      const res = await axios.post(`/api/signup`, payload);
       alert("가입이 성공적으로 완료되었습니다!");
       navigate("/login");
     } catch (err) {
@@ -107,14 +129,24 @@ export default function SignupPage() {
         }}
       >
         <h1 style={{ fontSize: "20px", marginBottom: "1rem", fontWeight: "bold", textAlign: "center" }}>
-          🚀 Please join us 🚀
+          회원등록 신청
         </h1>
         <p style={{ textAlign: "center", marginBottom: "1.5rem", color: "#6b7280" }}>
           아래 항목을 입력해주세요
         </p>
 
         <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
-          <input name="username" placeholder="아이디" value={form.username} onChange={handleChange} required />
+          <input
+            name="username"
+            placeholder="아이디(영어/숫자만)"
+            value={form.username}
+            onChange={handleChange}
+            required
+            autoComplete="off"
+            pattern="^[a-zA-Z0-9]+$"
+            title="아이디는 영어와 숫자만 입력 가능합니다."
+            maxLength={20}
+          />
           <input name="name" placeholder="이름" value={form.name} onChange={handleChange} required />
           <input name="email" placeholder="Email (선택)" value={form.email} onChange={handleChange} />
           <input type="password" name="password" placeholder="비밀번호" value={form.password} onChange={handleChange} required />
@@ -130,33 +162,6 @@ export default function SignupPage() {
             <button type="button" onClick={() => checkUser("recommender")}>추천인 확인</button>
           </div>
           <input value={form.recommenderName || ""} placeholder="추천인 이름" disabled />
-
-          <div style={{ display: "flex", gap: "0.5rem" }}>
-            <input name="sponsor" placeholder="후원인" value={form.sponsor} onChange={handleChange} required />
-            <button type="button" onClick={() => checkUser("sponsor")}>후원인 확인</button>
-          </div>
-          <input value={form.sponsorName || ""} placeholder="후원인 이름" disabled />
-
-          <div>
-            <label>
-              <input
-                type="radio"
-                name="sponsor_direction"
-                value="L"
-                checked={form.sponsor_direction === "L"}
-                onChange={handleChange}
-              /> 좌측
-            </label>
-            <label style={{ marginLeft: "1rem" }}>
-              <input
-                type="radio"
-                name="sponsor_direction"
-                value="R"
-                checked={form.sponsor_direction === "R"}
-                onChange={handleChange}
-              /> 우측
-            </label>
-          </div>
 
           <input name="phone" placeholder="핸드폰번호" value={form.phone} onChange={handleChange} required />
 

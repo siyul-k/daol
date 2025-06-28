@@ -1,33 +1,40 @@
-// ✅ 파일 경로: frontend/src/pages/WithdrawHistoryPage.jsx
-
 import React, { useEffect, useState } from 'react';
 import axios from '../axiosConfig';
+import { formatKST } from '../utils/time';  // 시간 변환 함수 import
 
 export default function WithdrawHistoryPage() {
+  // localStorage 값: '1234:alice' 또는 'alice'
   const stored = localStorage.getItem('username') || '';
-  const [username] = stored.split(':');
+  let member_id = '';
+  let username = '';
+
+  if (stored.includes(':')) {
+    [member_id, username] = stored.split(':');
+  } else {
+    username = stored;
+  }
+
   const [list, setList] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!username) return;
+    if (!member_id && !username) return;
+
+    const params = member_id ? { member_id } : { username };
 
     axios
-      .get(`/api/withdraw`, { params: { username } })
-      .then(res => {
-        setList(res.data || []);
-      })
+      .get(`/api/withdraw`, { params })
+      .then(res => setList(res.data || []))
       .catch(err => {
         console.error('❌ 출금내역 조회 실패:', err);
         alert('출금내역을 불러오는 중 오류가 발생했습니다.');
       })
       .finally(() => setLoading(false));
-  }, [username]);
+  }, [member_id, username]);
 
   return (
     <div className="p-4 md:p-6">
       <h1 className="text-2xl font-bold mb-6">출금내역</h1>
-
       {loading ? (
         <p>불러오는 중...</p>
       ) : list.length === 0 ? (
@@ -43,7 +50,7 @@ export default function WithdrawHistoryPage() {
                 <th className="border px-3 py-2">출금신청금액</th>
                 <th className="border px-3 py-2">수수료</th>
                 <th className="border px-3 py-2">출금액</th>
-                <th className="border px-3 py-2">쇼핑포인트</th> {/* ✅ 추가 */}
+                <th className="border px-3 py-2">쇼핑포인트</th>
                 <th className="border px-3 py-2">입금은행</th>
                 <th className="border px-3 py-2">예금주</th>
                 <th className="border px-3 py-2">계좌번호</th>
@@ -53,25 +60,13 @@ export default function WithdrawHistoryPage() {
             <tbody>
               {list.map(row => (
                 <tr key={row.id}>
-                  <td className="border px-3 py-2">
-                    {new Date(row.created_at).toLocaleString('ko-KR')}
-                  </td>
-                  <td className="border px-3 py-2">
-                    {row.type === 'normal' ? '일반' : '센터'}
-                  </td>
+                  <td className="border px-3 py-2">{formatKST(row.created_at)}</td> {/* 시간 변환 적용 */}
+                  <td className="border px-3 py-2">{row.type === 'normal' ? '일반' : '센터'}</td>
                   <td className="border px-3 py-2">{row.status}</td>
-                  <td className="border px-3 py-2 text-right">
-                    {Number(row.amount).toLocaleString()}
-                  </td>
-                  <td className="border px-3 py-2 text-right">
-                    {Number(row.fee).toLocaleString()}
-                  </td>
-                  <td className="border px-3 py-2 text-right">
-                    {Number(row.payout).toLocaleString()}
-                  </td>
-                  <td className="border px-3 py-2 text-right">
-                    {Number(row.shopping_point || 0).toLocaleString()}
-                  </td> {/* ✅ 쇼핑포인트 표시 */}
+                  <td className="border px-3 py-2 text-right">{Number(row.amount).toLocaleString()}</td>
+                  <td className="border px-3 py-2 text-right">{Number(row.fee).toLocaleString()}</td>
+                  <td className="border px-3 py-2 text-right">{Number(row.payout).toLocaleString()}</td>
+                  <td className="border px-3 py-2 text-right">{Number(row.shopping_point || 0).toLocaleString()}</td>
                   <td className="border px-3 py-2">{row.bank_name}</td>
                   <td className="border px-3 py-2">{row.account_holder}</td>
                   <td className="border px-3 py-2">{row.account_number}</td>

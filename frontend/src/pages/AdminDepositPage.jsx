@@ -17,7 +17,7 @@ export default function AdminDepositPage() {
     return s || '-';
   };
 
-  // ✅ 입금 내역 조회
+  // 입금 내역 조회
   const fetchDeposits = async () => {
     setLoading(true);
     try {
@@ -39,7 +39,7 @@ export default function AdminDepositPage() {
     fetchDeposits();
   }, []);
 
-  // ✅ 체크박스 토글
+  // 체크박스 토글
   const toggleSelect = (id, status) => {
     if (status === '완료') return;
     setSelected((prev) =>
@@ -47,30 +47,32 @@ export default function AdminDepositPage() {
     );
   };
 
-  // ✅ 완료 처리
+  // 완료 처리
   const handleComplete = async () => {
     if (!selected.length) return;
     try {
       await axios.post('/api/admin/deposits/complete', { ids: selected });
       setSelected([]);
       fetchDeposits();
+      alert('변경되었습니다'); // ✅ 알림 추가
     } catch (err) {
       console.error('완료 처리 실패:', err);
     }
   };
 
-  // ✅ 삭제
+  // 삭제
   const handleDelete = async (id) => {
     if (!window.confirm('정말 삭제하시겠습니까?')) return;
     try {
       await axios.delete(`/api/admin/deposits/${id}`);
       fetchDeposits();
+      alert('삭제되었습니다'); // ✅ 알림 추가
     } catch (err) {
       console.error('삭제 실패:', err);
     }
   };
 
-  // ✅ 엑셀 다운로드
+  // 엑셀 다운로드
   const handleExport = () => {
     const params = new URLSearchParams();
     if (enabled.username && filters.username) params.append('username', filters.username);
@@ -83,7 +85,7 @@ export default function AdminDepositPage() {
     <div className="p-6 overflow-x-auto">
       <h2 className="text-2xl font-bold mb-6">입금 관리</h2>
 
-      {/* ✅ 필터 및 버튼 */}
+      {/* 필터 및 버튼 */}
       <div className="flex flex-wrap items-center gap-2 mb-4 min-w-[900px]">
         <div className="flex items-center gap-1">
           <input
@@ -93,7 +95,7 @@ export default function AdminDepositPage() {
           />
           <input
             type="text"
-            placeholder="username 검색"
+            placeholder="아이디 검색"
             value={filters.username}
             onChange={(e) => setFilters({ ...filters, username: e.target.value })}
             className="border rounded px-2 py-1"
@@ -149,7 +151,7 @@ export default function AdminDepositPage() {
         </button>
       </div>
 
-      {/* ✅ 테이블 */}
+      {/* 테이블 */}
       {loading ? (
         <p>불러오는 중...</p>
       ) : (
@@ -191,18 +193,18 @@ export default function AdminDepositPage() {
                     </button>
                   </td>
                   <td className="border px-2 py-1">
-                    {new Date(r.created_at).toLocaleString('ko-KR')}
+                    {r.created_at
+                      ? new Date(r.created_at).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' })
+                      : '-'}
                   </td>
                   <td className="border px-2 py-1">{r.username}</td>
                   <td className="border px-2 py-1">{r.name}</td>
                   <td className="border px-2 py-1">{mapStatus(r.status)}</td>
                   <td className="border px-2 py-1">{r.account_holder}</td>
-                  <td className="border px-2 py-1 text-right">
-                    {r.amount.toLocaleString()}
-                  </td>
+                  <td className="border px-2 py-1 text-right">{r.amount.toLocaleString()}</td>
                   <td className="border px-2 py-1">
                     {r.completed_at
-                      ? new Date(r.completed_at).toLocaleString('ko-KR')
+                      ? new Date(r.completed_at).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' })
                       : '-'}
                   </td>
                   <td className="border px-2 py-1">{r.memo}</td>

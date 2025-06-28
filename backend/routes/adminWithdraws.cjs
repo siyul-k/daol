@@ -1,11 +1,9 @@
-// ✅ 파일 경로: backend/routes/adminWithdraws.cjs
-
 const express = require('express');
 const router = express.Router();
 const connection = require('../db.cjs');
 const ExcelJS = require('exceljs');
 
-// ✅ 설정값 가져오기 함수
+// 설정값 가져오기 함수
 const getSetting = async (key) => {
   const [rows] = await connection.promise().query(
     'SELECT value FROM settings WHERE key_name = ? LIMIT 1',
@@ -14,7 +12,7 @@ const getSetting = async (key) => {
   return rows[0]?.value || null;
 };
 
-// ✅ 출금 목록 조회 (무한스크롤 + 필터)
+// 출금 목록 조회 (무한스크롤 + 필터)
 router.get('/', (req, res) => {
   const { username, name, status, startDate, endDate, cursor, limit = 20 } = req.query;
   const conditions = [];
@@ -44,7 +42,8 @@ router.get('/', (req, res) => {
   const whereClause = conditions.length ? 'WHERE ' + conditions.join(' AND ') : '';
 
   const sql = `
-    SELECT w.*, m.name
+    SELECT w.*, m.name,
+           CONVERT_TZ(w.created_at, '+00:00', '+09:00') AS created_at
     FROM withdraw_requests w
     LEFT JOIN members m ON w.username = m.username
     ${whereClause}
@@ -59,7 +58,7 @@ router.get('/', (req, res) => {
   });
 });
 
-// ✅ 출금 완료 처리 (쇼핑포인트 적립)
+// 출금 완료 처리 (쇼핑포인트 적립 + 로그)
 router.post('/complete', async (req, res) => {
   const { ids } = req.body;
   if (!Array.isArray(ids) || !ids.length) return res.status(400).json({ message: 'ID 배열이 필요합니다.' });
@@ -72,6 +71,16 @@ router.post('/complete', async (req, res) => {
       const [[row]] = await connection.promise().query('SELECT * FROM withdraw_requests WHERE id = ?', [id]);
       if (!row || row.status !== '요청') continue;
 
+      // member_id 없는 경우 자동 채우기 (username → member_id)
+      let member_id = row.member_id;
+      if (!member_id && row.username) {
+        const [[userRow]] = await connection.promise().query('SELECT id FROM members WHERE username = ?', [row.username]);
+        member_id = userRow?.id || null;
+        if (member_id) {
+          await connection.promise().query('UPDATE withdraw_requests SET member_id = ? WHERE id = ?', [member_id, id]);
+        }
+      }
+
       const afterFee = Math.floor(row.amount * (1 - feePercent / 100));
       const payout = Math.floor(afterFee * (1 - shopPercent / 100));
       const shoppingPoint = afterFee - payout;
@@ -82,10 +91,18 @@ router.post('/complete', async (req, res) => {
         ['완료', feeAmount, payout, shoppingPoint, id]
       );
 
-      await connection.promise().query(
-        'UPDATE members SET shopping_point = shopping_point + ? WHERE id = ?',
-        [shoppingPoint, row.user_id]
-      );
+      if (member_id && shoppingPoint > 0) {
+        await connection.promise().query(
+          'UPDATE members SET shopping_point = shopping_point + ? WHERE id = ?',
+          [shoppingPoint, member_id]
+        );
+        await connection.promise().query(
+          `INSERT INTO shopping_point_log 
+            (member_id, amount, type, description, source, source_id, created_at)
+           VALUES (?, ?, '적립', '출금완료 쇼핑포인트 적립', 'withdraw', ?, NOW())`,
+          [member_id, shoppingPoint, row.id]
+        );
+      }
     }
 
     res.json({ success: true });
@@ -95,7 +112,7 @@ router.post('/complete', async (req, res) => {
   }
 });
 
-// ✅ 출금 취소 처리 (포인트 복구)
+// 출금 취소 처리 (포인트 복구)
 router.post('/cancel', async (req, res) => {
   const { ids } = req.body;
   if (!Array.isArray(ids) || !ids.length) return res.status(400).json({ message: 'ID 배열이 필요합니다.' });
@@ -106,7 +123,22 @@ router.post('/cancel', async (req, res) => {
       if (!row || row.status !== '요청') continue;
 
       await connection.promise().query('UPDATE withdraw_requests SET status = ? WHERE id = ?', ['취소', id]);
-      await connection.promise().query('UPDATE members SET withdrawable_point = withdrawable_point + ? WHERE id = ?', [row.amount, row.user_id]);
+
+      let member_id = row.member_id;
+      if (!member_id && row.username) {
+        const [[userRow]] = await connection.promise().query('SELECT id FROM members WHERE username = ?', [row.username]);
+        member_id = userRow?.id || null;
+        if (member_id) {
+          await connection.promise().query('UPDATE withdraw_requests SET member_id = ? WHERE id = ?', [member_id, id]);
+        }
+      }
+
+      if (member_id) {
+        await connection.promise().query(
+          'UPDATE members SET withdrawable_point = withdrawable_point + ? WHERE id = ?',
+          [row.amount, member_id]
+        );
+      }
     }
     res.json({ success: true });
   } catch (err) {
@@ -115,16 +147,44 @@ router.post('/cancel', async (req, res) => {
   }
 });
 
-// ✅ 출금 삭제 처리 (포인트 복구 포함)
+// 출금 삭제 처리 (포인트 복구 + 쇼핑포인트 회수 + 로그)
 router.delete('/:id', async (req, res) => {
   const { id } = req.params;
   try {
     const [[row]] = await connection.promise().query('SELECT * FROM withdraw_requests WHERE id = ?', [id]);
     if (!row) return res.json({ success: true });
 
-    if (row.status === '요청') {
-      await connection.promise().query('UPDATE members SET withdrawable_point = withdrawable_point + ? WHERE id = ?', [row.amount, row.user_id]);
+    let member_id = row.member_id;
+    if (!member_id && row.username) {
+      const [[userRow]] = await connection.promise().query('SELECT id FROM members WHERE username = ?', [row.username]);
+      member_id = userRow?.id || null;
+      if (member_id) {
+        await connection.promise().query('UPDATE withdraw_requests SET member_id = ? WHERE id = ?', [member_id, id]);
+      }
     }
+
+    if (member_id) {
+      if (row.status === '요청') {
+        await connection.promise().query(
+          'UPDATE members SET withdrawable_point = withdrawable_point + ? WHERE id = ?',
+          [row.amount, member_id]
+        );
+      }
+
+      if (row.status === '완료' && row.shopping_point > 0) {
+        await connection.promise().query(
+          'UPDATE members SET shopping_point = shopping_point - ? WHERE id = ?',
+          [row.shopping_point, member_id]
+        );
+        await connection.promise().query(
+          `INSERT INTO shopping_point_log 
+            (member_id, amount, type, description, source, source_id, created_at)
+           VALUES (?, ?, '회수', '출금삭제 쇼핑포인트 회수', 'withdraw', ?, NOW())`,
+          [member_id, row.shopping_point, row.id]
+        );
+      }
+    }
+
     await connection.promise().query('DELETE FROM withdraw_requests WHERE id = ?', [id]);
     res.json({ success: true });
   } catch (err) {
@@ -133,7 +193,7 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
-// ✅ 출금 비고 수정
+// 출금 비고 수정
 router.post('/update-memo', (req, res) => {
   const { id, memo } = req.body;
   if (!id) return res.status(400).json({ message: 'ID가 필요합니다.' });
@@ -144,7 +204,7 @@ router.post('/update-memo', (req, res) => {
   });
 });
 
-// ✅ 출금 통계
+// 출금 통계 (신청금액 기준)
 router.get('/stats', (req, res) => {
   const { username, name, status, startDate, endDate } = req.query;
   const conditions = [];
@@ -171,10 +231,10 @@ router.get('/stats', (req, res) => {
 
   const sql = `
     SELECT
-      IFNULL(SUM(CASE WHEN w.status = '완료' THEN w.payout ELSE 0 END), 0) AS total,
-      IFNULL(SUM(CASE WHEN w.status = '완료' AND DATE(w.created_at) = CURDATE() THEN w.payout ELSE 0 END), 0) AS today,
-      IFNULL(SUM(CASE WHEN w.status = '완료' AND MONTH(w.created_at) = MONTH(CURDATE()) THEN w.payout ELSE 0 END), 0) AS thisMonth,
-      IFNULL(SUM(CASE WHEN w.status = '완료' AND MONTH(w.created_at) = MONTH(CURDATE() - INTERVAL 1 MONTH) THEN w.payout ELSE 0 END), 0) AS lastMonth
+      IFNULL(SUM(CASE WHEN w.status = '완료' THEN w.amount ELSE 0 END), 0) AS total,
+      IFNULL(SUM(CASE WHEN w.status = '완료' AND DATE(w.created_at) = CURDATE() THEN w.amount ELSE 0 END), 0) AS today,
+      IFNULL(SUM(CASE WHEN w.status = '완료' AND MONTH(w.created_at) = MONTH(CURDATE()) THEN w.amount ELSE 0 END), 0) AS thisMonth,
+      IFNULL(SUM(CASE WHEN w.status = '완료' AND MONTH(w.created_at) = MONTH(CURDATE() - INTERVAL 1 MONTH) THEN w.amount ELSE 0 END), 0) AS lastMonth
     FROM withdraw_requests w
     LEFT JOIN members m ON w.username = m.username
     ${whereClause}
@@ -186,10 +246,11 @@ router.get('/stats', (req, res) => {
   });
 });
 
-// ✅ 엑셀 다운로드
+// 엑셀 다운로드
 router.get('/export', (req, res) => {
   const sql = `
-    SELECT w.*, m.name
+    SELECT w.*, m.name,
+           CONVERT_TZ(w.created_at, '+00:00', '+09:00') AS created_at
     FROM withdraw_requests w
     LEFT JOIN members m ON w.username = m.username
     ORDER BY w.created_at DESC
