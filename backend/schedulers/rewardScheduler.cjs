@@ -15,10 +15,10 @@ const { updateAllRecommendLineage } = require('../scripts/fixRecommendLineage.cj
 //    - 00:30 KST → 15:30 UTC ('30 15 * * *')
 // =======================================================
 
-// 테스트용: 2분마다 KST 현재 시간 찍기
-cron.schedule('*/2 * * * *', () => {
-  console.log('🕑 테스트 크론! KST 현재시간:', moment().tz('Asia/Seoul').format());
-});
+// 테스트용: 2분마다 KST 현재 시간 찍기 (운영 시 주석 처리 가능)
+// cron.schedule('*/2 * * * *', () => {
+//   console.log('🕑 테스트 크론! KST 현재시간:', moment().tz('Asia/Seoul').format());
+// });
 
 // ✅ 매일 23:30 (KST) = 14:30 (UTC) → 추천수당 정산 전 계보 갱신
 cron.schedule('30 14 * * *', async () => {
