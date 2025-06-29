@@ -29,8 +29,7 @@ export default function PointAdjustPage() {
     if (!inputUsername) return;
     try {
       const res = await axios.get(`/api/admin/code-give/check-username/${inputUsername}`);
-      console.log('✅ 사용자 확인 응답:', res.data);
-      setUserInfo({ id: res.data.member_id, name: res.data.name, valid: true }); // ✅ 중요!
+      setUserInfo({ id: res.data.member_id, name: res.data.name, valid: true });
     } catch {
       alert('존재하지 않는 아이디입니다.');
       setUserInfo({ id: null, name: '', valid: false });
@@ -48,7 +47,6 @@ export default function PointAdjustPage() {
         type: 'adjustment',
         description: memo || '관리자 보정',
       };
-      console.log('📥 포인트 지급 요청:', payload);
       await axios.post('/api/points/adjust', payload);
       alert('포인트 지급 완료');
       setShowModal(false);
@@ -58,7 +56,6 @@ export default function PointAdjustPage() {
       setMemo('');
       fetchAdjustments();
     } catch (err) {
-      console.error('포인트 지급 실패:', err);
       alert('지급 실패');
     }
   };
@@ -78,64 +75,68 @@ export default function PointAdjustPage() {
   };
 
   return (
-    <div className="p-4">
-      <h2 className="text-xl font-bold mb-4">포인트지급</h2>
+    <div className="p-2 sm:p-6 w-full">
+      <h2 className="text-base sm:text-2xl font-bold mb-4 sm:mb-6">포인트지급</h2>
 
-      <div className="flex gap-2 mb-4">
+      {/* 버튼 영역 (반응형) */}
+      <div className="flex flex-wrap gap-2 mb-4">
         <button
-          className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+          className="flex items-center bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded transition-all text-sm"
           onClick={() => setShowModal(true)}
         >
-          ➕ 포인트 지급 등록
+          <PlusCircle size={18} className="mr-2" /> 포인트 지급
         </button>
         <button
-          className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
+          className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded transition-all text-sm"
           onClick={handleExport}
         >
-          엑셀 다운로드
+          내보내기
         </button>
       </div>
 
-      <table className="w-full border text-sm text-center">
-        <thead className="bg-gray-100">
-          <tr>
-            <th className="p-2">ID</th>
-            <th>아이디</th>
-            <th>이름</th>
-            <th>포인트</th>
-            <th>비고</th>
-            <th>일시</th>
-            <th>삭제</th>
-          </tr>
-        </thead>
-        <tbody>
-          {adjustList.map((row) => (
-            <tr key={row.id} className="border-t">
-              <td>{row.id}</td>
-              <td>{row.username}</td>
-              <td>{row.name}</td>
-              <td className="text-right">{row.point.toLocaleString()}</td>
-              <td>{row.description}</td>
-              <td>{row.created_at?.slice(0, 19).replace('T', ' ')}</td>
-              <td>
-                <button onClick={() => handleDelete(row.id)}>
-                  <Trash2 size={16} className="text-red-500 hover:text-red-700" />
-                </button>
-              </td>
+      <div className="w-full overflow-x-auto">
+        <table className="min-w-[720px] w-full border text-xs sm:text-sm text-center">
+          <thead className="bg-gray-100">
+            <tr>
+              <th className="p-2 whitespace-nowrap">ID</th>
+              <th className="whitespace-nowrap">아이디</th>
+              <th className="whitespace-nowrap">이름</th>
+              <th className="whitespace-nowrap">포인트</th>
+              <th className="whitespace-nowrap">비고</th>
+              <th className="whitespace-nowrap">일시</th>
+              <th className="whitespace-nowrap">삭제</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {adjustList.map((row) => (
+              <tr key={row.id} className="border-t">
+                <td>{row.id}</td>
+                <td>{row.username}</td>
+                <td>{row.name}</td>
+                <td className="text-right">{row.point?.toLocaleString()}</td>
+                <td>{row.description}</td>
+                <td>{row.created_at?.slice(0, 19).replace('T', ' ')}</td>
+                <td>
+                  <button onClick={() => handleDelete(row.id)}>
+                    <Trash2 size={16} className="text-red-500 hover:text-red-700" />
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
 
       {/* 등록 모달 */}
       {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-10">
-          <div className="bg-white p-6 rounded shadow w-96">
-            <h3 className="text-lg font-semibold mb-3">포인트 지급 등록</h3>
-
+        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+          <div className="bg-white p-4 sm:p-6 rounded-lg shadow w-full max-w-xs sm:max-w-md">
+            <h3 className="text-lg font-semibold mb-3 flex items-center">
+              <PlusCircle className="mr-2 text-blue-600" /> 포인트 지급 등록
+            </h3>
             <input
               type="text"
-              className="border w-full p-2 mb-2"
+              className="border w-full p-2 mb-2 rounded"
               placeholder="아이디 입력"
               value={inputUsername}
               onChange={(e) => setInputUsername(e.target.value)}
@@ -147,25 +148,24 @@ export default function PointAdjustPage() {
               아이디 확인
             </button>
             {userInfo.valid && <p className="mb-2 text-green-600">이름: {userInfo.name}</p>}
-
             <input
               type="number"
-              className="border w-full p-2 mb-2"
+              className="border w-full p-2 mb-2 rounded"
               placeholder="지급 포인트"
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
             />
             <input
               type="text"
-              className="border w-full p-2 mb-4"
+              className="border w-full p-2 mb-4 rounded"
               placeholder="비고"
               value={memo}
               onChange={(e) => setMemo(e.target.value)}
             />
 
-            <div className="flex justify-end">
+            <div className="flex justify-end gap-2">
               <button
-                className="px-3 py-1 mr-2 bg-gray-300 rounded"
+                className="px-3 py-1 bg-gray-300 rounded"
                 onClick={() => setShowModal(false)}
               >
                 취소

@@ -13,9 +13,13 @@ const getSetting = async (key) => {
   return rows[0]?.value || null;
 };
 
-// 출금 목록 조회 (무한스크롤 + 필터)
+// 출금 목록 조회 (무한스크롤 + 필터 + limit)
 router.get('/', async (req, res) => {
-  const { username, name, status, startDate, endDate, cursor, limit = 20 } = req.query;
+  const {
+    username, name, status, startDate, endDate, cursor,
+    limit = 20 // default 20, 프론트에서 전달받은 값 사용
+  } = req.query;
+
   const conditions = [];
   const values = [];
 
@@ -42,6 +46,11 @@ router.get('/', async (req, res) => {
 
   const whereClause = conditions.length ? 'WHERE ' + conditions.join(' AND ') : '';
 
+  // limit은 항상 양의 정수로 안전하게 처리
+  let itemLimit = parseInt(limit, 10);
+  if (isNaN(itemLimit) || itemLimit <= 0) itemLimit = 20;
+  if (itemLimit > 10000) itemLimit = 10000;
+
   const sql = `
     SELECT w.*, m.name,
            CONVERT_TZ(w.created_at, '+00:00', '+09:00') AS created_at
@@ -51,7 +60,7 @@ router.get('/', async (req, res) => {
     ORDER BY w.created_at DESC
     LIMIT ?
   `;
-  values.push(Number(limit));
+  values.push(itemLimit);
 
   try {
     const [rows] = await pool.query(sql, values);

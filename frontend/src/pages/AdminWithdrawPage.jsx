@@ -1,8 +1,11 @@
-// frontend/src/pages/AdminWithdrawPage.jsx
+// ✅ 파일 경로: frontend/src/pages/AdminWithdrawPage.jsx
 
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import axios from '../axiosConfig';
 import * as XLSX from 'xlsx';
+
+const PAGE_SIZE_OPTIONS = [25, 50, 100, 150, 9999];
+const PAGE_LABELS = ['25개씩', '50개씩', '100개씩', '150개씩', '전체'];
 
 export default function AdminWithdrawPage() {
   const [requests, setRequests] = useState([]);
@@ -28,6 +31,9 @@ export default function AdminWithdrawPage() {
   const [hasMore, setHasMore] = useState(true);
   const [lastCursor, setLastCursor] = useState(null);
 
+  // 👇 item per
+  const [limit, setLimit] = useState(25);
+
   const [showResultModal, setShowResultModal] = useState(false);
   const [resultMessage, setResultMessage] = useState('');
 
@@ -35,7 +41,7 @@ export default function AdminWithdrawPage() {
   const bottomRef = useCallback(node => {
     if (loading) return;
     if (observer.current) observer.current.disconnect();
-    observer.current = new IntersectionObserver(entries => {
+    observer.current = new window.IntersectionObserver(entries => {
       if (entries[0].isIntersecting && hasMore) {
         fetchData(true);
       }
@@ -45,7 +51,8 @@ export default function AdminWithdrawPage() {
 
   useEffect(() => {
     resetAndFetch();
-  }, [sortField, sortOrder]);
+    // eslint-disable-next-line
+  }, [sortField, sortOrder, limit]); // 👈 limit 바뀌면 리셋
 
   const buildParams = () => {
     const params = {};
@@ -58,6 +65,7 @@ export default function AdminWithdrawPage() {
     if (enabled.status && filters.status) params.status = filters.status;
     params.sort = sortField;
     params.order = sortOrder;
+    params.limit = limit; // 👈 item per
     return params;
   };
 
@@ -73,9 +81,7 @@ export default function AdminWithdrawPage() {
     setLoading(true);
     try {
       const params = buildParams();
-      if (isScroll && lastCursor) {
-        params.cursor = lastCursor;
-      }
+      if (isScroll && lastCursor) params.cursor = lastCursor;
 
       const res = await axios.get('/api/admin/withdraws', { params });
       const newItems = res.data;
@@ -87,7 +93,7 @@ export default function AdminWithdrawPage() {
       });
 
       setSelected([]);
-      if (newItems.length < 20) setHasMore(false);
+      if (newItems.length < limit) setHasMore(false); // 👈 limit
       if (newItems.length > 0) {
         setLastCursor(newItems[newItems.length - 1].created_at);
       }
@@ -178,14 +184,15 @@ export default function AdminWithdrawPage() {
   };
 
   return (
-    <div className="p-6">
-      <h2 className="text-2xl font-bold mb-4">출금 신청 목록</h2>
+    <div className="p-2 sm:p-6 w-full">
+      <h2 className="text-base sm:text-2xl font-bold mb-3 sm:mb-4">출금 신청 목록</h2>
 
       {statusMsg && <div className="mb-2 text-green-600">{statusMsg}</div>}
 
-      <div className="flex flex-wrap gap-2 items-center mb-4">
+      {/* 필터+버튼+item per (반응형) */}
+      <div className="flex flex-wrap gap-2 items-center mb-3 sm:mb-4">
         {['username', 'name'].map(key => (
-          <div key={key} className="flex items-center gap-1">
+          <div key={key} className="flex items-center gap-1 text-xs sm:text-sm">
             <input
               type="checkbox"
               checked={enabled[key]}
@@ -196,11 +203,11 @@ export default function AdminWithdrawPage() {
               placeholder={key === 'username' ? '아이디 검색' : '이름 검색'}
               value={filters[key]}
               onChange={e => setFilters(prev => ({ ...prev, [key]: e.target.value }))}
-              className="border px-2 py-1 rounded"
+              className="border px-2 py-1 rounded text-xs sm:text-sm w-20 sm:w-28"
             />
           </div>
         ))}
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1 text-xs sm:text-sm">
           <input
             type="checkbox"
             checked={enabled.date}
@@ -210,16 +217,16 @@ export default function AdminWithdrawPage() {
             type="date"
             value={filters.startDate}
             onChange={e => setFilters(prev => ({ ...prev, startDate: e.target.value }))}
-            className="border px-2 py-1 rounded"
+            className="border px-2 py-1 rounded text-xs sm:text-sm w-24 sm:w-36"
           />
           <input
             type="date"
             value={filters.endDate}
             onChange={e => setFilters(prev => ({ ...prev, endDate: e.target.value }))}
-            className="border px-2 py-1 rounded"
+            className="border px-2 py-1 rounded text-xs sm:text-sm w-24 sm:w-36"
           />
         </div>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1 text-xs sm:text-sm">
           <input
             type="checkbox"
             checked={enabled.status}
@@ -228,7 +235,7 @@ export default function AdminWithdrawPage() {
           <select
             value={filters.status}
             onChange={e => setFilters(prev => ({ ...prev, status: e.target.value }))}
-            className="border px-2 py-1 rounded"
+            className="border px-2 py-1 rounded text-xs sm:text-sm w-20 sm:w-28"
           >
             <option value="">상태 선택</option>
             <option value="요청">요청</option>
@@ -236,15 +243,28 @@ export default function AdminWithdrawPage() {
             <option value="취소">취소</option>
           </select>
         </div>
-
-        <button onClick={handleFilter} className="bg-blue-600 text-white px-3 py-1 rounded">검색</button>
-        <button onClick={exportExcel} className="bg-green-600 text-white px-3 py-1 rounded">내보내기</button>
-        <button onClick={() => changeStatus('complete')} className="bg-teal-600 text-white px-3 py-1 rounded">완료처리</button>
-        <button onClick={() => changeStatus('cancel')} className="bg-gray-600 text-white px-3 py-1 rounded">취소처리</button>
+        {/* 👇 item per select */}
+        <select
+          value={limit}
+          onChange={e => setLimit(Number(e.target.value))}
+          className="border rounded px-2 py-1 text-xs sm:text-sm"
+        >
+          {PAGE_SIZE_OPTIONS.map((n, i) => (
+            <option key={n} value={n}>{PAGE_LABELS[i]}</option>
+          ))}
+        </select>
+        {/* 버튼: 모바일에선 2줄 이상 배치 */}
+        <div className="flex gap-2 mt-2 sm:mt-0 w-full sm:w-auto">
+          <button onClick={handleFilter} className="bg-blue-600 text-white px-3 py-1 rounded text-xs sm:text-sm">검색</button>
+          <button onClick={exportExcel} className="bg-green-600 text-white px-3 py-1 rounded text-xs sm:text-sm">내보내기</button>
+          <button onClick={() => changeStatus('complete')} className="bg-teal-600 text-white px-3 py-1 rounded text-xs sm:text-sm">완료처리</button>
+          <button onClick={() => changeStatus('cancel')} className="bg-gray-600 text-white px-3 py-1 rounded text-xs sm:text-sm">취소처리</button>
+        </div>
       </div>
 
-      <div className="overflow-x-auto">
-        <table className="min-w-[1400px] w-full border text-sm text-center">
+      {/* 테이블 (반응형, 가로 스크롤) */}
+      <div className="w-full overflow-x-auto">
+        <table className="min-w-[1400px] w-full border text-xs sm:text-sm text-center">
           <thead className="bg-gray-100">
             <tr>
               <th className="border px-2 py-1">
@@ -266,7 +286,7 @@ export default function AdminWithdrawPage() {
                 ['account_holder', '예금주'],
                 ['account_number', '계좌번호'],
               ].map(([field, label]) => (
-                <th key={field} onClick={() => handleSort(field)} className="cursor-pointer border px-2 py-1">
+                <th key={field} onClick={() => handleSort(field)} className="cursor-pointer border px-2 py-1 whitespace-nowrap">
                   {label}{renderSortSymbol(field)}
                 </th>
               ))}
@@ -289,29 +309,29 @@ export default function AdminWithdrawPage() {
                       disabled={r.status !== '요청'}
                     />
                   </td>
-                  <td className="border px-2 py-1">{new Date(r.created_at).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' })}</td>
-                  <td className="border px-2 py-1">{r.username}</td>
-                  <td className="border px-2 py-1">{r.name}</td>
-                  <td className="border px-2 py-1">{r.type === 'normal' ? '일반' : '센터'}</td>
-                  <td className="border px-2 py-1">{r.status}</td>
-                  <td className="border px-2 py-1 text-right">{r.amount.toLocaleString()}</td>
-                  <td className="border px-2 py-1 text-right">{r.fee.toLocaleString()}</td>
-                  <td className="border px-2 py-1 text-right">{payout.toLocaleString()}</td>
-                  <td className="border px-2 py-1 text-right">{shoppingPoint.toLocaleString()}</td>
-                  <td className="border px-2 py-1">{r.bank_name}</td>
-                  <td className="border px-2 py-1">{r.account_holder}</td>
-                  <td className="border px-2 py-1">{r.account_number}</td>
+                  <td className="border px-2 py-1 whitespace-nowrap">{new Date(r.created_at).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' })}</td>
+                  <td className="border px-2 py-1 whitespace-nowrap">{r.username}</td>
+                  <td className="border px-2 py-1 whitespace-nowrap">{r.name}</td>
+                  <td className="border px-2 py-1 whitespace-nowrap">{r.type === 'normal' ? '일반' : '센터'}</td>
+                  <td className="border px-2 py-1 whitespace-nowrap">{r.status}</td>
+                  <td className="border px-2 py-1 text-right whitespace-nowrap">{r.amount.toLocaleString()}</td>
+                  <td className="border px-2 py-1 text-right whitespace-nowrap">{r.fee.toLocaleString()}</td>
+                  <td className="border px-2 py-1 text-right whitespace-nowrap">{payout.toLocaleString()}</td>
+                  <td className="border px-2 py-1 text-right whitespace-nowrap">{shoppingPoint.toLocaleString()}</td>
+                  <td className="border px-2 py-1 whitespace-nowrap">{r.bank_name}</td>
+                  <td className="border px-2 py-1 whitespace-nowrap">{r.account_holder}</td>
+                  <td className="border px-2 py-1 whitespace-nowrap">{r.account_number}</td>
                   <td className="border px-2 py-1">
                     <input
                       type="text"
-                      className="w-full border px-1 text-sm"
+                      className="w-full border px-1 text-xs sm:text-sm"
                       defaultValue={r.memo}
                       onChange={e => handleMemoChange(r.id, e.target.value)}
                     />
                   </td>
                   <td className="border px-2 py-1">
                     <button
-                      className="px-2 py-1 bg-blue-500 text-white rounded text-sm"
+                      className="px-2 py-1 bg-blue-500 text-white rounded text-xs sm:text-sm"
                       onClick={() => saveMemo(r.id, memoEdits[r.id] ?? r.memo)}
                     >
                       저장
@@ -319,7 +339,7 @@ export default function AdminWithdrawPage() {
                   </td>
                   <td className="border px-2 py-1">
                     <button
-                      className="px-2 py-1 bg-red-600 text-white rounded text-sm"
+                      className="px-2 py-1 bg-red-600 text-white rounded text-xs sm:text-sm"
                       onClick={() => deleteRequest(r.id)}
                     >
                       삭제

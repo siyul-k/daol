@@ -103,30 +103,30 @@ export default function AdminCodeGivePage() {
   }, [page, limit]);
 
   return (
-    <div className="p-4">
-      <h2 className="text-xl font-bold mb-4">코드 상품 지급</h2>
+    <div className="p-2 sm:p-4">
+      <h2 className="text-base sm:text-xl font-bold mb-2 sm:mb-4">코드 상품 지급</h2>
 
       {/* 필터 영역 */}
-      <div className="flex gap-2 mb-4 items-center">
+      <div className="flex flex-wrap gap-2 mb-3 sm:mb-4 items-center">
         <input
           type="text"
           placeholder="아이디 검색"
-          className="border px-2 py-1"
+          className="border px-2 py-1 text-xs sm:text-sm rounded"
           value={filters.username}
           onChange={(e) => setFilters({ ...filters, username: e.target.value })}
         />
         <input
           type="text"
           placeholder="이름 검색"
-          className="border px-2 py-1"
+          className="border px-2 py-1 text-xs sm:text-sm rounded"
           value={filters.name}
           onChange={(e) => setFilters({ ...filters, name: e.target.value })}
         />
-        <button className="px-4 bg-gray-700 text-white rounded" onClick={handleSearch}>
+        <button className="px-3 py-1 bg-gray-700 text-white rounded text-xs sm:text-sm" onClick={handleSearch}>
           검색
         </button>
         <select
-          className="border px-2 py-1 ml-auto"
+          className="border px-2 py-1 ml-auto text-xs sm:text-sm rounded"
           value={limit}
           onChange={(e) => setLimit(e.target.value === 'all' ? 'all' : Number(e.target.value))}
         >
@@ -136,67 +136,67 @@ export default function AdminCodeGivePage() {
           <option value="all">전체보기</option>
         </select>
         <button
-          className="ml-2 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+          className="ml-2 px-3 py-2 bg-blue-600 text-white rounded text-xs sm:text-sm flex items-center"
           onClick={() => setShowModal(true)}
         >
-          <PlusCircle className="inline-block mr-2" size={18} />
+          <PlusCircle className="inline-block mr-1" size={16} />
           코드 지급 등록
         </button>
       </div>
 
-      {/* 테이블 */}
-      <table className="w-full border text-sm text-center">
-        <thead className="bg-gray-100">
-          <tr>
-            <th className="py-2">등록일</th>
-            <th>아이디</th>
-            <th>이름</th>
-            <th>금액</th>
-            <th>PV</th>
-            <th>상태</th>
-            <th>수정</th>
-            <th>삭제</th>
-          </tr>
-        </thead>
-        <tbody>
-              {codes.map((row) => (
-            <tr key={row.id} className="border-t">
-             <td>
-             {row.created_at
-                 ? new Date(new Date(row.created_at).getTime() + 9 * 60 * 60 * 1000)
-                .toLocaleString('ko-KR')
-              : ''}
-            </td>
-              <td>{row.username}</td>
-              <td>{row.name}</td>
-              <td>{row.amount.toLocaleString()}</td>
-              <td>{row.pv.toLocaleString()}</td>
-              <td>{row.active ? '활성' : '비활성'}</td>
-              <td>
-                <button onClick={() => handleToggleActive(row.id, row.active)}>
-                  <Pencil size={16} className="text-blue-500 hover:text-blue-700" />
-                </button>
-              </td>
-              <td>
-                <button onClick={() => handleDelete(row.id)}>
-                  <Trash2 size={16} className="text-red-500 hover:text-red-700" />
-                </button>
-              </td>
+      {/* 테이블 (반응형) */}
+      <div className="w-full overflow-x-auto">
+        <table className="min-w-[600px] w-full border text-xs sm:text-sm text-center">
+          <thead className="bg-gray-100">
+            <tr>
+              <th className="py-2 whitespace-nowrap">등록일</th>
+              <th className="whitespace-nowrap">아이디</th>
+              <th className="whitespace-nowrap">이름</th>
+              <th className="whitespace-nowrap">금액</th>
+              <th className="whitespace-nowrap">PV</th>
+              <th className="whitespace-nowrap">상태</th>
+              <th className="whitespace-nowrap">수정</th>
+              <th className="whitespace-nowrap">삭제</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {codes.map((row) => (
+              <tr key={row.id} className="border-t">
+                <td>
+                  {row.created_at
+                    ? new Date(new Date(row.created_at).getTime() + 9 * 60 * 60 * 1000)
+                        .toLocaleString('ko-KR')
+                    : ''}
+                </td>
+                <td>{row.username}</td>
+                <td>{row.name}</td>
+                <td>{row.amount.toLocaleString()}</td>
+                <td>{row.pv.toLocaleString()}</td>
+                <td>{row.active ? '활성' : '비활성'}</td>
+                <td>
+                  <button onClick={() => handleToggleActive(row.id, row.active)}>
+                    <Pencil size={16} className="text-blue-500 hover:text-blue-700" />
+                  </button>
+                </td>
+                <td>
+                  <button onClick={() => handleDelete(row.id)}>
+                    <Trash2 size={16} className="text-red-500 hover:text-red-700" />
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
 
       {/* 페이지네이션 */}
       {totalPages > 1 && (
-        <div className="mt-4 flex justify-center gap-2 text-sm">
+        <div className="mt-4 flex justify-center gap-2 text-xs sm:text-sm">
           {Array.from({ length: totalPages }, (_, i) => (
             <button
               key={i}
               onClick={() => setPage(i + 1)}
-              className={`px-3 py-1 border rounded ${
-                page === i + 1 ? 'bg-blue-600 text-white' : ''
-              }`}
+              className={`px-3 py-1 border rounded ${page === i + 1 ? 'bg-blue-600 text-white' : ''}`}
             >
               {i + 1}
             </button>
@@ -204,51 +204,53 @@ export default function AdminCodeGivePage() {
         </div>
       )}
 
-      {/* 등록 모달 */}
+      {/* 등록 모달 (반응형) */}
       {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center">
-          <div className="bg-white p-6 rounded shadow w-96">
-            <h3 className="text-lg font-semibold mb-3">코드 지급 등록</h3>
-
-            <input
-              type="text"
-              className="border w-full p-2 mb-2"
-              placeholder="아이디 입력"
-              value={newCode.username}
-              onChange={(e) => setNewCode({ ...newCode, username: e.target.value })}
-            />
-            <button
-              className="bg-gray-700 text-white px-3 py-1 mb-2 rounded"
-              onClick={handleCheckUsername}
-            >
-              아이디 확인
-            </button>
-            {usernameCheck.valid && (
-              <p className="mb-2 text-green-600">이름: {usernameCheck.name}</p>
-            )}
-
-            <select
-              className="border w-full p-2 mb-2"
-              value={newCode.product_id}
-              onChange={(e) => setNewCode({ ...newCode, product_id: e.target.value })}
-            >
-              <option value="">-- 상품 선택 --</option>
-              {products.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name} ({p.price.toLocaleString()}원)
-                </option>
-              ))}
-            </select>
-
-            <div className="flex justify-end">
+        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+          <div
+            className="bg-white p-3 sm:p-6 rounded-xl shadow w-full max-w-xs sm:max-w-md"
+            style={{ maxHeight: '90vh', overflowY: 'auto' }}
+          >
+            <h3 className="text-base sm:text-lg font-semibold mb-2 sm:mb-3">코드 지급 등록</h3>
+            <div className="flex flex-col gap-2">
+              <input
+                type="text"
+                className="border w-full p-1 sm:p-2 rounded text-xs sm:text-sm"
+                placeholder="아이디 입력"
+                value={newCode.username}
+                onChange={(e) => setNewCode({ ...newCode, username: e.target.value })}
+              />
               <button
-                className="px-3 py-1 mr-2 bg-gray-300 rounded"
+                className="bg-gray-700 text-white px-2 py-1 sm:px-3 sm:py-1 rounded text-xs sm:text-sm"
+                onClick={handleCheckUsername}
+              >
+                아이디 확인
+              </button>
+              {usernameCheck.valid && (
+                <p className="mb-1 text-green-600 text-xs sm:text-sm">이름: {usernameCheck.name}</p>
+              )}
+              <select
+                className="border w-full p-1 sm:p-2 rounded text-xs sm:text-sm"
+                value={newCode.product_id}
+                onChange={(e) => setNewCode({ ...newCode, product_id: e.target.value })}
+              >
+                <option value="">-- 상품 선택 --</option>
+                {products.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name} ({p.price.toLocaleString()}원)
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="flex flex-col sm:flex-row justify-end gap-2 mt-4">
+              <button
+                className="px-2 py-1 bg-gray-300 rounded text-xs sm:text-sm"
                 onClick={() => setShowModal(false)}
               >
                 취소
               </button>
               <button
-                className="px-3 py-1 bg-blue-600 text-white rounded"
+                className="px-2 py-1 bg-blue-600 text-white rounded text-xs sm:text-sm"
                 onClick={handleCreate}
               >
                 등록

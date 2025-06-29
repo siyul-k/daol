@@ -1,4 +1,5 @@
 // ✅ 파일 위치: frontend/src/pages/AdminNoticesPage.jsx
+
 import React, { useState, useEffect } from 'react';
 import axios from '../axiosConfig';
 import { Trash2, Edit, PlusCircle } from 'lucide-react';
@@ -47,11 +48,9 @@ export default function AdminNoticesPage() {
     e.preventDefault();
     try {
       if (editingId == null) {
-        // 신규 등록
         await axios.post('/api/admin/notices', form);
         alert('✅ 공지가 등록되었습니다.');
       } else {
-        // 수정
         await axios.put(`/api/admin/notices/${editingId}`, form);
         alert('✅ 변경되었습니다');
       }
@@ -59,11 +58,7 @@ export default function AdminNoticesPage() {
       fetchNotices();
     } catch (err) {
       console.error('저장 실패:', err);
-      if (editingId == null) {
-        alert('❌ 공지 등록에 실패했습니다.');
-      } else {
-        alert('❌ 수정에 실패했습니다.');
-      }
+      alert(editingId == null ? '❌ 공지 등록에 실패했습니다.' : '❌ 수정에 실패했습니다.');
     }
   };
 
@@ -81,64 +76,66 @@ export default function AdminNoticesPage() {
   };
 
   return (
-    <div className="p-6 bg-white text-black min-h-screen">
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-3xl font-bold">공지사항 목록</h2>
+    <div className="p-2 sm:p-6 bg-white text-black min-h-screen">
+      <div className="flex flex-col sm:flex-row justify-between items-center mb-4 gap-2">
+        <h2 className="text-xl sm:text-3xl font-bold whitespace-nowrap">공지사항 목록</h2>
         <button
           onClick={openCreate}
-          className="flex items-center bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded"
+          className="flex items-center bg-blue-600 hover:bg-blue-500 text-white px-3 sm:px-4 py-2 rounded text-sm"
         >
-          <PlusCircle className="mr-2" /> 공지추가
+          <PlusCircle className="mr-1 sm:mr-2" size={18} /> 공지추가
         </button>
       </div>
 
       {loading ? (
-        <p>불러오는 중...</p>
+        <p className="p-6 text-center">불러오는 중...</p>
       ) : (
-        <table className="w-full table-auto border-collapse text-sm">
-          <thead className="bg-gray-100">
-            <tr>
-              <th className="border px-3 py-2 text-left">등록일</th>
-              <th className="border px-3 py-2 text-left">제목</th>
-              <th className="border px-3 py-2 text-left">작성자</th>
-              <th className="border px-3 py-2 text-center">동작</th>
-            </tr>
-          </thead>
-          <tbody>
-            {notices.length > 0 ? (
-              notices.map((n) => (
-                <tr key={n.id} className="hover:bg-gray-50">
-                  <td className="border px-3 py-2">
-                    {new Date(n.created_at).toLocaleDateString()}
-                  </td>
-                  <td className="border px-3 py-2">{n.title}</td>
-                  <td className="border px-3 py-2">관리자</td>
-                  <td className="border px-3 py-2 text-center space-x-2">
-                    <button onClick={() => openEdit(n)}>
-                      <Edit size={18} className="text-gray-700 hover:text-black" />
-                    </button>
-                    <button onClick={() => handleDelete(n.id)}>
-                      <Trash2 size={18} className="text-gray-700 hover:text-black" />
-                    </button>
+        <div className="w-full overflow-x-auto">
+          <table className="min-w-[520px] w-full table-auto border-collapse text-xs sm:text-sm">
+            <thead className="bg-gray-100">
+              <tr>
+                <th className="border px-2 sm:px-3 py-2 text-left whitespace-nowrap">등록일</th>
+                <th className="border px-2 sm:px-3 py-2 text-left whitespace-nowrap">제목</th>
+                <th className="border px-2 sm:px-3 py-2 text-left whitespace-nowrap">작성자</th>
+                <th className="border px-2 sm:px-3 py-2 text-center whitespace-nowrap">동작</th>
+              </tr>
+            </thead>
+            <tbody>
+              {notices.length > 0 ? (
+                notices.map((n) => (
+                  <tr key={n.id} className="hover:bg-gray-50">
+                    <td className="border px-2 sm:px-3 py-2 whitespace-nowrap">
+                      {new Date(n.created_at).toLocaleDateString()}
+                    </td>
+                    <td className="border px-2 sm:px-3 py-2 break-all">{n.title}</td>
+                    <td className="border px-2 sm:px-3 py-2 whitespace-nowrap">관리자</td>
+                    <td className="border px-2 sm:px-3 py-2 text-center space-x-1 sm:space-x-2 whitespace-nowrap">
+                      <button onClick={() => openEdit(n)}>
+                        <Edit size={16} className="text-gray-700 hover:text-black" />
+                      </button>
+                      <button onClick={() => handleDelete(n.id)}>
+                        <Trash2 size={16} className="text-gray-700 hover:text-black" />
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan="4" className="text-center py-6">
+                    등록된 공지가 없습니다.
                   </td>
                 </tr>
-              ))
-            ) : (
-              <tr>
-                <td colSpan="4" className="text-center py-6">
-                  등록된 공지가 없습니다.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+              )}
+            </tbody>
+          </table>
+        </div>
       )}
 
       {/* === Modal === */}
       {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-lg shadow-lg w-full max-w-lg text-black">
-            <h3 className="text-2xl mb-4 font-semibold">
+        <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50 px-2">
+          <div className="bg-white p-3 sm:p-6 rounded-lg shadow-lg w-full max-w-xs sm:max-w-lg text-black">
+            <h3 className="text-lg sm:text-2xl mb-4 font-semibold">
               {editingId == null ? '공지 추가' : '공지 수정'}
             </h3>
             <form onSubmit={handleSave} className="space-y-4">
@@ -146,32 +143,36 @@ export default function AdminNoticesPage() {
                 <label className="block mb-1 font-medium">제목</label>
                 <input
                   type="text"
-                  className="w-full px-3 py-2 rounded border"
+                  className="w-full px-2 py-2 rounded border text-xs sm:text-base"
                   value={form.title}
                   onChange={(e) => setForm({ ...form, title: e.target.value })}
                   required
+                  maxLength={100}
+                  placeholder="공지 제목 입력"
                 />
               </div>
               <div>
                 <label className="block mb-1 font-medium">내용</label>
                 <textarea
-                  className="w-full px-3 py-2 rounded border h-32"
+                  className="w-full px-2 py-2 rounded border h-28 sm:h-32 resize-none text-xs sm:text-base"
                   value={form.content}
                   onChange={(e) => setForm({ ...form, content: e.target.value })}
                   required
+                  maxLength={2000}
+                  placeholder="공지 내용 입력"
                 />
               </div>
-              <div className="flex justify-end space-x-3 mt-6">
+              <div className="flex justify-end space-x-2 sm:space-x-3 mt-6">
                 <button
                   type="button"
                   onClick={() => setShowModal(false)}
-                  className="px-4 py-2 bg-gray-300 hover:bg-gray-400 rounded"
+                  className="px-3 py-2 bg-gray-300 hover:bg-gray-400 rounded text-xs sm:text-base"
                 >
                   취소
                 </button>
                 <button
                   type="submit"
-                  className="px-6 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded"
+                  className="px-4 sm:px-6 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded text-xs sm:text-base"
                 >
                   저장
                 </button>

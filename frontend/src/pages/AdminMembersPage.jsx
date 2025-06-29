@@ -1,9 +1,18 @@
-// frontend/src/pages/AdminMembersPage.jsx
+// ✅ 파일 경로: frontend/src/pages/AdminMembersPage.jsx
 
 import React, { useEffect, useState } from 'react';
 import axios from '../axiosConfig';
 import { Trash2, Edit } from 'lucide-react';
 import { formatKST } from '../utils/time';
+
+const SORTABLE_FIELDS = [
+  { key: 'created_at', label: '등록일' },
+  { key: 'username', label: '아이디' },
+  { key: 'name', label: '이름' },
+  { key: 'center_name', label: '센터' },
+  { key: 'is_withdraw_blocked', label: '출금금지' },
+  { key: 'is_reward_blocked', label: '수당금지' },
+];
 
 export default function AdminMembersPage() {
   const [members, setMembers] = useState([]);
@@ -21,26 +30,26 @@ export default function AdminMembersPage() {
   const [centers, setCenters] = useState([]);
   const [allMembers, setAllMembers] = useState([]);
 
-  // 센터/회원 전체 목록은 한번만 로드
+  // 정렬 상태
+  const [sortField, setSortField] = useState('created_at');
+  const [sortOrder, setSortOrder] = useState('desc');
+
   useEffect(() => {
     axios.get(`/admin/centers`).then(r => setCenters(r.data)).catch(() => {});
     axios.get('/admin/members', { params: { page: 1, limit: 9999 } })
       .then(r => setAllMembers(r.data.data || []))
       .catch(() => {});
-    // eslint-disable-next-line
   }, []);
 
-  // 🔥 오직 page/limit 변경시에만 fetch!
   useEffect(() => {
     fetchMembers();
     // eslint-disable-next-line
-  }, [page, limit]);
+  }, [page, limit, sortField, sortOrder]);
 
-  // 회원목록 조회(필터는 직접 넣어줌)
   const fetchMembers = async () => {
     setLoading(true);
     try {
-      const params = { page, limit };
+      const params = { page, limit, sort: sortField, order: sortOrder };
       Object.keys(enabled).forEach(key => {
         const value = filters[key]?.trim();
         if (enabled[key] && value !== '') params[key] = value;
@@ -55,27 +64,22 @@ export default function AdminMembersPage() {
     }
   };
 
-  // 🔥 필터 컨트롤 변경(체크박스, 입력 등) → 상태만 변경, fetch는 X
   const handleFilterChange = (key, value) => {
     setFilters(prev => ({ ...prev, [key]: value }));
   };
   const handleFilterToggle = (key) => {
     setEnabled(prev => ({ ...prev, [key]: !prev[key] }));
   };
-
-  // 검색 버튼 클릭 or 엔터 입력 시만 fetch
   const handleSearch = () => {
     setPage(1);
     fetchMembers();
   };
-
-  // 엔터로도 검색 동작 (input에 onKeyDown에 아래 함수 사용)
   const handleKeyDown = (e) => {
     if (e.key === 'Enter') handleSearch();
   };
 
   const handleDownloadExcel = () => {
-    const params = {};
+    const params = { sort: sortField, order: sortOrder };
     Object.keys(enabled).forEach(k => {
       const value = filters[k]?.trim();
       if (enabled[k] && value !== '') params[k] = value;
@@ -162,13 +166,28 @@ export default function AdminMembersPage() {
     '새마을금고','수협','신협','SBI저축','씨티은행','케이뱅크','카카오뱅크','토스뱅크'
   ];
 
+  // 정렬 UI 핸들러
+  const handleSort = (field) => {
+    if (sortField === field) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortOrder('asc');
+    }
+    setPage(1);
+  };
+  const renderSortSymbol = (field) => {
+    if (sortField !== field) return '';
+    return sortOrder === 'asc' ? ' ▲' : ' ▼';
+  };
+
   return (
-    <div className="p-6 overflow-auto">
-      <h2 className="text-2xl mb-4">회원 목록</h2>
+    <div className="p-2 sm:p-6 overflow-auto">
+      <h2 className="text-xl sm:text-2xl mb-2 sm:mb-4 font-bold">회원 목록</h2>
       {/* 🔍 검색 필터 */}
-      <div className="flex flex-wrap gap-2 mb-4">
+      <div className="flex flex-wrap gap-2 mb-3 sm:mb-4 items-center">
         {['username', 'name', 'recommender', 'center', 'date'].map(key => (
-          <div key={key} className="flex items-center gap-1">
+          <div key={key} className="flex items-center gap-1 text-xs sm:text-sm">
             <input
               type="checkbox"
               checked={enabled[key]}
@@ -178,7 +197,7 @@ export default function AdminMembersPage() {
               <select
                 value={filters.center || ''}
                 onChange={e => handleFilterChange('center', e.target.value)}
-                className="border p-1"
+                className="border p-1 rounded"
               >
                 <option value="">센터명 검색</option>
                 {centers.map(c => (
@@ -189,8 +208,8 @@ export default function AdminMembersPage() {
               <input
                 type="date"
                 value={filters.date || ''}
-                onChange={e => handleFilterChange('date', e.target.value)}
-                className="border p-1"
+                onChange={e => handleFilterChange(key, e.target.value)}
+                className="border p-1 rounded"
                 onKeyDown={handleKeyDown}
               />
             ) : (
@@ -203,18 +222,18 @@ export default function AdminMembersPage() {
                 }
                 value={filters[key] || ''}
                 onChange={e => handleFilterChange(key, e.target.value)}
-                className="border p-1"
+                className="border p-1 rounded"
                 onKeyDown={handleKeyDown}
               />
             )}
           </div>
         ))}
-        <button onClick={handleSearch} className="bg-blue-600 text-white px-3 py-1">검색</button>
-        <button onClick={handleDownloadExcel} className="bg-green-600 text-white px-3 py-1">엑셀 다운로드</button>
+        <button onClick={handleSearch} className="bg-blue-600 text-white px-2 py-1 rounded text-xs sm:text-sm">검색</button>
+        <button onClick={handleDownloadExcel} className="bg-green-600 text-white px-2 py-1 rounded text-xs sm:text-sm">엑셀 다운로드</button>
         <select
           value={limit}
           onChange={e => { setLimit(Number(e.target.value)); setPage(1); }}
-          className="border p-1"
+          className="border p-1 rounded text-xs sm:text-sm"
         >
           {[10, 20, 30, 50, 100].map(n => (
             <option key={n} value={n}>{n}개씩 보기</option>
@@ -222,47 +241,80 @@ export default function AdminMembersPage() {
         </select>
       </div>
 
-      {/* 📋 테이블 */}
+      {/* 📋 테이블 (가로스크롤 반응형, 한줄 유지) */}
       {loading ? <p>Loading...</p> : (
-        <table className="w-full border-collapse text-sm mb-4">
-          <thead className="bg-gray-100">
-            <tr>
-              <th className="border p-1 text-center">등록일</th>
-              <th className="border p-1 text-center">동작</th>
-              <th className="border p-1 text-center">아이디</th>
-              <th className="border p-1 text-center">이름</th>
-              <th className="border p-1 text-center">핸드폰</th>
-              <th className="border p-1 text-center">센터</th>
-              <th className="border p-1 text-center">추천인</th>
-              <th className="border p-1 text-center">출금금지</th>
-              <th className="border p-1 text-center">수당금지</th>
-              <th className="border p-1 text-center">은행</th>
-              <th className="border p-1 text-center">예금주</th>
-              <th className="border p-1 text-center">계좌번호</th>
-            </tr>
-          </thead>
-          <tbody>
-            {members.map(m => (
-              <tr key={m.id}>
-                <td className="border p-1 text-center">{formatKST(m.created_at)}</td>
-                <td className="border p-1 text-center space-x-2">
-                  <button onClick={() => handleEditClick(m)}><Edit size={16} /></button>
-                  <button onClick={() => handleDelete(m.id)}><Trash2 size={16} /></button>
-                </td>
-                <td className="border p-1 text-center">{m.username}</td>
-                <td className="border p-1 text-center">{m.name}</td>
-                <td className="border p-1 text-center">{m.phone}</td>
-                <td className="border p-1 text-center">{m.center_name || ''}</td>
-                <td className="border p-1 text-center">{getUsernameById(m.recommender_id) || ''}</td>
-                <td className="border p-1 text-center">{m.is_withdraw_blocked ? '✅' : ''}</td>
-                <td className="border p-1 text-center">{m.is_reward_blocked ? '✅' : ''}</td>
-                <td className="border p-1 text-center">{m.bank_name}</td>
-                <td className="border p-1 text-center">{m.account_holder}</td>
-                <td className="border p-1 text-center">{m.account_number}</td>
+        <div className="w-full overflow-x-auto">
+          <table className="min-w-[900px] w-full border-collapse text-xs sm:text-sm mb-4">
+            <thead className="bg-gray-100">
+              <tr>
+                {/* 정렬 가능 컬럼 */}
+                <th
+                  className="border p-1 text-center whitespace-nowrap cursor-pointer select-none"
+                  onClick={() => handleSort('created_at')}
+                >
+                  등록일<span className="text-blue-500">{renderSortSymbol('created_at')}</span>
+                </th>
+                <th className="border p-1 text-center whitespace-nowrap">동작</th>
+                <th
+                  className="border p-1 text-center whitespace-nowrap cursor-pointer select-none"
+                  onClick={() => handleSort('username')}
+                >
+                  아이디<span className="text-blue-500">{renderSortSymbol('username')}</span>
+                </th>
+                <th
+                  className="border p-1 text-center whitespace-nowrap cursor-pointer select-none"
+                  onClick={() => handleSort('name')}
+                >
+                  이름<span className="text-blue-500">{renderSortSymbol('name')}</span>
+                </th>
+                <th className="border p-1 text-center whitespace-nowrap">핸드폰</th>
+                <th
+                  className="border p-1 text-center whitespace-nowrap cursor-pointer select-none"
+                  onClick={() => handleSort('center_name')}
+                >
+                  센터<span className="text-blue-500">{renderSortSymbol('center_name')}</span>
+                </th>
+                <th className="border p-1 text-center whitespace-nowrap">추천인</th>
+                <th
+                  className="border p-1 text-center whitespace-nowrap cursor-pointer select-none"
+                  onClick={() => handleSort('is_withdraw_blocked')}
+                >
+                  출금금지<span className="text-blue-500">{renderSortSymbol('is_withdraw_blocked')}</span>
+                </th>
+                <th
+                  className="border p-1 text-center whitespace-nowrap cursor-pointer select-none"
+                  onClick={() => handleSort('is_reward_blocked')}
+                >
+                  수당금지<span className="text-blue-500">{renderSortSymbol('is_reward_blocked')}</span>
+                </th>
+                <th className="border p-1 text-center whitespace-nowrap">은행</th>
+                <th className="border p-1 text-center whitespace-nowrap">예금주</th>
+                <th className="border p-1 text-center whitespace-nowrap">계좌번호</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {members.map(m => (
+                <tr key={m.id}>
+                  <td className="border p-1 text-center whitespace-nowrap">{formatKST(m.created_at)}</td>
+                  <td className="border p-1 text-center whitespace-nowrap">
+                    <button onClick={() => handleEditClick(m)} className="p-1"><Edit size={16} /></button>
+                    <button onClick={() => handleDelete(m.id)} className="p-1"><Trash2 size={16} /></button>
+                  </td>
+                  <td className="border p-1 text-center whitespace-nowrap">{m.username}</td>
+                  <td className="border p-1 text-center whitespace-nowrap">{m.name}</td>
+                  <td className="border p-1 text-center whitespace-nowrap">{m.phone}</td>
+                  <td className="border p-1 text-center whitespace-nowrap">{m.center_name || ''}</td>
+                  <td className="border p-1 text-center whitespace-nowrap">{getUsernameById(m.recommender_id) || ''}</td>
+                  <td className="border p-1 text-center whitespace-nowrap">{m.is_withdraw_blocked ? '✅' : ''}</td>
+                  <td className="border p-1 text-center whitespace-nowrap">{m.is_reward_blocked ? '✅' : ''}</td>
+                  <td className="border p-1 text-center whitespace-nowrap">{m.bank_name}</td>
+                  <td className="border p-1 text-center whitespace-nowrap">{m.account_holder}</td>
+                  <td className="border p-1 text-center whitespace-nowrap">{m.account_number}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
 
       {/* 페이지네이션 */}
@@ -270,7 +322,7 @@ export default function AdminMembersPage() {
         {Array.from({ length: Math.ceil(total / limit) }, (_, i) => (
           <button
             key={i}
-            className={`px-2 py-1 border ${page === i + 1 ? 'bg-blue-600 text-white' : ''}`}
+            className={`px-2 py-1 border rounded ${page === i + 1 ? 'bg-blue-600 text-white' : ''}`}
             onClick={() => setPage(i + 1)}
           >
             {i + 1}
@@ -278,92 +330,106 @@ export default function AdminMembersPage() {
         ))}
       </div>
 
-      {/* 수정 모달 */}
+      {/* ✅ 수정 모달 (반응형, 모바일에서 최적화) */}
       {editMember && (
-        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center">
-          <div className="bg-white p-4 rounded shadow w-full max-w-md">
-            <h3 className="mb-2 font-bold">
+        <div className="fixed inset-0 z-50 bg-black bg-opacity-40 flex items-center justify-center">
+          <div
+            className="bg-white p-3 sm:p-5 rounded-xl shadow-lg w-full max-w-xs sm:max-w-md"
+            style={{ maxHeight: '90vh', overflowY: 'auto' }}
+          >
+            <h3 className="mb-3 font-bold text-base sm:text-lg">
               회원 정보 수정 <span className="text-blue-600">({editMember.username})</span>
             </h3>
-            <label className="block mb-1">이름
-              <input className="border w-full p-1"
-                value={editMember.name || ''}
-                onChange={e => setEditMember({ ...editMember, name: e.target.value })}
-              />
-            </label>
-            <label className="block mb-1">전화번호
-              <input className="border w-full p-1"
-                value={editMember.phone || ''}
-                onChange={e => setEditMember({ ...editMember, phone: e.target.value })}
-              />
-            </label>
-            <label className="block mb-1">센터
-              <select
-                value={editMember.center_id || ''}
-                onChange={e => setEditMember({ ...editMember, center_id: e.target.value })}
-                className="border p-1 w-full"
-              >
-                <option value="">센터 선택</option>
-                {centers.map(c => (
-                  <option key={c.id} value={c.id}>{c.name}</option>
-                ))}
-              </select>
-            </label>
-            <label className="block mb-1">은행
-              <select className="border w-full p-1"
-                value={editMember.bank_name || ''}
-                onChange={e => setEditMember({ ...editMember, bank_name: e.target.value })}
-              >
-                <option value="">은행 선택</option>
-                {bankList.map(b => <option key={b} value={b}>{b}</option>)}
-              </select>
-            </label>
-            <label className="block mb-1">예금주
-              <input className="border w-full p-1"
-                value={editMember.account_holder || ''}
-                onChange={e => setEditMember({ ...editMember, account_holder: e.target.value })}
-              />
-            </label>
-            <label className="block mb-1">계좌번호
-              <input className="border w-full p-1"
-                value={editMember.account_number || ''}
-                onChange={e => setEditMember({ ...editMember, account_number: e.target.value })}
-              />
-            </label>
-            <label className="block mb-1">추천인
-              <input className="border w-full p-1"
-                value={editMember.recommender || ''}
-                onChange={e => setEditMember({ ...editMember, recommender: e.target.value })}
-                placeholder="추천인 아이디(username) 입력"
-              />
-            </label>
-            <div className="flex gap-3 mb-2">
-              <label className="flex items-center gap-1">
-                <input
-                  type="checkbox"
-                  checked={!!editMember.is_withdraw_blocked}
-                  onChange={e =>
-                    setEditMember({ ...editMember, is_withdraw_blocked: e.target.checked ? 1 : 0 })
-                  }
+            <form
+              className="flex flex-col gap-2"
+              onSubmit={e => { e.preventDefault(); handleEditSave(); }}
+            >
+              <label className="text-xs font-semibold">이름
+                <input className="border w-full p-1 rounded mt-1"
+                  value={editMember.name || ''}
+                  onChange={e => setEditMember({ ...editMember, name: e.target.value })}
                 />
-                출금 금지
               </label>
-              <label className="flex items-center gap-1">
-                <input
-                  type="checkbox"
-                  checked={!!editMember.is_reward_blocked}
-                  onChange={e =>
-                    setEditMember({ ...editMember, is_reward_blocked: e.target.checked ? 1 : 0 })
-                  }
+              <label className="text-xs font-semibold">전화번호
+                <input className="border w-full p-1 rounded mt-1"
+                  value={editMember.phone || ''}
+                  onChange={e => setEditMember({ ...editMember, phone: e.target.value })}
                 />
-                수당 금지
               </label>
-            </div>
-            <div className="flex justify-end gap-2 mt-2">
-              <button onClick={handlePasswordReset} className="px-2 py-1 bg-yellow-400">비번 초기화</button>
-              <button onClick={() => setEditMember(null)} className="px-2 py-1 bg-gray-300">취소</button>
-              <button onClick={handleEditSave} className="px-2 py-1 bg-blue-600 text-white">저장</button>
-            </div>
+              <label className="text-xs font-semibold">센터
+                <select
+                  value={editMember.center_id || ''}
+                  onChange={e => setEditMember({ ...editMember, center_id: e.target.value })}
+                  className="border p-1 rounded w-full mt-1"
+                >
+                  <option value="">센터 선택</option>
+                  {centers.map(c => (
+                    <option key={c.id} value={c.id}>{c.name}</option>
+                  ))}
+                </select>
+              </label>
+              <label className="text-xs font-semibold">은행
+                <select className="border w-full p-1 rounded mt-1"
+                  value={editMember.bank_name || ''}
+                  onChange={e => setEditMember({ ...editMember, bank_name: e.target.value })}
+                >
+                  <option value="">은행 선택</option>
+                  {bankList.map(b => <option key={b} value={b}>{b}</option>)}
+                </select>
+              </label>
+              <label className="text-xs font-semibold">예금주
+                <input className="border w-full p-1 rounded mt-1"
+                  value={editMember.account_holder || ''}
+                  onChange={e => setEditMember({ ...editMember, account_holder: e.target.value })}
+                />
+              </label>
+              <label className="text-xs font-semibold">계좌번호
+                <input className="border w-full p-1 rounded mt-1"
+                  value={editMember.account_number || ''}
+                  onChange={e => setEditMember({ ...editMember, account_number: e.target.value })}
+                />
+              </label>
+              <label className="text-xs font-semibold">추천인
+                <input className="border w-full p-1 rounded mt-1"
+                  value={editMember.recommender || ''}
+                  onChange={e => setEditMember({ ...editMember, recommender: e.target.value })}
+                  placeholder="추천인 아이디(username) 입력"
+                />
+              </label>
+              <div className="flex flex-wrap gap-4 mt-2">
+                <label className="flex items-center gap-1 text-xs">
+                  <input
+                    type="checkbox"
+                    checked={!!editMember.is_withdraw_blocked}
+                    onChange={e =>
+                      setEditMember({ ...editMember, is_withdraw_blocked: e.target.checked ? 1 : 0 })
+                    }
+                  />
+                  출금 금지
+                </label>
+                <label className="flex items-center gap-1 text-xs">
+                  <input
+                    type="checkbox"
+                    checked={!!editMember.is_reward_blocked}
+                    onChange={e =>
+                      setEditMember({ ...editMember, is_reward_blocked: e.target.checked ? 1 : 0 })
+                    }
+                  />
+                  수당 금지
+                </label>
+              </div>
+              <div className="flex flex-col sm:flex-row justify-end gap-2 mt-4">
+                <button type="button" onClick={handlePasswordReset}
+                  className="px-2 py-1 bg-yellow-400 rounded text-xs font-semibold"
+                >비번 초기화</button>
+                <button type="button" onClick={() => setEditMember(null)}
+                  className="px-2 py-1 bg-gray-300 rounded text-xs font-semibold"
+                >취소</button>
+                <button type="submit"
+                  className="px-2 py-1 bg-blue-600 text-white rounded text-xs font-semibold"
+                >저장</button>
+              </div>
+            </form>
           </div>
         </div>
       )}

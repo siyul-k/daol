@@ -22,7 +22,7 @@ async function getRecommenderLineage(recommenderId) {
   return lineage;
 }
 
-// ✅ 회원 목록 조회 (센터명 필터까지 완벽 지원!)
+// ✅ 회원 목록 조회 (센터명 필터, 정렬 지원)
 router.get('/', async (req, res) => {
   try {
     const {
@@ -31,17 +31,31 @@ router.get('/', async (req, res) => {
       username,
       name,
       recommender,
-      center,     // 🔥 센터명 필터 (문자)
-      date
+      center,
+      date,
+      sort = 'created_at',
+      order = 'desc'
     } = req.query;
     const offset = (page - 1) * limit;
+
+    // 허용 컬럼만 정렬 (SQL Injection 방지)
+    const sortableFields = {
+      'created_at': 'm.created_at',        // 등록일
+      'username': 'm.username',            // 아이디
+      'name': 'm.name',                    // 이름
+      'center_name': 'c.center_name',      // 센터
+      'is_withdraw_blocked': 'm.is_withdraw_blocked', // 출금금지
+      'is_reward_blocked': 'm.is_reward_blocked',     // 수당금지
+    };
+    const orderField = sortableFields[sort] || 'm.created_at';
+    const orderDir = order === 'asc' ? 'ASC' : 'DESC';
 
     const where = [];
     const values = [];
 
     if (username)    { where.push('m.username LIKE ?');      values.push(`%${username}%`); }
     if (name)        { where.push('m.name LIKE ?');          values.push(`%${name}%`);     }
-    if (center)      { where.push('c.center_name LIKE ?');   values.push(`%${center}%`);   } // 🔥 센터명 필터!
+    if (center)      { where.push('c.center_name LIKE ?');   values.push(`%${center}%`);   }
     if (date)        { where.push('DATE(m.created_at) = ?'); values.push(date);            }
 
     // 추천인 username(문자)로 검색 지원
@@ -83,7 +97,7 @@ router.get('/', async (req, res) => {
       LEFT JOIN members rec ON m.recommender_id = rec.id
       LEFT JOIN centers c ON m.center_id = c.id
       ${whereClause}
-      ORDER BY m.created_at DESC
+      ORDER BY ${orderField} ${orderDir}
       LIMIT ? OFFSET ?
     `;
     const [rows] = await pool.query(

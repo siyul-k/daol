@@ -4,14 +4,15 @@ const router = express.Router();
 const pool = require('../db.cjs');
 const ExcelJS = require('exceljs');
 
-// 수당 목록 조회 (후원, 직급 내역 제외, created_at 시간 KST 변환 적용)
+// 수당 목록 조회 (후원, 직급 내역 제외, created_at 시간 KST 변환 적용, 기간검색/페이지네이션)
 router.get('/', async (req, res) => {
   const page = parseInt(req.query.page) || 1;
   const limit = parseInt(req.query.limit) || 10;
   const offset = (page - 1) * limit;
   const searchId = req.query.searchId || '';
   const type = req.query.type || '';
-  const date = req.query.date || '';
+  const startDate = req.query.startDate || '';
+  const endDate = req.query.endDate || '';
 
   let where = 'WHERE 1=1';
   const params = [];
@@ -24,9 +25,13 @@ router.get('/', async (req, res) => {
     where += ' AND r.type = ?';
     params.push(type);
   }
-  if (date) {
-    where += ' AND DATE(CONVERT_TZ(r.created_at, "+00:00", "+09:00")) = ?';
-    params.push(date);
+  if (startDate) {
+    where += ' AND DATE(CONVERT_TZ(r.created_at, "+00:00", "+09:00")) >= ?';
+    params.push(startDate);
+  }
+  if (endDate) {
+    where += ' AND DATE(CONVERT_TZ(r.created_at, "+00:00", "+09:00")) <= ?';
+    params.push(endDate);
   }
 
   // 후원/직급 내역 제외
@@ -64,11 +69,12 @@ router.get('/', async (req, res) => {
   }
 });
 
-// 수당 내역 엑셀 다운로드 (created_at 시간 KST 변환 적용)
+// 수당 내역 엑셀 다운로드 (기간검색 포함)
 router.get('/export', async (req, res) => {
   const searchId = req.query.searchId || '';
   const type = req.query.type || '';
-  const date = req.query.date || '';
+  const startDate = req.query.startDate || '';
+  const endDate = req.query.endDate || '';
 
   let where = 'WHERE 1=1';
   const params = [];
@@ -81,9 +87,13 @@ router.get('/export', async (req, res) => {
     where += ' AND r.type = ?';
     params.push(type);
   }
-  if (date) {
-    where += ' AND DATE(CONVERT_TZ(r.created_at, "+00:00", "+09:00")) = ?';
-    params.push(date);
+  if (startDate) {
+    where += ' AND DATE(CONVERT_TZ(r.created_at, "+00:00", "+09:00")) >= ?';
+    params.push(startDate);
+  }
+  if (endDate) {
+    where += ' AND DATE(CONVERT_TZ(r.created_at, "+00:00", "+09:00")) <= ?';
+    params.push(endDate);
   }
 
   // 후원/직급 내역 제외

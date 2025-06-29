@@ -1,35 +1,63 @@
 // ✅ 파일 경로: backend/routes/adminDeposits.cjs
+
 const express = require('express');
 const router = express.Router();
 const pool = require('../db.cjs');
 const ExcelJS = require('exceljs');
 
-// 1. 입금 통계 조회
+// 1. 입금 통계 조회 (금액 합계로 변경)
 router.get('/stats', async (req, res) => {
   const sql = `
     SELECT
-      COUNT(*) AS totalCount,
-      SUM(CASE WHEN DATE(CONVERT_TZ(created_at, '+00:00', '+09:00')) = CURDATE() THEN 1 ELSE 0 END) AS todayCount
+      IFNULL(SUM(amount), 0) AS totalAmount,
+      IFNULL(SUM(CASE WHEN DATE(CONVERT_TZ(created_at, '+00:00', '+09:00')) = CURDATE() THEN amount ELSE 0 END), 0) AS todayAmount
     FROM deposit_requests
+    WHERE status = '완료'
   `;
   try {
     const [rows] = await pool.query(sql);
-    res.json({ total: rows[0].totalCount, today: rows[0].todayCount });
+    res.json({ total: rows[0].totalAmount, today: rows[0].todayAmount });
   } catch (err) {
     res.status(500).json({ message: '통계 조회 실패' });
   }
 });
 
-// 2. 입금 목록 조회 (시간 KST 변환 포함)
-router.get('/', async (req, res) => {
-  const { username, status, date } = req.query;
-  const cond = [], params = [];
 
-  if (username) { cond.push('m.username = ?'); params.push(username); }
-  if (status) { cond.push('d.status = ?'); params.push(status); }
-  if (date) { cond.push('DATE(CONVERT_TZ(d.created_at, "+00:00", "+09:00")) = ?'); params.push(date); }
+// 2. 입금 목록 조회 (페이지네이션+기간검색)
+router.get('/', async (req, res) => {
+  let {
+    username, status, startDate, endDate,
+    page = 1, limit = 25,
+  } = req.query;
+
+  page = parseInt(page);
+  limit = parseInt(limit);
+
+  const cond = [], params = [];
+  if (username) cond.push('m.username = ?'), params.push(username);
+  if (status) cond.push('d.status = ?'), params.push(status);
+
+  if (startDate && endDate) {
+    cond.push('DATE(CONVERT_TZ(d.created_at, "+00:00", "+09:00")) BETWEEN ? AND ?');
+    params.push(startDate, endDate);
+  } else if (startDate) {
+    cond.push('DATE(CONVERT_TZ(d.created_at, "+00:00", "+09:00")) >= ?');
+    params.push(startDate);
+  } else if (endDate) {
+    cond.push('DATE(CONVERT_TZ(d.created_at, "+00:00", "+09:00")) <= ?');
+    params.push(endDate);
+  }
 
   const where = cond.length ? 'WHERE ' + cond.join(' AND ') : '';
+
+  // 전체 갯수 카운트
+  const countSql = `
+    SELECT COUNT(*) AS total
+    FROM deposit_requests d
+    LEFT JOIN members m ON d.member_id = m.id
+    ${where}
+  `;
+  // 데이터 쿼리
   const sql = `
     SELECT d.id, 
            CONVERT_TZ(d.created_at, '+00:00', '+09:00') AS created_at,
@@ -40,11 +68,19 @@ router.get('/', async (req, res) => {
     LEFT JOIN members m ON d.member_id = m.id
     ${where}
     ORDER BY d.created_at DESC
+    LIMIT ? OFFSET ?
   `;
 
   try {
-    const [rows] = await pool.query(sql, params);
-    res.json(rows);
+    // 1. total count
+    const [countRows] = await pool.query(countSql, params);
+    const total = countRows[0]?.total ?? 0;
+    // 2. data
+    const [rows] = await pool.query(
+      sql,
+      [...params, limit, (page - 1) * limit]
+    );
+    res.json({ data: rows, total });
   } catch (err) {
     res.status(500).json({ message: '입금 내역 조회 실패' });
   }
@@ -139,8 +175,23 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
-// 5. 엑셀 다운로드 (시간도 KST로 변환)
+// 5. 엑셀 다운로드 (필터/기간 동일 적용)
 router.get('/export', async (req, res) => {
+  let { username, status, startDate, endDate } = req.query;
+  const cond = [], params = [];
+  if (username) cond.push('m.username = ?'), params.push(username);
+  if (status) cond.push('d.status = ?'), params.push(status);
+  if (startDate && endDate) {
+    cond.push('DATE(CONVERT_TZ(d.created_at, "+00:00", "+09:00")) BETWEEN ? AND ?');
+    params.push(startDate, endDate);
+  } else if (startDate) {
+    cond.push('DATE(CONVERT_TZ(d.created_at, "+00:00", "+09:00")) >= ?');
+    params.push(startDate);
+  } else if (endDate) {
+    cond.push('DATE(CONVERT_TZ(d.created_at, "+00:00", "+09:00")) <= ?');
+    params.push(endDate);
+  }
+  const where = cond.length ? 'WHERE ' + cond.join(' AND ') : '';
   const sql = `
     SELECT d.id, m.username, m.name, d.status,
            d.account_holder, d.amount,
@@ -149,11 +200,11 @@ router.get('/export', async (req, res) => {
            d.memo
     FROM deposit_requests d
     LEFT JOIN members m ON d.member_id = m.id
+    ${where}
     ORDER BY d.created_at DESC
   `;
-
   try {
-    const [rows] = await pool.query(sql);
+    const [rows] = await pool.query(sql, params);
     const wb = new ExcelJS.Workbook();
     const ws = wb.addWorksheet('입금내역');
     ws.columns = [
