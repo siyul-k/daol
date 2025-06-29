@@ -1,7 +1,7 @@
 // ✅ 파일 위치: backend/routes/check-user.cjs
 const express = require('express');
 const router = express.Router();
-const connection = require('../db.cjs');
+const pool = require('../db.cjs');
 
 /**
  * GET /api/check-user
@@ -10,7 +10,7 @@ const connection = require('../db.cjs');
  * 예: /api/check-user?username=test
  * 예: /api/check-user?member_id=123
  */
-router.get('/', (req, res) => {
+router.get('/', async (req, res) => {
   const { username, member_id } = req.query;
 
   // 최소 하나의 파라미터 필요
@@ -28,16 +28,16 @@ router.get('/', (req, res) => {
     params = [username];
   }
 
-  connection.query(sql, params, (err, results) => {
-    if (err) return res.status(500).json({ success: false, message: 'DB error' });
-
+  try {
+    const [results] = await pool.query(sql, params);
     if (results.length === 0) {
       return res.json({ success: false, message: 'Not found' });
     }
-
     const { member_id, username, name } = results[0];
     res.json({ success: true, member_id, username, name });
-  });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'DB error' });
+  }
 });
 
 module.exports = router;

@@ -2,10 +2,10 @@
 
 const express = require('express');
 const router = express.Router();
-const connection = require('../db.cjs');
+const pool = require('../db.cjs');
 
 // ✅ 회원별 구매내역 조회 (username 기준)
-router.get('/', (req, res) => {
+router.get('/', async (req, res) => {
   const { username } = req.query;
 
   if (!username) {
@@ -28,14 +28,13 @@ router.get('/', (req, res) => {
     ORDER BY p.created_at DESC
   `;
 
-  connection.query(sql, [username], (err, results) => {
-    if (err) {
-      console.error('❌ 구매내역 조회 실패:', err);
-      return res.status(500).json({ error: '구매내역 조회 중 서버 오류' });
-    }
-
+  try {
+    const [results] = await pool.query(sql, [username]);
     res.json(results);
-  });
+  } catch (err) {
+    console.error('❌ 구매내역 조회 실패:', err);
+    res.status(500).json({ error: '구매내역 조회 중 서버 오류' });
+  }
 });
 
 module.exports = router;

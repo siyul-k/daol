@@ -1,10 +1,11 @@
 // ✅ 파일 경로: backend/routes/rank.cjs
+
 const express = require('express');
 const router = express.Router();
-const connection = require('../db.cjs');
+const pool = require('../db.cjs');
 
 // ✅ 회원의 rank 조회 (username 기반)
-router.get('/:username', (req, res) => {
+router.get('/:username', async (req, res) => {
   const { username } = req.params;
 
   // ✅ 요청 파라미터 검증
@@ -14,12 +15,8 @@ router.get('/:username', (req, res) => {
 
   const sql = 'SELECT id AS member_id, username, rank FROM members WHERE username = ? LIMIT 1';
 
-  connection.query(sql, [username], (err, rows) => {
-    if (err) {
-      console.error("❌ [rank.cjs] DB 오류:", err);
-      return res.status(500).json({ error: 'DB 오류', details: err });
-    }
-
+  try {
+    const [rows] = await pool.query(sql, [username]);
     if (!rows || rows.length === 0) {
       console.warn(`⚠️ [rank.cjs] 회원 없음: ${username}`);
       return res.status(404).json({ error: '회원 정보 없음' });
@@ -31,7 +28,10 @@ router.get('/:username', (req, res) => {
       username: rows[0].username,
       rank: rows[0].rank
     });
-  });
+  } catch (err) {
+    console.error("❌ [rank.cjs] DB 오류:", err);
+    return res.status(500).json({ error: 'DB 오류', details: err });
+  }
 });
 
 module.exports = router;

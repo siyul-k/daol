@@ -1,14 +1,15 @@
-// ✅ backend/routes/lookup.cjs
+// ✅ 파일 위치: backend/routes/lookup.cjs
+
 const express = require('express');
 const router = express.Router();
-const connection = require('../db.cjs');
+const pool = require('../db.cjs');
 
 // 센터명 → 센터 정보 반환
 router.get('/center', async (req, res) => {
   const { center } = req.query;
   try {
     if (center) {
-      const [centers] = await connection.promise().query(
+      const [centers] = await pool.query(
         `SELECT id, center_owner_id FROM centers WHERE center_name = ? LIMIT 1`,
         [center]
       );
@@ -17,7 +18,7 @@ router.get('/center', async (req, res) => {
       }
       const centerId = centers[0].id;
       const ownerId = centers[0].center_owner_id;
-      const [owners] = await connection.promise().query(
+      const [owners] = await pool.query(
         `SELECT id, name, username FROM members WHERE id = ? LIMIT 1`,
         [ownerId]
       );
@@ -50,7 +51,7 @@ router.get('/recommender', async (req, res) => {
     } else {
       return res.status(400).json({ message: 'username 혹은 member_id 필요' });
     }
-    const [results] = await connection.promise().query(sql, params);
+    const [results] = await pool.query(sql, params);
     if (results.length === 0) {
       return res.status(404).json({ message: '추천인 없음' });
     }

@@ -2,7 +2,7 @@
 
 const express = require('express');
 const router = express.Router();
-const connection = require('../db.cjs');
+const pool = require('../db.cjs');
 const bcrypt = require('bcrypt');
 
 // 추천인 계보 재계산 함수 (PK 기반)
@@ -10,7 +10,7 @@ async function getRecommenderLineage(recommenderId) {
   const lineage = [];
   let current = recommenderId;
   while (current && lineage.length < 15) {
-    const [rows] = await connection.promise().query(
+    const [rows] = await pool.query(
       'SELECT recommender_id FROM members WHERE id = ?',
       [current]
     );
@@ -46,7 +46,7 @@ router.get('/', async (req, res) => {
 
     // 추천인 username(문자)로 검색 지원
     if (recommender) {
-      const [[rec]] = await connection.promise().query(
+      const [[rec]] = await pool.query(
         'SELECT id FROM members WHERE username = ? LIMIT 1', [recommender]
       );
       if (rec?.id) {
@@ -68,7 +68,7 @@ router.get('/', async (req, res) => {
       LEFT JOIN centers c ON m.center_id = c.id
       ${whereClause}
     `;
-    const [countRes] = await connection.promise().query(countSql, values);
+    const [countRes] = await pool.query(countSql, values);
     const total = countRes[0].total;
 
     const dataSql = `
@@ -86,7 +86,7 @@ router.get('/', async (req, res) => {
       ORDER BY m.created_at DESC
       LIMIT ? OFFSET ?
     `;
-    const [rows] = await connection.promise().query(
+    const [rows] = await pool.query(
       dataSql,
       [...values, parseInt(limit), parseInt(offset)]
     );
@@ -106,7 +106,7 @@ router.post('/recommender', async (req, res) => {
       return res.status(400).json({ success: false, message: '필수값 누락' });
     }
 
-    const [check] = await connection.promise().query(
+    const [check] = await pool.query(
       'SELECT id FROM members WHERE id = ?',
       [new_recommender_id]
     );
@@ -136,7 +136,7 @@ router.post('/recommender', async (req, res) => {
       rec_11_id, rec_12_id, rec_13_id, rec_14_id, rec_15_id,
       member_id
     ];
-    await connection.promise().query(sql, values);
+    await pool.query(sql, values);
 
     res.json({ success: true, message: '추천인 변경 및 계보 재설정 완료' });
   } catch (err) {
@@ -184,16 +184,11 @@ router.put('/:id', async (req, res) => {
 
     const sql = `UPDATE members SET ${fields.join(', ')} WHERE id = ?`;
     values.push(id);
-    connection.query(sql, values, err => {
-      if (err) {
-        console.error('회원 수정 실패:', err);
-        return res.status(500).json({ error: '회원 수정 실패' });
-      }
-      res.json({ success: true });
-    });
+    await pool.query(sql, values);
+    res.json({ success: true });
   } catch (err) {
-    console.error('서버 오류:', err);
-    res.status(500).json({ error: '서버 오류' });
+    console.error('회원 수정 실패:', err);
+    res.status(500).json({ error: '회원 수정 실패' });
   }
 });
 
@@ -201,7 +196,7 @@ router.put('/:id', async (req, res) => {
 router.delete('/:id', async (req, res) => {
   const { id } = req.params;
   try {
-    const [[member]] = await connection.promise().query(
+    const [[member]] = await pool.query(
       'SELECT id, username FROM members WHERE id = ?',
       [id]
     );
@@ -209,7 +204,7 @@ router.delete('/:id', async (req, res) => {
       return res.status(404).json({ success: false, message: '회원이 존재하지 않습니다' });
     }
 
-    const [[refCount]] = await connection.promise().query(
+    const [[refCount]] = await pool.query(
       `SELECT COUNT(*) AS cnt FROM members WHERE recommender_id = ?`,
       [id]
     );
@@ -220,7 +215,7 @@ router.delete('/:id', async (req, res) => {
       });
     }
 
-    const [[depCount]] = await connection.promise().query(
+    const [[depCount]] = await pool.query(
       'SELECT COUNT(*) AS cnt FROM deposits WHERE member_id = ?',
       [id]
     );
@@ -231,7 +226,7 @@ router.delete('/:id', async (req, res) => {
       });
     }
 
-    const [[purCount]] = await connection.promise().query(
+    const [[purCount]] = await pool.query(
       'SELECT COUNT(*) AS cnt FROM purchase_history WHERE member_id = ?',
       [id]
     );
@@ -242,7 +237,7 @@ router.delete('/:id', async (req, res) => {
       });
     }
 
-    const [delResult] = await connection.promise().query(
+    const [delResult] = await pool.query(
       'DELETE FROM members WHERE id = ?',
       [id]
     );

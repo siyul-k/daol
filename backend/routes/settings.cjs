@@ -2,12 +2,12 @@
 
 const express = require('express');
 const router = express.Router();
-const connection = require('../db.cjs');
+const pool = require('../db.cjs');
 
-// 모든 설정 조회
+// 모든 설정 조회 (GET /api/settings)
 router.get('/', async (req, res) => {
   try {
-    const [rows] = await connection.promise().query(
+    const [rows] = await pool.query(
       'SELECT key_name, value FROM settings'
     );
     res.json(rows);

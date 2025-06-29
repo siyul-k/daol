@@ -1,7 +1,7 @@
 // ✅ 파일: backend/routes/updateRecommender.cjs
 const express = require('express');
 const router = express.Router();
-const connection = require('../db.cjs');
+const pool = require('../db.cjs'); // connection → pool
 
 // 추천인 15대 계보 (id 기준)
 async function getRecommenderLineage(recommenderId) {
@@ -9,7 +9,7 @@ async function getRecommenderLineage(recommenderId) {
   let current = recommenderId;
   while (current && lineage.length < 15) {
     lineage.push(current);
-    const [[row]] = await connection.promise().query(
+    const [[row]] = await pool.query(
       'SELECT recommender_id FROM members WHERE id = ?', [current]
     );
     current = row?.recommender_id || null;
@@ -25,14 +25,14 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ success: false, message: '필수값 누락' });
     }
     // username → id
-    const [[userRow]] = await connection.promise().query(
+    const [[userRow]] = await pool.query(
       'SELECT id FROM members WHERE username = ? LIMIT 1', [username]
     );
     if (!userRow) return res.status(404).json({ success: false, message: '대상 회원 없음' });
     const memberId = userRow.id;
 
     // newRecommender → id
-    const [[recRow]] = await connection.promise().query(
+    const [[recRow]] = await pool.query(
       'SELECT id FROM members WHERE username = ? LIMIT 1', [newRecommender]
     );
     if (!recRow) return res.status(404).json({ success: false, message: '신규 추천인 없음' });
@@ -59,7 +59,7 @@ router.post('/', async (req, res) => {
     // 디버그: 바인딩 값 길이 반드시 16개(추천인 + 15대 + member_id)
     console.log('바인딩 값:', values, '길이:', values.length);
 
-    await connection.promise().query(sql, values);
+    await pool.query(sql, values);
 
     res.json({ success: true, message: '추천인 및 계보 업데이트 완료' });
   } catch (err) {

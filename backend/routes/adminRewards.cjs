@@ -1,10 +1,11 @@
+// ✅ 파일 위치: backend/routes/adminRewards.cjs
 const express = require('express');
 const router = express.Router();
-const connection = require('../db.cjs');
+const pool = require('../db.cjs');
 const ExcelJS = require('exceljs');
 
 // 수당 목록 조회 (후원, 직급 내역 제외, created_at 시간 KST 변환 적용)
-router.get('/', (req, res) => {
+router.get('/', async (req, res) => {
   const page = parseInt(req.query.page) || 1;
   const limit = parseInt(req.query.limit) || 10;
   const offset = (page - 1) * limit;
@@ -52,15 +53,15 @@ router.get('/', (req, res) => {
     LIMIT ? OFFSET ?
   `;
 
-  connection.query(countSql, params, (err, countResult) => {
-    if (err) return res.status(500).json({ error: '카운트 조회 실패' });
+  try {
+    const [countResult] = await pool.query(countSql, params);
     const total = countResult[0].total;
 
-    connection.query(dataSql, [...params, limit, offset], (err2, rows) => {
-      if (err2) return res.status(500).json({ error: '목록 조회 실패' });
-      res.json({ data: rows, total });
-    });
-  });
+    const [rows] = await pool.query(dataSql, [...params, limit, offset]);
+    res.json({ data: rows, total });
+  } catch (err) {
+    res.status(500).json({ error: '목록 조회 실패' });
+  }
 });
 
 // 수당 내역 엑셀 다운로드 (created_at 시간 KST 변환 적용)
@@ -102,42 +103,40 @@ router.get('/export', async (req, res) => {
     ORDER BY r.created_at DESC
   `;
 
-  connection.query(query, params, async (err, results) => {
-    if (err) return res.status(500).json({ error: '엑셀 쿼리 실패' });
+  try {
+    const [results] = await pool.query(query, params);
 
-    try {
-      const workbook = new ExcelJS.Workbook();
-      const sheet = workbook.addWorksheet('수당내역');
+    const workbook = new ExcelJS.Workbook();
+    const sheet = workbook.addWorksheet('수당내역');
 
-      sheet.columns = [
-        { header: '등록일', key: 'created_at_kst', width: 20 },
-        { header: '종류', key: 'type', width: 15 },
-        { header: '아이디', key: 'member_username', width: 15 },
-        { header: '포인트', key: 'amount', width: 15 },
-        { header: '수당원천', key: 'source_username', width: 15 },
-        { header: '상세내용', key: 'memo', width: 30 },
-      ];
+    sheet.columns = [
+      { header: '등록일', key: 'created_at_kst', width: 20 },
+      { header: '종류', key: 'type', width: 15 },
+      { header: '아이디', key: 'member_username', width: 15 },
+      { header: '포인트', key: 'amount', width: 15 },
+      { header: '수당원천', key: 'source_username', width: 15 },
+      { header: '상세내용', key: 'memo', width: 30 },
+    ];
 
-      results.forEach((row) => {
-        sheet.addRow({
-          created_at_kst: new Date(row.created_at_kst).toLocaleString('ko-KR'),
-          type: row.type,
-          member_username: row.member_username,
-          amount: row.amount,
-          source_username: row.source_username,
-          memo: row.memo,
-        });
+    results.forEach((row) => {
+      sheet.addRow({
+        created_at_kst: new Date(row.created_at_kst).toLocaleString('ko-KR'),
+        type: row.type,
+        member_username: row.member_username,
+        amount: row.amount,
+        source_username: row.source_username,
+        memo: row.memo,
       });
+    });
 
-      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-      res.setHeader('Content-Disposition', 'attachment; filename=rewards_export.xlsx');
-      await workbook.xlsx.write(res);
-      res.end();
-    } catch (error) {
-      console.error('엑셀 생성 실패:', error);
-      res.status(500).json({ error: '엑셀 생성 실패' });
-    }
-  });
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', 'attachment; filename=rewards_export.xlsx');
+    await workbook.xlsx.write(res);
+    res.end();
+  } catch (error) {
+    console.error('엑셀 생성 실패:', error);
+    res.status(500).json({ error: '엑셀 생성 실패' });
+  }
 });
 
 module.exports = router;

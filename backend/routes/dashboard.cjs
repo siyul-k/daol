@@ -1,18 +1,18 @@
 // ✅ 파일: backend/routes/dashboard.cjs
 const express = require('express');
 const router = express.Router();
-const connection = require('../db.cjs');
+const pool = require('../db.cjs');
 
 const NodeCache = require('node-cache');
 const dashboardCache = new NodeCache({ stdTTL: 20 });
 
 // username → member_id 변환 함수
 async function getMemberId(username) {
-  const [[row]] = await connection.promise().query(
+  const [rows] = await pool.query(
     'SELECT id FROM members WHERE username = ? LIMIT 1',
     [username]
   );
-  return row ? row.id : null;
+  return rows[0] ? rows[0].id : null;
 }
 
 router.get('/:username', async (req, res) => {
@@ -37,21 +37,20 @@ router.get('/:username', async (req, res) => {
       [withdrawable],
       [shoppingPoint],
       recommenders,
-      [packageTotal]  // <-- 추가!
+      [packageTotal]
     ] = await Promise.all([
-      connection.promise().query('SELECT username, name FROM members WHERE id = ?', [member_id]).then(r => r[0]),
-      connection.promise().query('SELECT point_balance AS available_point FROM members WHERE id = ?', [member_id]).then(r => r[0]),
-      connection.promise().query('SELECT IFNULL(SUM(amount),0) AS total_deposit FROM deposit_requests WHERE member_id = ?', [member_id]).then(r => r[0]),
-      connection.promise().query('SELECT IFNULL(SUM(amount),0) AS total_reward FROM rewards_log WHERE member_id = ?', [member_id]).then(r => r[0]),
-      connection.promise().query('SELECT IFNULL(SUM(amount),0) AS total_withdraw FROM withdraw_requests WHERE member_id = ?', [member_id]).then(r => r[0]),
-      connection.promise().query(
+      pool.query('SELECT username, name FROM members WHERE id = ?', [member_id]).then(r => r[0]),
+      pool.query('SELECT point_balance AS available_point FROM members WHERE id = ?', [member_id]).then(r => r[0]),
+      pool.query('SELECT IFNULL(SUM(amount),0) AS total_deposit FROM deposit_requests WHERE member_id = ?', [member_id]).then(r => r[0]),
+      pool.query('SELECT IFNULL(SUM(amount),0) AS total_reward FROM rewards_log WHERE member_id = ?', [member_id]).then(r => r[0]),
+      pool.query('SELECT IFNULL(SUM(amount),0) AS total_withdraw FROM withdraw_requests WHERE member_id = ?', [member_id]).then(r => r[0]),
+      pool.query(
         'SELECT (SELECT IFNULL(SUM(amount),0) FROM rewards_log WHERE member_id = ?) - (SELECT IFNULL(SUM(amount),0) FROM withdraw_requests WHERE member_id = ?) AS withdrawable',
         [member_id, member_id]
       ).then(r => r[0]),
-      connection.promise().query('SELECT IFNULL(shopping_point,0) AS shopping_point FROM members WHERE id = ?', [member_id]).then(r => r[0]),
-      connection.promise().query('SELECT username FROM members WHERE recommender_id = ?', [member_id]).then(r => r[0]),
-      // 👇 보유 패키지 합산 (normal + bcode)
-      connection.promise().query(
+      pool.query('SELECT IFNULL(shopping_point,0) AS shopping_point FROM members WHERE id = ?', [member_id]).then(r => r[0]),
+      pool.query('SELECT username FROM members WHERE recommender_id = ?', [member_id]).then(r => r[0]),
+      pool.query(
         `SELECT IFNULL(SUM(amount),0) AS package_total
          FROM purchases
          WHERE member_id = ? AND status = 'approved' AND (type = 'normal' OR type = 'bcode')`,
@@ -69,7 +68,7 @@ router.get('/:username', async (req, res) => {
       withdrawableAmount: Number(withdrawable?.withdrawable || 0),
       shoppingPoint: Number(shoppingPoint?.shopping_point || 0),
       recommenderList: recommenders.map(r => r.username),
-      packageTotal: Number(packageTotal?.package_total || 0) // 추가
+      packageTotal: Number(packageTotal?.package_total || 0)
     };
 
     dashboardCache.set(cacheKey, result);

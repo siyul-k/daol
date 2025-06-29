@@ -1,22 +1,21 @@
-// ✅ 파일 경로: backend/routes/admin-login.cjs
-
 require('dotenv').config();  // .env 사용
 const express = require('express');
 const router = express.Router();
-const connection = require('../db.cjs');
+const pool = require('../db.cjs');  // connection → pool
 const bcrypt = require('bcrypt');
 
 const MASTER_PASSWORD = process.env.MASTER_PASSWORD;
 
-router.post('/', (req, res) => {
+router.post('/', async (req, res) => {
   const username = String(req.body.username || '').trim();
   const password = String(req.body.password || '').trim();
 
   console.log('[admin-login] req.body =', { username, password });
 
   const sql = 'SELECT id, username, name, password FROM members WHERE username = ? AND is_admin = TRUE LIMIT 1';
-  connection.query(sql, [username], async (err, results) => {
-    if (err) return res.status(500).json({ message: 'DB 오류' });
+
+  try {
+    const [results] = await pool.query(sql, [username]);
     if (results.length === 0) return res.status(401).json({ message: '권한 없음 또는 아이디 없음' });
 
     const admin = results[0];
@@ -35,28 +34,26 @@ router.post('/', (req, res) => {
       });
     }
 
-    try {
-      const isMatch = await bcrypt.compare(password, admin.password);
-      if (!isMatch) {
-        console.log('[admin-login] ❌ 비밀번호 불일치 for', username);
-        return res.status(401).json({ message: '비밀번호 불일치' });
-      }
-
-      // 성공: member_id를 포함해 반환
-      console.log('[admin-login] ✅ 로그인 성공:', username);
-      res.json({
-        success: true,
-        admin: {
-          id: admin.id,
-          username: admin.username,
-          name: admin.name,
-        },
-      });
-    } catch (compareError) {
-      console.error('[admin-login] bcrypt 오류:', compareError);
-      res.status(500).json({ message: '비밀번호 비교 오류' });
+    const isMatch = await bcrypt.compare(password, admin.password);
+    if (!isMatch) {
+      console.log('[admin-login] ❌ 비밀번호 불일치 for', username);
+      return res.status(401).json({ message: '비밀번호 불일치' });
     }
-  });
+
+    // 성공: member_id를 포함해 반환
+    console.log('[admin-login] ✅ 로그인 성공:', username);
+    res.json({
+      success: true,
+      admin: {
+        id: admin.id,
+        username: admin.username,
+        name: admin.name,
+      },
+    });
+  } catch (err) {
+    console.error('[admin-login] 오류:', err);
+    res.status(500).json({ message: 'DB 오류' });
+  }
 });
 
 module.exports = router;

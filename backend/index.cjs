@@ -103,10 +103,10 @@ app.listen(port, () => {
 });
 
 // ✅ DB 연결
-connection.connect(err => {
-  if (err) console.error('❌ MySQL 연결 실패:', err);
-  else console.log('✅ MySQL 연결 성공!');
-});
+//connection.connect(err => {
+ // if (err) console.error('❌ MySQL 연결 실패:', err);
+ // else console.log('✅ MySQL 연결 성공!');
+//});
 
 // ✅ 통합 스케줄러 실행
 require('./schedulers/rewardScheduler.cjs');

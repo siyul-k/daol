@@ -1,10 +1,10 @@
 // ✅ 파일 경로: backend/routes/withdrawCheck.cjs
 const express = require('express');
 const router = express.Router();
-const connection = require('../db.cjs');
+const pool = require('../db.cjs'); // connection → pool
 
 const getSetting = async (key) => {
-  const [rows] = await connection.promise().query(
+  const [rows] = await pool.query(
     'SELECT value FROM settings WHERE key_name = ? LIMIT 1',
     [key]
   );

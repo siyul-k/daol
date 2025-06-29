@@ -2,11 +2,11 @@
 
 const express = require('express');
 const router = express.Router();
-const connection = require('../db.cjs');
+const pool = require('../db.cjs'); // connection → pool
 
 // username → member_id 변환 함수
 async function getMemberId(username) {
-  const [[row]] = await connection.promise().query(
+  const [[row]] = await pool.query(
     'SELECT id FROM members WHERE username = ? LIMIT 1',
     [username]
   );
@@ -23,7 +23,7 @@ router.get('/:username', async (req, res) => {
       return res.status(404).json({ error: '존재하지 않는 회원입니다.' });
     }
 
-    const [rows] = await connection.promise().query(
+    const [rows] = await pool.query(
       `SELECT IFNULL(SUM(amount), 0) AS total_withdraw
        FROM withdraw_requests
        WHERE member_id = ? AND status IN ('요청', '완료')`,

@@ -2,7 +2,7 @@
 
 const express = require('express');
 const router = express.Router();
-const connection = require('../db.cjs');
+const pool = require('../db.cjs');  // connection → pool
 const getMemberId = require('../utils/getMemberId.cjs');
 
 // 출금가능 포인트 조회 API (withdrawable_point 즉시 반환)
@@ -17,7 +17,7 @@ router.get('/:username', async (req, res) => {
     }
 
     // ✅ members.withdrawable_point 값만 즉시 반환 (초고속)
-    const [[row]] = await connection.promise().query(
+    const [[row]] = await pool.query(
       'SELECT withdrawable_point FROM members WHERE id = ?',
       [member_id]
     );

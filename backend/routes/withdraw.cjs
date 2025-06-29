@@ -2,10 +2,10 @@
 
 const express = require('express');
 const router = express.Router();
-const connection = require('../db.cjs');
+const pool = require('../db.cjs');  // connection → pool
 
 async function getSetting(key) {
-  const [[row]] = await connection.promise().query(
+  const [[row]] = await pool.query(
     `SELECT value FROM settings WHERE key_name = ? LIMIT 1`,
     [key]
   );
@@ -24,7 +24,7 @@ router.post('/', async (req, res) => {
 
   try {
     // 출금 금지 상태 체크
-    const [[userRow]] = await connection.promise().query(
+    const [[userRow]] = await pool.query(
       `SELECT id, is_withdraw_blocked FROM members WHERE username = ? LIMIT 1`,
       [username]
     );
@@ -37,7 +37,7 @@ router.post('/', async (req, res) => {
     const member_id = userRow.id;
 
     // 중복 신청 방지
-    const [[existing]] = await connection.promise().query(
+    const [[existing]] = await pool.query(
       `SELECT id FROM withdraw_requests
        WHERE member_id = ? AND amount = ? AND status = '요청'
        AND created_at >= NOW() - INTERVAL 10 SECOND`,
@@ -56,7 +56,7 @@ router.post('/', async (req, res) => {
     const payout = afterFee - shopping_point;
 
     // 출금요청 등록
-    await connection.promise().query(
+    await pool.query(
       `INSERT INTO withdraw_requests
        (member_id, username, type, amount, fee, payout, shopping_point,
         bank_name, account_holder, account_number,
@@ -81,7 +81,7 @@ router.get('/', async (req, res) => {
   try {
     // member_id 없으면 username으로 변환
     if (!_member_id && username) {
-      const [[userRow]] = await connection.promise().query(
+      const [[userRow]] = await pool.query(
         `SELECT id FROM members WHERE username = ? LIMIT 1`,
         [username]
       );
@@ -92,7 +92,7 @@ router.get('/', async (req, res) => {
       return res.status(400).json({ error: 'username 또는 member_id 쿼리 파라미터가 필요합니다.' });
     }
 
-    const [rows] = await connection.promise().query(
+    const [rows] = await pool.query(
       `SELECT id, type, status, amount, fee, payout, shopping_point,
               bank_name, account_holder, account_number,
               memo, created_at

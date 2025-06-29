@@ -3,14 +3,14 @@
 const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcrypt');
-const connection = require('../db.cjs');
+const pool = require('../db.cjs'); // connection → pool로 명칭만 변경
 
 // 계보 추적 (id기반)
 async function getRecommenderLineageIds(startId) {
   const lineage = [];
   let currentId = startId;
   while (currentId && lineage.length < 15) {
-    const [[row]] = await connection.promise().query(
+    const [[row]] = await pool.query(
       'SELECT recommender_id FROM members WHERE id = ?', [currentId]
     );
     lineage.push(currentId);
@@ -34,7 +34,7 @@ router.post('/', async (req, res) => {
     }
 
     // 아이디 중복 체크
-    const [existing] = await connection.promise().query(
+    const [existing] = await pool.query(
       'SELECT id FROM members WHERE username = ?', [username]
     );
     if (existing.length > 0) {
@@ -42,7 +42,7 @@ router.post('/', async (req, res) => {
     }
 
     // ⭐️ members 테이블에서 추천인 실제 존재 여부만 확인
-    const [[recommenderRow]] = await connection.promise().query(
+    const [[recommenderRow]] = await pool.query(
       'SELECT id FROM members WHERE id = ? LIMIT 1', [recommender_id]
     );
     if (!recommenderRow) {
@@ -50,7 +50,7 @@ router.post('/', async (req, res) => {
     }
 
     // ⭐️ 센터 실제 존재 여부도 체크 (추가: 안정성)
-    const [[centerRow]] = await connection.promise().query(
+    const [[centerRow]] = await pool.query(
       'SELECT id FROM centers WHERE id = ? LIMIT 1', [center_id]
     );
     if (!centerRow) {
@@ -81,7 +81,7 @@ router.post('/', async (req, res) => {
       rec_11_id, rec_12_id, rec_13_id, rec_14_id, rec_15_id
     ];
 
-    await connection.promise().query(sql, values);
+    await pool.query(sql, values);
     res.json({ success: true, message: '가입 완료' });
   } catch (err) {
     console.error('❌ 회원가입 오류:', err.sqlMessage || err.message);

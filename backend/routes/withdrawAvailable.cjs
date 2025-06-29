@@ -1,7 +1,7 @@
 // ✅ 파일 경로: backend/routes/withdrawAvailable.cjs
 const express = require('express');
 const router = express.Router();
-const connection = require('../db.cjs');
+const pool = require('../db.cjs');  // connection → pool
 
 // 이번주 월요일 00:00 구하기
 function getWeekStart() {
@@ -14,7 +14,7 @@ function getWeekStart() {
 
 // ✅ username → member_id 변환 함수
 async function getMemberId(username) {
-  const [[row]] = await connection.promise().query(
+  const [[row]] = await pool.query(
     'SELECT id FROM members WHERE username = ? LIMIT 1',
     [username]
   );
@@ -34,14 +34,14 @@ router.get('/', async (req, res) => {
     const weekStart = getWeekStart();
 
     // ✅ 일반 수당 (센터피/센터추천 제외, 전체기간)
-    const [normalRewards] = await connection.promise().query(
+    const [normalRewards] = await pool.query(
       `SELECT IFNULL(SUM(amount), 0) AS total
        FROM rewards_log
        WHERE member_id = ? AND type NOT IN ('center', 'center_recommend')`,
       [member_id]
     );
 
-    const [normalWithdraws] = await connection.promise().query(
+    const [normalWithdraws] = await pool.query(
       `SELECT IFNULL(SUM(amount), 0) AS total
        FROM withdraw_requests
        WHERE member_id = ? AND type = 'normal' AND status IN ('요청', '완료')`,
@@ -49,7 +49,7 @@ router.get('/', async (req, res) => {
     );
 
     // ✅ 센터피 수당 - "이번주 지급분 제외" (이번주 월요일 이전 지급분만!)
-    const [centerRewards] = await connection.promise().query(
+    const [centerRewards] = await pool.query(
       `SELECT IFNULL(SUM(amount), 0) AS total
        FROM rewards_log
        WHERE member_id = ?
@@ -58,7 +58,7 @@ router.get('/', async (req, res) => {
       [member_id, weekStart]
     );
 
-    const [centerWithdraws] = await connection.promise().query(
+    const [centerWithdraws] = await pool.query(
       `SELECT IFNULL(SUM(amount), 0) AS total
        FROM withdraw_requests
        WHERE member_id = ? AND type = 'center' AND status IN ('요청', '완료')`,

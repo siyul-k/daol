@@ -2,7 +2,7 @@
 
 const express = require('express');
 const router = express.Router();
-const connection = require('../db.cjs');
+const pool = require('../db.cjs');
 
 // 1. member_id 기준
 router.get('/member/:member_id', async (req, res) => {
@@ -15,7 +15,7 @@ router.get('/member/:member_id', async (req, res) => {
   `;
 
   try {
-    const [rows] = await connection.promise().query(sql, [member_id]);
+    const [rows] = await pool.query(sql, [member_id]);
     res.json({ total_deposit: rows[0].total_deposit });
   } catch (err) {
     console.error('❌ 총 입금액 조회 실패:', err);
@@ -34,7 +34,7 @@ router.get('/username/:username', async (req, res) => {
   `;
 
   try {
-    const [rows] = await connection.promise().query(sql, [username]);
+    const [rows] = await pool.query(sql, [username]);
     res.json({ total_deposit: rows[0].total_deposit });
   } catch (err) {
     console.error('❌ 총 입금액 조회 실패:', err);
@@ -53,7 +53,7 @@ router.get('/:username', async (req, res) => {
   `;
 
   try {
-    const [rows] = await connection.promise().query(sql, [username]);
+    const [rows] = await pool.query(sql, [username]);
     res.json({ total_deposit: rows[0].total_deposit });
   } catch (err) {
     console.error('❌ 총 입금액 조회 실패:', err);

@@ -1,13 +1,12 @@
-// ✅ 파일 위치: backend/routes/adminAdmins.cjs
 const express = require('express');
 const router = express.Router();
-const connection = require('../db.cjs');
+const pool = require('../db.cjs');  // connection → pool
 const bcrypt = require('bcrypt');
 
 // ✅ 관리자 목록 조회 (PK, username, name만 반환)
 router.get('/', async (req, res) => {
   try {
-    const [rows] = await connection.promise().query(
+    const [rows] = await pool.query(
       'SELECT id, username, name FROM members WHERE is_admin = 1'
     );
     res.json(rows);
@@ -26,7 +25,7 @@ router.post('/', async (req, res) => {
 
   try {
     // 아이디 중복 체크
-    const [exist] = await connection.promise().query(
+    const [exist] = await pool.query(
       'SELECT id FROM members WHERE username = ?',
       [username]
     );
@@ -38,7 +37,7 @@ router.post('/', async (req, res) => {
     const hashed = await bcrypt.hash(password, 10);
 
     // DB에 관리자 추가
-    await connection.promise().query(
+    await pool.query(
       'INSERT INTO members (username, name, password, is_admin) VALUES (?, ?, ?, 1)',
       [username, name, hashed]
     );
@@ -54,7 +53,7 @@ router.post('/', async (req, res) => {
 router.delete('/:id', async (req, res) => {
   const { id } = req.params;
   try {
-    await connection.promise().query(
+    await pool.query(
       'DELETE FROM members WHERE id = ? AND is_admin = 1',
       [id]
     );

@@ -1,10 +1,10 @@
 // ✅ 파일 위치: backend/routes/adminNotices.cjs
 const express    = require('express');
 const router     = express.Router();
-const connection = require('../db.cjs');
+const pool       = require('../db.cjs');
 
 // 1) 공지사항 목록 조회
-router.get('/', (req, res) => {
+router.get('/', async (req, res) => {
   const sql = `
     SELECT
       id,
@@ -14,17 +14,17 @@ router.get('/', (req, res) => {
     FROM notices
     ORDER BY created_at DESC
   `;
-  connection.query(sql, (err, rows) => {
-    if (err) {
-      console.error('❌ 공지 목록 조회 실패:', err);
-      return res.status(500).json({ error: 'DB 조회 실패' });
-    }
+  try {
+    const [rows] = await pool.query(sql);
     res.json(rows);
-  });
+  } catch (err) {
+    console.error('❌ 공지 목록 조회 실패:', err);
+    res.status(500).json({ error: 'DB 조회 실패' });
+  }
 });
 
 // 2) 공지사항 등록
-router.post('/', (req, res) => {
+router.post('/', async (req, res) => {
   const { title, content } = req.body;
   if (!title?.trim() || !content?.trim()) {
     return res.status(400).json({ error: '제목과 내용을 입력해주세요.' });
@@ -36,17 +36,17 @@ router.post('/', (req, res) => {
     VALUES
       (?, ?, NOW())
   `;
-  connection.query(sql, [title.trim(), content.trim()], (err, result) => {
-    if (err) {
-      console.error('❌ 공지 등록 실패:', err);
-      return res.status(500).json({ error: '공지 등록 실패' });
-    }
+  try {
+    const [result] = await pool.query(sql, [title.trim(), content.trim()]);
     res.json({ success: true, id: result.insertId });
-  });
+  } catch (err) {
+    console.error('❌ 공지 등록 실패:', err);
+    res.status(500).json({ error: '공지 등록 실패' });
+  }
 });
 
 // 3) 공지사항 수정
-router.put('/:id', (req, res) => {
+router.put('/:id', async (req, res) => {
   const { title, content } = req.body;
   const sql = `
     UPDATE notices
@@ -54,31 +54,31 @@ router.put('/:id', (req, res) => {
         content = ?
     WHERE id = ?
   `;
-  connection.query(sql, [title, content, req.params.id], (err, result) => {
-    if (err) {
-      console.error('❌ 공지 수정 실패:', err);
-      return res.status(500).json({ error: '수정 실패' });
-    }
+  try {
+    const [result] = await pool.query(sql, [title, content, req.params.id]);
     if (result.affectedRows === 0) {
       return res.status(404).json({ error: '공지 없음' });
     }
     res.json({ success: true });
-  });
+  } catch (err) {
+    console.error('❌ 공지 수정 실패:', err);
+    res.status(500).json({ error: '수정 실패' });
+  }
 });
 
 // 4) 공지사항 삭제
-router.delete('/:id', (req, res) => {
+router.delete('/:id', async (req, res) => {
   const sql = 'DELETE FROM notices WHERE id = ?';
-  connection.query(sql, [req.params.id], (err, result) => {
-    if (err) {
-      console.error('❌ 공지 삭제 실패:', err);
-      return res.status(500).json({ error: '삭제 실패' });
-    }
+  try {
+    const [result] = await pool.query(sql, [req.params.id]);
     if (result.affectedRows === 0) {
       return res.status(404).json({ error: '공지 없음' });
     }
     res.json({ success: true });
-  });
+  } catch (err) {
+    console.error('❌ 공지 삭제 실패:', err);
+    res.status(500).json({ error: '삭제 실패' });
+  }
 });
 
 module.exports = router;

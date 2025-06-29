@@ -2,7 +2,7 @@
 
 const express = require('express');
 const router = express.Router();
-const connection = require('../db.cjs');
+const pool = require('../db.cjs'); // connection → pool
 
 // ✅ 추천인 기준 조직도 트리 구성 함수 (id 기반)
 function buildRecommenderTree(members, parentId = null) {
@@ -18,12 +18,10 @@ function buildRecommenderTree(members, parentId = null) {
     }));
 }
 
-// ✅ 후원인 기준 조직도 트리 함수 완전 삭제 (더 이상 사용하지 않음)
-
 // ✅ 추천인 계보 조직도 API (전체 트리): /api/tree/full
 router.get('/full', async (req, res) => {
   try {
-    const [rows] = await connection.promise().query(`
+    const [rows] = await pool.query(`
       SELECT id, username, name, recommender_id, created_at,
         IFNULL((SELECT SUM(pv) FROM purchases WHERE member_id = m.id AND status = 'approved'), 0) AS sales
       FROM members m
@@ -37,14 +35,12 @@ router.get('/full', async (req, res) => {
   }
 });
 
-// ✅ 후원 트리 관련 API 완전 삭제
-
 // ✅ 추천인 계보 조직도 API (회원 전용): /api/tree/recommend?id=2
 router.get('/recommend', async (req, res) => {
   const { id } = req.query;
 
   try {
-    const [rows] = await connection.promise().query(`
+    const [rows] = await pool.query(`
       SELECT id, username, name, recommender_id, created_at,
         IFNULL((SELECT SUM(pv) FROM purchases WHERE member_id = m.id AND status = 'approved'), 0) AS sales
       FROM members m

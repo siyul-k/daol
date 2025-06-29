@@ -19,72 +19,83 @@ export default function SignupPage() {
     phone: "",
   });
 
-  // 유저네임: 영어, 숫자만 허용
+  const [errors, setErrors] = useState({});
+  const [centerChecked, setCenterChecked] = useState(false);
+  const [recommenderChecked, setRecommenderChecked] = useState(false);
+
   const usernameRegex = /^[a-zA-Z0-9]*$/;
 
-  // 입력 변경 핸들러
+  // 입력 변경 핸들러 (입력 시 체크 해제)
   const handleChange = (e) => {
     const { name, value } = e.target;
-    if (name === "username") {
-      if (!usernameRegex.test(value)) return; // 영어, 숫자 외 입력 무시
-    }
-    setForm({ ...form, [name]: value });
+    setForm((prev) => ({ ...prev, [name]: value }));
+    setErrors((prev) => ({ ...prev, [name]: "" }));
+    if (name === "center") setCenterChecked(false);
+    if (name === "recommender") setRecommenderChecked(false);
   };
 
-  // 유저 정보 확인 (센터, 추천인)
+  // 센터/추천인 정보 확인
   const checkUser = async (type) => {
-  try {
-    const value = form[type];
-    if (!value) return;
-    let res;
-    if (type === "center") {
-      res = await axios.get(`/api/lookup/center`, {
-        params: { center: value },
-      });
-      setForm((prev) => ({ ...prev, centerName: res.data.owner_name }));
-    } else if (type === "recommender") {
-      res = await axios.get(`/api/lookup/recommender`, {
-        params: { username: value },
-      });
-      setForm((prev) => ({ ...prev, recommenderName: res.data.name }));
+    setErrors((prev) => ({ ...prev, [type + "Check"]: "" }));
+    try {
+      const value = form[type];
+      if (!value) {
+        setErrors((prev) => ({ ...prev, [type]: "이 항목을 입력해주세요." }));
+        return;
+      }
+      let res;
+      if (type === "center") {
+        res = await axios.get(`/api/lookup/center`, { params: { center: value } });
+        setForm((prev) => ({ ...prev, centerName: res.data.owner_name }));
+        setCenterChecked(true);
+      } else if (type === "recommender") {
+        res = await axios.get(`/api/lookup/recommender`, { params: { username: value } });
+        setForm((prev) => ({ ...prev, recommenderName: res.data.name }));
+        setRecommenderChecked(true);
+      }
+    } catch (err) {
+      if (type === "center") {
+        setForm((prev) => ({ ...prev, centerName: "" }));
+        setCenterChecked(false);
+        setErrors((prev) => ({ ...prev, center: "존재하지 않는 센터입니다." }));
+      } else if (type === "recommender") {
+        setForm((prev) => ({ ...prev, recommenderName: "" }));
+        setRecommenderChecked(false);
+        setErrors((prev) => ({ ...prev, recommender: "존재하지 않는 추천인입니다." }));
+      }
     }
-  } catch (err) {
-    alert("아이디를 확인하세요");
-    if (type === "center") {
-      setForm((prev) => ({ ...prev, centerName: "" }));
-    } else if (type === "recommender") {
-      setForm((prev) => ({ ...prev, recommenderName: "" }));
-    }
-  }
-};
-
+  };
 
   // 회원가입 요청
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // 아이디 입력 체크 (영어+숫자)
-    if (!usernameRegex.test(form.username) || !form.username) {
-      alert("아이디는 영어와 숫자만 입력 가능합니다.");
-      return;
-    }
+    // 필수 입력 체크
+    const newErrors = {};
+    if (!form.username) newErrors.username = "이 항목을 입력해주세요.";
+    else if (!usernameRegex.test(form.username)) newErrors.username = "영어/숫자만 입력하세요.";
+    if (!form.name) newErrors.name = "이 항목을 입력해주세요.";
+    if (!form.password) newErrors.password = "이 항목을 입력해주세요.";
+    if (!form.center) newErrors.center = "이 항목을 입력해주세요.";
+    if (!form.recommender) newErrors.recommender = "이 항목을 입력해주세요.";
+    if (!form.phone) newErrors.phone = "이 항목을 입력해주세요.";
+
+    if (!centerChecked) newErrors.centerCheck = "센터장 확인 버튼을 눌러주세요.";
+    if (!recommenderChecked) newErrors.recommenderCheck = "추천인 확인 버튼을 눌러주세요.";
+
+    setErrors(newErrors);
+
+    if (Object.keys(newErrors).length > 0) return;
 
     try {
-      // 1. username → id 변환 (각 API로 조회)
+      // id값 기반 회원가입 요청
       const [centerRes, recommenderRes] = await Promise.all([
         axios.get(`/api/lookup/center`, { params: { center: form.center } }),
         axios.get(`/api/lookup/recommender`, { params: { username: form.recommender } }),
       ]);
-
       const center_id = centerRes.data.id;
       const recommender_id = recommenderRes.data.id;
 
-      if (!center_id || !recommender_id) {
-        alert("센터/추천인 아이디를 확인하세요.");
-        return;
-      }
-
-      // 2. id값 기반 회원가입 요청
       const payload = {
         username: form.username,
         password: form.password,
@@ -95,7 +106,7 @@ export default function SignupPage() {
         recommender_id,
       };
 
-      const res = await axios.post(`/api/signup`, payload);
+      await axios.post(`/api/signup`, payload);
       alert("가입이 성공적으로 완료되었습니다!");
       navigate("/login");
     } catch (err) {
@@ -107,6 +118,38 @@ export default function SignupPage() {
       }
     }
   };
+
+  // 인풋 스타일
+  const inputStyle = (err) => ({
+    border: err ? "1.5px solid #ef4444" : "1px solid #d1d5db",
+    outline: "none",
+    borderRadius: "6px",
+    padding: "12px",
+    fontSize: "15px",
+    background: "#fafafa",
+    color: "#222",
+    marginBottom: "2px"
+  });
+
+  // 파란 버튼 스타일
+  const blueBtnStyle = {
+    padding: "0.75rem",
+    backgroundColor: "#3b82f6",
+    color: "white",
+    fontWeight: "bold",
+    borderRadius: "6px",
+    border: "none",
+    cursor: "pointer",
+    transition: "background 0.2s",
+  };
+
+  const blueBtnHover = {
+    backgroundColor: "#2563eb"
+  };
+
+  // 버튼에 hover 스타일 적용 위해 상태 사용
+  const [centerBtnHover, setCenterBtnHover] = useState(false);
+  const [recBtnHover, setRecBtnHover] = useState(false);
 
   return (
     <div
@@ -134,52 +177,164 @@ export default function SignupPage() {
         <p style={{ textAlign: "center", marginBottom: "1.5rem", color: "#6b7280" }}>
           아래 항목을 입력해주세요
         </p>
-
-        <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+        <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "0.7rem" }}>
+          {/* 아이디 */}
+          <div style={{ display: "flex", flexDirection: "column" }}>
+            <input
+              name="username"
+              placeholder="아이디(영어/숫자만)"
+              value={form.username}
+              onChange={handleChange}
+              style={inputStyle(errors.username)}
+              autoComplete="off"
+              maxLength={20}
+            />
+            {errors.username && (
+              <span style={{ color: "#ef4444", fontSize: "13px", marginLeft: "4px" }}>
+                {errors.username}
+              </span>
+            )}
+          </div>
+          {/* 이름 */}
+          <div style={{ display: "flex", flexDirection: "column" }}>
+            <input
+              name="name"
+              placeholder="이름"
+              value={form.name}
+              onChange={handleChange}
+              style={inputStyle(errors.name)}
+              autoComplete="off"
+            />
+            {errors.name && (
+              <span style={{ color: "#ef4444", fontSize: "13px", marginLeft: "4px" }}>
+                {errors.name}
+              </span>
+            )}
+          </div>
+          {/* 이메일 */}
           <input
-            name="username"
-            placeholder="아이디(영어/숫자만)"
-            value={form.username}
+            name="email"
+            placeholder="Email (선택)"
+            value={form.email}
             onChange={handleChange}
-            required
+            style={inputStyle(false)}
             autoComplete="off"
-            pattern="^[a-zA-Z0-9]+$"
-            title="아이디는 영어와 숫자만 입력 가능합니다."
-            maxLength={20}
           />
-          <input name="name" placeholder="이름" value={form.name} onChange={handleChange} required />
-          <input name="email" placeholder="Email (선택)" value={form.email} onChange={handleChange} />
-          <input type="password" name="password" placeholder="비밀번호" value={form.password} onChange={handleChange} required />
-
-          <div style={{ display: "flex", gap: "0.5rem" }}>
-            <input name="center" placeholder="센터" value={form.center} onChange={handleChange} required />
-            <button type="button" onClick={() => checkUser("center")}>센터장 확인</button>
+          {/* 비밀번호 */}
+          <div style={{ display: "flex", flexDirection: "column" }}>
+            <input
+              type="password"
+              name="password"
+              placeholder="비밀번호"
+              value={form.password}
+              onChange={handleChange}
+              style={inputStyle(errors.password)}
+              autoComplete="off"
+            />
+            {errors.password && (
+              <span style={{ color: "#ef4444", fontSize: "13px", marginLeft: "4px" }}>
+                {errors.password}
+              </span>
+            )}
           </div>
-          <input value={form.centerName || ""} placeholder="센터장" disabled />
 
-          <div style={{ display: "flex", gap: "0.5rem" }}>
-            <input name="recommender" placeholder="추천인" value={form.recommender} onChange={handleChange} required />
-            <button type="button" onClick={() => checkUser("recommender")}>추천인 확인</button>
+          {/* 센터 + 확인버튼 */}
+          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+            <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+              <input
+                name="center"
+                placeholder="센터"
+                value={form.center}
+                onChange={handleChange}
+                style={inputStyle(errors.center)}
+                autoComplete="off"
+              />
+              {errors.center && (
+                <span style={{ color: "#ef4444", fontSize: "13px", marginLeft: "4px" }}>
+                  {errors.center}
+                </span>
+              )}
+            </div>
+            <button
+              type="button"
+              style={centerBtnHover ? { ...blueBtnStyle, ...blueBtnHover, minWidth: 80 } : { ...blueBtnStyle, minWidth: 80 }}
+              onClick={() => checkUser("center")}
+              onMouseEnter={() => setCenterBtnHover(true)}
+              onMouseLeave={() => setCenterBtnHover(false)}
+            >
+              센터장 확인
+            </button>
           </div>
-          <input value={form.recommenderName || ""} placeholder="추천인 이름" disabled />
+          {/* 센터장 이름 */}
+          <input value={form.centerName || ""} placeholder="센터장" disabled style={inputStyle(false)} />
+          {errors.centerCheck && (
+            <span style={{ color: "#ef4444", fontSize: "13px", marginLeft: "4px" }}>
+              {errors.centerCheck}
+            </span>
+          )}
 
-          <input name="phone" placeholder="핸드폰번호" value={form.phone} onChange={handleChange} required />
+          {/* 추천인 + 확인버튼 */}
+          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+            <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+              <input
+                name="recommender"
+                placeholder="추천인"
+                value={form.recommender}
+                onChange={handleChange}
+                style={inputStyle(errors.recommender)}
+                autoComplete="off"
+              />
+              {errors.recommender && (
+                <span style={{ color: "#ef4444", fontSize: "13px", marginLeft: "4px" }}>
+                  {errors.recommender}
+                </span>
+              )}
+            </div>
+            <button
+              type="button"
+              style={recBtnHover ? { ...blueBtnStyle, ...blueBtnHover, minWidth: 80 } : { ...blueBtnStyle, minWidth: 80 }}
+              onClick={() => checkUser("recommender")}
+              onMouseEnter={() => setRecBtnHover(true)}
+              onMouseLeave={() => setRecBtnHover(false)}
+            >
+              추천인 확인
+            </button>
+          </div>
+          {/* 추천인 이름 */}
+          <input value={form.recommenderName || ""} placeholder="추천인 이름" disabled style={inputStyle(false)} />
+          {errors.recommenderCheck && (
+            <span style={{ color: "#ef4444", fontSize: "13px", marginLeft: "4px" }}>
+              {errors.recommenderCheck}
+            </span>
+          )}
+
+          {/* 핸드폰 */}
+          <div style={{ display: "flex", flexDirection: "column" }}>
+            <input
+              name="phone"
+              placeholder="핸드폰번호"
+              value={form.phone}
+              onChange={handleChange}
+              style={inputStyle(errors.phone)}
+              autoComplete="off"
+              maxLength={20}
+            />
+            {errors.phone && (
+              <span style={{ color: "#ef4444", fontSize: "13px", marginLeft: "4px" }}>
+                {errors.phone}
+              </span>
+            )}
+          </div>
 
           <button
             type="submit"
-            style={{
-              padding: "0.75rem",
-              backgroundColor: "#3b82f6",
-              color: "white",
-              fontWeight: "bold",
-              borderRadius: "6px",
-              border: "none"
-            }}
+            style={blueBtnStyle}
+            onMouseDown={e => e.currentTarget.style.background = "#2563eb"}
+            onMouseUp={e => e.currentTarget.style.background = "#3b82f6"}
           >
             회원가입
           </button>
         </form>
-
         <div style={{ marginTop: "1rem", textAlign: "center" }}>
           <Link to="/login" style={{ fontSize: "14px", color: "#374151", textDecoration: "underline" }}>
             로그인

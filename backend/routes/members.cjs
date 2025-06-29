@@ -2,14 +2,14 @@
 
 const express = require('express');
 const router = express.Router();
-const connection = require('../db.cjs');
+const pool = require('../db.cjs');
 const bcrypt = require('bcrypt');
 
 // 1. username 기반 회원정보 조회 (GET /api/members/username/:username)
 router.get('/username/:username', async (req, res) => {
   const { username } = req.params;
   try {
-    const [rows] = await connection.promise().query(`
+    const [rows] = await pool.query(`
       SELECT m.id, m.username, m.name, m.phone, m.email,
              m.center_id,
              (SELECT center_name FROM centers WHERE id = m.center_id LIMIT 1) AS center,
@@ -31,7 +31,7 @@ router.get('/username/:username', async (req, res) => {
 router.get('/by-username/:username', async (req, res) => {
   const { username } = req.params;
   try {
-    const [rows] = await connection.promise().query(`
+    const [rows] = await pool.query(`
       SELECT m.username, m.name, m.bank_name, m.account_holder, m.account_number
       FROM members m
       WHERE m.username = ?
@@ -49,7 +49,7 @@ router.get('/rank/:id', async (req, res) => {
   const { id } = req.params;
   const isId = /^\d+$/.test(id);
   try {
-    const [rows] = await connection.promise().query(
+    const [rows] = await pool.query(
       isId ? 'SELECT `rank` FROM members WHERE id = ?' : 'SELECT `rank` FROM members WHERE username = ?',
       [id]
     );
@@ -65,7 +65,7 @@ router.get('/:id', async (req, res, next) => {
   const { id } = req.params;
   if (!/^\d+$/.test(id)) return next();
   try {
-    const [rows] = await connection.promise().query(`
+    const [rows] = await pool.query(`
       SELECT m.id, m.username, m.name, m.phone, m.email,
              m.center_id,
              c.center_name AS center,
@@ -84,7 +84,6 @@ router.get('/:id', async (req, res, next) => {
   }
 });
 
-
 // 5. 회원 정보 수정 (PUT /api/members/:id) - 숫자만 허용
 router.put('/:id', async (req, res, next) => {
   const { id } = req.params;
@@ -93,7 +92,7 @@ router.put('/:id', async (req, res, next) => {
     phone, email, bank_name, account_number, account_holder
   } = req.body;
   try {
-    await connection.promise().query(
+    await pool.query(
       `UPDATE members SET phone = ?, email = ?, bank_name = ?, account_number = ?, account_holder = ? WHERE id = ?`,
       [phone, email, bank_name, account_number, account_holder, id]
     );
@@ -110,14 +109,14 @@ router.patch('/:id/password', async (req, res, next) => {
   const { currentPassword, newPassword } = req.body;
 
   try {
-    const [rows] = await connection.promise().query('SELECT password FROM members WHERE id = ?', [id]);
+    const [rows] = await pool.query('SELECT password FROM members WHERE id = ?', [id]);
     if (!rows.length) return res.status(404).json({ success: false, message: '회원 없음' });
 
     const valid = await bcrypt.compare(currentPassword, rows[0].password);
     if (!valid) return res.status(401).json({ success: false, message: '현재 비밀번호가 틀립니다.' });
 
     const hashed = await bcrypt.hash(newPassword, 10);
-    await connection.promise().query('UPDATE members SET password = ? WHERE id = ?', [hashed, id]);
+    await pool.query('UPDATE members SET password = ? WHERE id = ?', [hashed, id]);
     res.json({ success: true, message: '비밀번호가 변경되었습니다.' });
   } catch (err) {
     res.status(500).json({ success: false, message: '비밀번호 변경 실패' });

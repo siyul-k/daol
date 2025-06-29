@@ -1,24 +1,27 @@
+// ✅ 파일 경로: backend/routes/adminDeposits.cjs
 const express = require('express');
 const router = express.Router();
-const connection = require('../db.cjs');
+const pool = require('../db.cjs');
 const ExcelJS = require('exceljs');
 
 // 1. 입금 통계 조회
-router.get('/stats', (req, res) => {
+router.get('/stats', async (req, res) => {
   const sql = `
     SELECT
       COUNT(*) AS totalCount,
       SUM(CASE WHEN DATE(CONVERT_TZ(created_at, '+00:00', '+09:00')) = CURDATE() THEN 1 ELSE 0 END) AS todayCount
     FROM deposit_requests
   `;
-  connection.query(sql, (err, rows) => {
-    if (err) return res.status(500).json({ message: '통계 조회 실패' });
+  try {
+    const [rows] = await pool.query(sql);
     res.json({ total: rows[0].totalCount, today: rows[0].todayCount });
-  });
+  } catch (err) {
+    res.status(500).json({ message: '통계 조회 실패' });
+  }
 });
 
 // 2. 입금 목록 조회 (시간 KST 변환 포함)
-router.get('/', (req, res) => {
+router.get('/', async (req, res) => {
   const { username, status, date } = req.query;
   const cond = [], params = [];
 
@@ -39,14 +42,16 @@ router.get('/', (req, res) => {
     ORDER BY d.created_at DESC
   `;
 
-  connection.query(sql, params, (err, rows) => {
-    if (err) return res.status(500).json({ message: '입금 내역 조회 실패' });
+  try {
+    const [rows] = await pool.query(sql, params);
     res.json(rows);
-  });
+  } catch (err) {
+    res.status(500).json({ message: '입금 내역 조회 실패' });
+  }
 });
 
 // 3. 입금 완료 처리 + 포인트 지급
-router.post('/complete', (req, res) => {
+router.post('/complete', async (req, res) => {
   const { ids } = req.body;
   if (!Array.isArray(ids) || !ids.length) {
     return res.status(400).json({ message: '잘못된 요청 형식' });
@@ -60,8 +65,8 @@ router.post('/complete', (req, res) => {
     WHERE id IN (${placeholders}) AND status = '요청'
   `;
 
-  connection.query(updateSql, ids, (err, result) => {
-    if (err) return res.status(500).json({ message: '완료 처리 오류' });
+  try {
+    const [result] = await pool.query(updateSql, ids);
 
     const logSql = `
       INSERT INTO point_logs (before_point, after_point, diff, reason)
@@ -80,31 +85,23 @@ router.post('/complete', (req, res) => {
       WHERE d.id = ? AND d.status = '완료'
     `;
 
-    Promise.all(
-      ids.map(id =>
-        new Promise((resolve, reject) => {
-          connection.query(logSql, [id], err1 => {
-            if (err1) return reject(err1);
-            connection.query(updateBalanceSql, [id], err2 =>
-              err2 ? reject(err2) : resolve()
-            );
-          });
-        })
-      )
-    ).then(() => {
-      res.json({ success: true, updatedRows: result.affectedRows });
-    }).catch(e => {
-      console.error('❌ 포인트 반영 실패:', e);
-      res.status(500).json({ message: '포인트 반영 오류' });
-    });
-  });
+    for (const id of ids) {
+      await pool.query(logSql, [id]);
+      await pool.query(updateBalanceSql, [id]);
+    }
+
+    res.json({ success: true, updatedRows: result.affectedRows });
+  } catch (e) {
+    console.error('❌ 포인트 반영 실패:', e);
+    res.status(500).json({ message: '포인트 반영 오류' });
+  }
 });
 
 // 4. 입금 요청 삭제 + 포인트 복구 (포인트 부족 시 차단)
 router.delete('/:id', async (req, res) => {
   const depositId = req.params.id;
   try {
-    const [[row]] = await connection.promise().query(
+    const [[row]] = await pool.query(
       `SELECT member_id, amount, status FROM deposit_requests WHERE id = ?`, [depositId]
     );
 
@@ -112,7 +109,7 @@ router.delete('/:id', async (req, res) => {
 
     const { member_id, amount, status } = row;
 
-    const [[user]] = await connection.promise().query(
+    const [[user]] = await pool.query(
       `SELECT username, point_balance FROM members WHERE id = ?`, [member_id]
     );
     if (!user) return res.status(404).json({ message: '회원 정보 없음' });
@@ -121,17 +118,17 @@ router.delete('/:id', async (req, res) => {
       if (user.point_balance < amount) {
         return res.status(400).json({ message: '포인트 부족으로 삭제 불가' });
       }
-      await connection.promise().query(
+      await pool.query(
         `DELETE FROM point_logs WHERE username = ? AND diff = ? AND reason LIKE '입금%'`,
         [user.username, amount]
       );
-      await connection.promise().query(
+      await pool.query(
         `UPDATE members SET point_balance = point_balance - ? WHERE id = ?`,
         [amount, member_id]
       );
     }
 
-    await connection.promise().query(
+    await pool.query(
       `DELETE FROM deposit_requests WHERE id = ?`, [depositId]
     );
 
@@ -143,7 +140,7 @@ router.delete('/:id', async (req, res) => {
 });
 
 // 5. 엑셀 다운로드 (시간도 KST로 변환)
-router.get('/export', (req, res) => {
+router.get('/export', async (req, res) => {
   const sql = `
     SELECT d.id, m.username, m.name, d.status,
            d.account_holder, d.amount,
@@ -155,38 +152,36 @@ router.get('/export', (req, res) => {
     ORDER BY d.created_at DESC
   `;
 
-  connection.query(sql, async (err, rows) => {
-    if (err) return res.status(500).json({ message: '엑셀 다운로드 오류' });
-    try {
-      const wb = new ExcelJS.Workbook();
-      const ws = wb.addWorksheet('입금내역');
-      ws.columns = [
-        { header: '번호', key: 'id', width: 8 },
-        { header: '아이디', key: 'username', width: 15 },
-        { header: '이름', key: 'name', width: 15 },
-        { header: '상태', key: 'status', width: 10 },
-        { header: '입금자명', key: 'account_holder', width: 15 },
-        { header: '금액', key: 'amount', width: 12 },
-        { header: '등록일', key: 'created_at', width: 20 },
-        { header: '완료일', key: 'completed_at', width: 20 },
-        { header: '비고', key: 'memo', width: 20 },
-      ];
-      rows.forEach(row => ws.addRow(row));
-      res.setHeader(
-        'Content-Disposition',
-        `attachment; filename=deposits_${Date.now()}.xlsx`
-      );
-      res.setHeader(
-        'Content-Type',
-        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-      );
-      await wb.xlsx.write(res);
-      res.end();
-    } catch (e) {
-      console.error('❌ 엑셀 생성 오류:', e);
-      res.status(500).json({ message: '엑셀 생성 실패' });
-    }
-  });
+  try {
+    const [rows] = await pool.query(sql);
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet('입금내역');
+    ws.columns = [
+      { header: '번호', key: 'id', width: 8 },
+      { header: '아이디', key: 'username', width: 15 },
+      { header: '이름', key: 'name', width: 15 },
+      { header: '상태', key: 'status', width: 10 },
+      { header: '입금자명', key: 'account_holder', width: 15 },
+      { header: '금액', key: 'amount', width: 12 },
+      { header: '등록일', key: 'created_at', width: 20 },
+      { header: '완료일', key: 'completed_at', width: 20 },
+      { header: '비고', key: 'memo', width: 20 },
+    ];
+    rows.forEach(row => ws.addRow(row));
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename=deposits_${Date.now()}.xlsx`
+    );
+    res.setHeader(
+      'Content-Type',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    );
+    await wb.xlsx.write(res);
+    res.end();
+  } catch (err) {
+    console.error('❌ 엑셀 생성 오류:', err);
+    res.status(500).json({ message: '엑셀 생성 실패' });
+  }
 });
 
 module.exports = router;

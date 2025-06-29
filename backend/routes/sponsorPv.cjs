@@ -1,7 +1,7 @@
 // ✅ 파일 경로: backend/routes/sponsorPv.cjs
 const express = require('express');
 const router = express.Router();
-const connection = require('../db.cjs');
+const pool = require('../db.cjs'); // connection → pool로
 
 // ✅ 후원 좌/우 하위 PV 합산 API (PK 기반)
 router.get('/:username', async (req, res) => {
@@ -12,7 +12,7 @@ router.get('/:username', async (req, res) => {
 
   try {
     // 1. 기준 회원의 member_id 가져오기
-    const [[user]] = await connection.promise().query(
+    const [[user]] = await pool.query(
       `SELECT id FROM members WHERE username = ? AND is_admin = 0 LIMIT 1`,
       [username]
     );
@@ -22,7 +22,7 @@ router.get('/:username', async (req, res) => {
     const member_id = user.id;
 
     // 2. 전체 회원 정보 (PK/후원인/좌우) 모두 PK로!
-    const [members] = await connection.promise().query(`
+    const [members] = await pool.query(`
       SELECT id, username, sponsor_id, sponsor_direction
       FROM members
       WHERE is_admin = 0
@@ -55,7 +55,7 @@ router.get('/:username', async (req, res) => {
     // 4. PV 합산 (member_id 리스트 기반)
     async function getPVTotal(memberIds) {
       if (memberIds.length === 0) return 0;
-      const [rows] = await connection.promise().query(
+      const [rows] = await pool.query(
         `
         SELECT SUM(p.pv) AS total_pv
         FROM purchases p

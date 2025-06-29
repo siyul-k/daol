@@ -1,10 +1,11 @@
+// ✅ 파일 위치: backend/routes/adminProducts.cjs
 const express = require('express');
 const router = express.Router();
-const connection = require('../db.cjs');
+const pool = require('../db.cjs');
 const ExcelJS = require('exceljs');
 
 // 상품 목록 조회
-router.get('/', (req, res) => {
+router.get('/', async (req, res) => {
   const { username, name, product_name, type, date } = req.query;
 
   let sql = `
@@ -41,34 +42,39 @@ router.get('/', (req, res) => {
 
   sql += ' ORDER BY p.created_at DESC';
 
-  connection.query(sql, params, (err, rows) => {
-    if (err) {
-      console.error('❌ 상품 목록 조회 실패:', err);
-      return res.status(500).send('상품 조회 실패');
-    }
+  try {
+    const [rows] = await pool.query(sql, params);
     res.json(rows);
-  });
+  } catch (err) {
+    console.error('❌ 상품 목록 조회 실패:', err);
+    res.status(500).send('상품 조회 실패');
+  }
 });
 
 // 상태 토글 (bcode만)
-router.put('/:id/toggle', (req, res) => {
+router.put('/:id/toggle', async (req, res) => {
   const { id } = req.params;
 
-  const getSql = `SELECT active FROM purchases WHERE id = ? AND type = 'bcode'`;
-  connection.query(getSql, [id], (err, rows) => {
-    if (err || rows.length === 0) {
+  try {
+    const [rows] = await pool.query(
+      `SELECT active FROM purchases WHERE id = ? AND type = 'bcode'`,
+      [id]
+    );
+    if (rows.length === 0) {
       return res.status(404).send('상품을 찾을 수 없습니다.');
     }
 
     const current = rows[0].active;
     const next = current === 1 ? 0 : 1;
 
-    const updateSql = `UPDATE purchases SET active = ? WHERE id = ?`;
-    connection.query(updateSql, [next, id], (err2) => {
-      if (err2) return res.status(500).send('상태 변경 실패');
-      res.send('ok');
-    });
-  });
+    await pool.query(
+      `UPDATE purchases SET active = ? WHERE id = ?`,
+      [next, id]
+    );
+    res.send('ok');
+  } catch (err) {
+    res.status(500).send('상태 변경 실패');
+  }
 });
 
 // 상품 삭제 (포인트 복원 및 로그 기록 포함)
@@ -77,7 +83,7 @@ router.delete('/:id', async (req, res) => {
 
   try {
     // 1. 삭제 대상 조회
-    const [rows] = await connection.promise().query(
+    const [rows] = await pool.query(
       `
       SELECT p.amount, p.type, m.id AS member_id, m.username, m.point_balance
       FROM purchases p
@@ -98,13 +104,13 @@ router.delete('/:id', async (req, res) => {
       const beforePoint = point_balance;
       const afterPoint = beforePoint + amount;
 
-      await connection.promise().query(
+      await pool.query(
         `UPDATE members SET point_balance = point_balance + ? WHERE id = ?`,
         [amount, member_id]
       );
 
       // 3. point_logs 기록 (정확한 필드명/구조)
-      await connection.promise().query(
+      await pool.query(
         `
         INSERT INTO point_logs (member_id, username, before_point, after_point, diff, reason, created_at)
         VALUES (?, ?, ?, ?, ?, ?, NOW())
@@ -114,7 +120,7 @@ router.delete('/:id', async (req, res) => {
     }
 
     // 4. purchases 테이블에서 삭제
-    await connection.promise().query(
+    await pool.query(
       `DELETE FROM purchases WHERE id = ?`,
       [id]
     );
@@ -164,11 +170,8 @@ router.get('/export', async (req, res) => {
 
   sql += ' ORDER BY p.created_at DESC';
 
-  connection.query(sql, params, async (err, rows) => {
-    if (err) {
-      console.error('❌ 엑셀 데이터 조회 실패:', err);
-      return res.status(500).send('엑셀 조회 실패');
-    }
+  try {
+    const [rows] = await pool.query(sql, params);
 
     const workbook = new ExcelJS.Workbook();
     const sheet = workbook.addWorksheet('상품내역');
@@ -205,7 +208,10 @@ router.get('/export', async (req, res) => {
 
     await workbook.xlsx.write(res);
     res.end();
-  });
+  } catch (err) {
+    console.error('❌ 엑셀 데이터/생성 실패:', err);
+    res.status(500).send('엑셀 조회 실패');
+  }
 });
 
 module.exports = router;

@@ -1,6 +1,6 @@
 // ✅ 파일 위치: backend/jobs/dailyRewardJob.cjs
 const cron = require('node-cron');
-const connection = require('../db.cjs');
+const pool = require('../db.cjs'); // connection → pool로 변경 (커넥션 풀)
 const axios = require('axios');
 
 // 매일 오전 3시에 실행 (서버 시간 기준)
@@ -14,17 +14,12 @@ cron.schedule('0 3 * * *', async () => {
     const rewardTypes = config.reward_types;
 
     // 2. 패키지 구매한 회원 리스트 가져오기
-    const [members] = await new Promise((resolve, reject) => {
-      connection.query(`
-        SELECT m.id AS member_id, m.username, m.recommender, p.amount, p.pv
-        FROM purchases p
-        JOIN members m ON m.id = p.member_id
-        WHERE p.status = 'approved'
-      `, (err, results) => {
-        if (err) reject(err);
-        else resolve([results]);
-      });
-    });
+    const [members] = await pool.query(`
+      SELECT m.id AS member_id, m.username, m.recommender, p.amount, p.pv
+      FROM purchases p
+      JOIN members m ON m.id = p.member_id
+      WHERE p.status = 'approved'
+    `);
 
     for (const member of members) {
       const memberId = member.member_id;
@@ -38,16 +33,12 @@ cron.schedule('0 3 * * *', async () => {
       const maxReward = pv * limitMultiplier;
 
       // 3. 이미 받은 수당 총합 계산
-      const [totalReward] = await new Promise((resolve, reject) => {
-        connection.query(`
-          SELECT IFNULL(SUM(amount), 0) AS total
-          FROM rewards_log
-          WHERE member_id = ? AND type IN ('daily', 'referral', 'binary', 'matching', 'rank', 'adjustment')
-        `, [memberId], (err, results) => {
-          if (err) reject(err);
-          else resolve([results[0].total]);
-        });
-      });
+      const [[{ total }]] = await pool.query(`
+        SELECT IFNULL(SUM(amount), 0) AS total
+        FROM rewards_log
+        WHERE member_id = ? AND type IN ('daily', 'referral', 'binary', 'matching', 'rank', 'adjustment')
+      `, [memberId]);
+      const totalReward = total;
 
       // 4. 데일리 수당 계산 (PV * 2% 등)
       const dailyRate = rewardTypes.daily.rate;
@@ -55,25 +46,15 @@ cron.schedule('0 3 * * *', async () => {
 
       if (totalReward + todayReward <= maxReward) {
         // 5. 데일리 수당 로그 기록
-        await new Promise((resolve, reject) => {
-          connection.query(`
-            INSERT INTO rewards_log (member_id, type, amount, description, created_at)
-            VALUES (?, 'daily', ?, '데일리 수당', NOW())
-          `, [memberId, todayReward], (err) => {
-            if (err) reject(err);
-            else resolve();
-          });
-        });
+        await pool.query(`
+          INSERT INTO rewards_log (member_id, type, amount, description, created_at)
+          VALUES (?, 'daily', ?, '데일리 수당', NOW())
+        `, [memberId, todayReward]);
 
         // 6. 포인트 잔액 업데이트
-        await new Promise((resolve, reject) => {
-          connection.query(`
-            UPDATE members SET point_balance = point_balance + ? WHERE id = ?
-          `, [todayReward, memberId], (err) => {
-            if (err) reject(err);
-            else resolve();
-          });
-        });
+        await pool.query(`
+          UPDATE members SET point_balance = point_balance + ? WHERE id = ?
+        `, [todayReward, memberId]);
 
         console.log(`✅ ${username} → ${todayReward.toLocaleString()}P 지급 완료`);
       } else {
@@ -85,50 +66,30 @@ cron.schedule('0 3 * * *', async () => {
         const referralRate = rewardTypes.referral.rate;
 
         // 추천인을 member_id로 조회
-        const [referrerInfo] = await new Promise((resolve, reject) => {
-          connection.query(`
-            SELECT id, username FROM members WHERE username = ? LIMIT 1
-          `, [recommenderUsername], (err, results) => {
-            if (err) reject(err);
-            else resolve(results);
-          });
-        });
+        const [referrerInfo] = (await pool.query(`
+          SELECT id, username FROM members WHERE username = ? LIMIT 1
+        `, [recommenderUsername]))[0];
 
         if (referrerInfo) {
           const recommenderId = referrerInfo.id;
 
           // 추천수당 중복 지급 방지 (description으로 구분)
-          const [alreadyPaid] = await new Promise((resolve, reject) => {
-            connection.query(`
-              SELECT COUNT(*) AS cnt FROM rewards_log
-              WHERE member_id = ? AND type = 'referral' AND description = ?
-            `, [recommenderId, `추천수당-${username}`], (err, results) => {
-              if (err) reject(err);
-              else resolve(results);
-            });
-          });
+          const [[alreadyPaid]] = await pool.query(`
+            SELECT COUNT(*) AS cnt FROM rewards_log
+            WHERE member_id = ? AND type = 'referral' AND description = ?
+          `, [recommenderId, `추천수당-${username}`]);
 
           if (alreadyPaid.cnt === 0) {
             const referralReward = pv * referralRate;
 
-            await new Promise((resolve, reject) => {
-              connection.query(`
-                INSERT INTO rewards_log (member_id, type, amount, description, created_at)
-                VALUES (?, 'referral', ?, ?, NOW())
-              `, [recommenderId, referralReward, `추천수당-${username}`], (err) => {
-                if (err) reject(err);
-                else resolve();
-              });
-            });
+            await pool.query(`
+              INSERT INTO rewards_log (member_id, type, amount, description, created_at)
+              VALUES (?, 'referral', ?, ?, NOW())
+            `, [recommenderId, referralReward, `추천수당-${username}`]);
 
-            await new Promise((resolve, reject) => {
-              connection.query(`
-                UPDATE members SET point_balance = point_balance + ? WHERE id = ?
-              `, [referralReward, recommenderId], (err) => {
-                if (err) reject(err);
-                else resolve();
-              });
-            });
+            await pool.query(`
+              UPDATE members SET point_balance = point_balance + ? WHERE id = ?
+            `, [referralReward, recommenderId]);
 
             console.log(`🎁 추천수당 → ${referrerInfo.username}에게 ${referralReward.toLocaleString()}P 지급 (추천: ${username})`);
           }
