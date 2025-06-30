@@ -230,7 +230,7 @@ router.delete('/:id', async (req, res) => {
     }
 
     const [[depCount]] = await pool.query(
-      'SELECT COUNT(*) AS cnt FROM deposits WHERE member_id = ?',
+      'SELECT COUNT(*) AS cnt FROM deposit_requests WHERE member_id = ?',
       [id]
     );
     if (depCount.cnt > 0) {
@@ -241,7 +241,7 @@ router.delete('/:id', async (req, res) => {
     }
 
     const [[purCount]] = await pool.query(
-      'SELECT COUNT(*) AS cnt FROM purchase_history WHERE member_id = ?',
+      'SELECT COUNT(*) AS cnt FROM purchases WHERE member_id = ?',
       [id]
     );
     if (purCount.cnt > 0) {
