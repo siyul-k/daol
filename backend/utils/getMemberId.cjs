@@ -6,7 +6,7 @@ const connection = require('../db.cjs');
  */
 async function getMemberId(username) {
   try {
-    const [rows] = await connection.promise().query(
+    const [rows] = await connection.query(
       'SELECT id FROM members WHERE username = ? LIMIT 1', [username]
     );
     if (!rows || rows.length === 0) return null;

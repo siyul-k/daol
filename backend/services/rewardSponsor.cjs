@@ -6,7 +6,7 @@ const { getAvailableRewardAmount } = require('../utils/rewardLimit.cjs');
 // 하위 트리 PV 합산 (member_id 기준)
 async function getSubtreePV(sponsor_id, direction, afterDate) {
   // 하위 회원들 조회 (sponsor_id, sponsor_direction)
-  const [members] = await connection.promise().query(
+  const [members] = await connection.query(
     `SELECT m.id, p.pv, p.created_at 
      FROM members m
      JOIN purchases p ON m.id = p.member_id
@@ -27,7 +27,7 @@ async function getSubtreePV(sponsor_id, direction, afterDate) {
 async function runSponsorReward() {
   try {
     // 전체 회원 목록 (id, username)
-    const [members] = await connection.promise().query(
+    const [members] = await connection.query(
       `SELECT id, username FROM members WHERE is_blacklisted = 0`
     );
 
@@ -35,7 +35,7 @@ async function runSponsorReward() {
       const { id: memberId, username } = member;
 
       // 본인 최초 구매일
-      const [[{ purchase_date } = {}]] = await connection.promise().query(
+      const [[{ purchase_date } = {}]] = await connection.query(
         `SELECT MIN(created_at) AS purchase_date FROM purchases
          WHERE member_id = ? AND status = 'approved'`,
         [memberId]
@@ -48,7 +48,7 @@ async function runSponsorReward() {
       const matchedPV = Math.min(leftPV, rightPV);
 
       // 이전 지급 확인 (commissions 테이블: member_id 기반)
-      const [[prevRow = {}]] = await connection.promise().query(
+      const [[prevRow = {}]] = await connection.query(
         `SELECT paid FROM commissions WHERE member_id = ?`, [memberId]
       );
       const prevPaid = prevRow.paid || 0;
@@ -57,7 +57,7 @@ async function runSponsorReward() {
       if (matchedDelta <= 0) continue;
 
       // 수당 비율
-      const [[{ rate = 0.05 } = {}]] = await connection.promise().query(
+      const [[{ rate = 0.05 } = {}]] = await connection.query(
         `SELECT rate FROM bonus_config
          WHERE reward_type = 'sponsor' AND level = 0
          ORDER BY updated_at DESC LIMIT 1`
@@ -70,7 +70,7 @@ async function runSponsorReward() {
       if (available < amount) continue;
 
       // 중복 지급 방지 (rewards_log: member_id 기준)
-      const [already] = await connection.promise().query(
+      const [already] = await connection.query(
         `SELECT 1 FROM rewards_log
          WHERE member_id = ? AND type = 'sponsor' AND DATE(created_at) = CURDATE()`,
         [memberId]
@@ -78,14 +78,14 @@ async function runSponsorReward() {
       if (already.length > 0) continue;
 
       // 수당 지급 (member_id 기반)
-      await connection.promise().query(
+      await connection.query(
         `INSERT INTO rewards_log (member_id, type, source, amount, memo, created_at)
          VALUES (?, 'sponsor', ?, ?, '후원수당', NOW())`,
         [memberId, memberId, amount]
       );
 
       // commissions 갱신 (member_id 기반)
-      await connection.promise().query(
+      await connection.query(
         `INSERT INTO commissions (member_id, left_pv, right_pv, matched_pv, paid, created_at)
          VALUES (?, ?, ?, ?, ?, NOW())
          ON DUPLICATE KEY UPDATE

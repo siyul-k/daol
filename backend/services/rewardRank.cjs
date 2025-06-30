@@ -6,7 +6,7 @@ const { getAvailableRewardAmountByMemberId } = require('../utils/rewardLimit.cjs
 
 // username → member_id 변환 함수
 async function getMemberId(username) {
-  const [[row]] = await connection.promise().query(
+  const [[row]] = await connection.query(
     'SELECT id FROM members WHERE username = ? LIMIT 1',
     [username]
   );
@@ -16,7 +16,7 @@ async function getMemberId(username) {
 async function runRankReward() {
   try {
     // ✅ 직급 수당 설정값 확인
-    const [[setting]] = await connection.promise().query(`
+    const [[setting]] = await connection.query(`
       SELECT value FROM settings WHERE key_name = 'rank_reward_enabled' LIMIT 1
     `);
     if (!setting || setting.value !== '1') {
@@ -30,7 +30,7 @@ async function runRankReward() {
     const period_end = format(endOfMonth(subMonths(now, 1)), 'yyyy-MM-dd');
 
     // ✅ 전월 normal 상품 매출 합산
-    const [[{ total_pv }]] = await connection.promise().query(`
+    const [[{ total_pv }]] = await connection.query(`
       SELECT SUM(pv) AS total_pv FROM purchases 
       WHERE status = 'approved' AND type = 'normal'
         AND DATE(created_at) BETWEEN ? AND ?
@@ -44,7 +44,7 @@ async function runRankReward() {
     const total_bonus = Math.floor(total_pv * 0.05);
 
     // ✅ 직급 정보 조회 (상위 → 하위)
-    const [ranks] = await connection.promise().query(`
+    const [ranks] = await connection.query(`
       SELECT * FROM ranks ORDER BY level DESC
     `);
 
@@ -55,7 +55,7 @@ async function runRankReward() {
       const { id: rank_id, rank_name, payout_ratio } = rank;
 
       // ✅ 해당 직급 이상 회원 조회
-      const [users] = await connection.promise().query(`
+      const [users] = await connection.query(`
         SELECT member_id FROM rank_achievements 
         WHERE rank >= ? AND achieved_at <= ?
       `, [rank_id, period_end]);
@@ -67,7 +67,7 @@ async function runRankReward() {
 
       for (const { member_id } of users) {
         // ✅ 중복 지급 여부 확인
-        const [[exists]] = await connection.promise().query(`
+        const [[exists]] = await connection.query(`
           SELECT 1 FROM rank_rewards 
           WHERE member_id = ? AND rank = ? AND period_start = ?
         `, [member_id, rank_id, period_start]);
@@ -82,13 +82,13 @@ async function runRankReward() {
         if (available < per_user) continue;
 
         // ✅ 지급 기록 (rank_rewards)
-        await connection.promise().query(`
+        await connection.query(`
           INSERT INTO rank_rewards (member_id, rank, amount, period_start, period_end, created_at)
           VALUES (?, ?, ?, ?, ?, NOW())
         `, [member_id, rank_id, per_user, period_start, period_end]);
 
         // ✅ 지급 로그 (rewards_log)
-        await connection.promise().query(`
+        await connection.query(`
           INSERT INTO rewards_log (member_id, type, source, amount, memo, created_at)
           VALUES (?, 'rank', ?, ?, ?, NOW())
         `, [

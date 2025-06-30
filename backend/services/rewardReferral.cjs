@@ -6,7 +6,7 @@ const { getAvailableRewardAmount } = require('../utils/rewardLimit.cjs');
 async function processReferralRewards() {
   try {
     // 1. 보너스 설정 전체 조회
-    const [bonusRows] = await connection.promise().query(`
+    const [bonusRows] = await connection.query(`
       SELECT reward_type, level, rate
       FROM bonus_config
       WHERE reward_type IN ('center', 'center_recommend', 'referral') AND level = 0
@@ -17,7 +17,7 @@ async function processReferralRewards() {
     const referralRate = bonusRows.find(r => r.reward_type === 'referral')?.rate || 0.03;
 
     // 2. 센터피/추천수당 정산 대상 상품 조회
-    const [rows] = await connection.promise().query(`
+    const [rows] = await connection.query(`
       SELECT 
         p.id AS purchase_id, p.pv, p.type, m.center_id, m.recommender_id
       FROM purchases p
@@ -50,7 +50,7 @@ async function processReferralRewards() {
     if (rows.some(r => r.center_id)) {
       const centerIds = [...new Set(rows.map(r => r.center_id).filter(Boolean))];
       if (centerIds.length > 0) {
-        const [centerRows] = await connection.promise().query(
+        const [centerRows] = await connection.query(
           `SELECT id, center_owner_id, center_recommender_id FROM centers WHERE id IN (${centerIds.map(()=>'?').join(',')})`,
           centerIds
         );
@@ -65,7 +65,7 @@ async function processReferralRewards() {
     ])];
     let blockMap = {};
     if (blockIds.length > 0) {
-      const [blockRows] = await connection.promise().query(
+      const [blockRows] = await connection.query(
         `SELECT id, is_reward_blocked FROM members WHERE id IN (${blockIds.map(()=>'?').join(',')})`,
         blockIds
       );
@@ -77,7 +77,7 @@ async function processReferralRewards() {
     async function getCenterInfo(center_id) {
       if (!center_id) return null;
       if (centerCache[center_id]) return centerCache[center_id];
-      const [[row]] = await connection.promise().query(
+      const [[row]] = await connection.query(
         `SELECT center_owner_id, center_recommender_id FROM centers WHERE id = ? LIMIT 1`, [center_id]
       );
       if (row) centerCache[center_id] = row;
@@ -108,7 +108,7 @@ async function processReferralRewards() {
           const ownerAvailable = availableMap[owner_id];
           const centerAmount = Math.floor(pv * centerRate);
           payLog.push(`[센터피] 센터장:${owner_id}, purchase_id:${purchase_id}, pv:${pv}, amount:${centerAmount}, 가용:${ownerAvailable}`);
-          await connection.promise().query(`
+          await connection.query(`
             INSERT INTO rewards_log (member_id, type, source, amount, memo, created_at)
             VALUES (?, 'center', ?, ?, ?, NOW())
           `, [
@@ -127,7 +127,7 @@ async function processReferralRewards() {
           const recommenderAvailable = availableMap[center_rec_id];
           const recommendAmount = Math.floor(pv * recommendRate);
           payLog.push(`[센터추천피] 추천자:${center_rec_id}, purchase_id:${purchase_id}, pv:${pv}, amount:${recommendAmount}, 가용:${recommenderAvailable}`);
-          await connection.promise().query(`
+          await connection.query(`
             INSERT INTO rewards_log (member_id, type, source, amount, memo, created_at)
             VALUES (?, 'center_recommend', ?, ?, ?, NOW())
           `, [
@@ -151,7 +151,7 @@ async function processReferralRewards() {
         payLog.push(`[추천수당] 추천인:${recommender_id}, purchase_id:${purchase_id}, pv:${pv}, amount:${referralAmount}, 가용:${referralAvailable}`);
 
         const actualAmount = referralAvailable >= referralAmount ? referralAmount : 0;
-        await connection.promise().query(`
+        await connection.query(`
           INSERT INTO rewards_log (member_id, type, source, amount, memo, created_at)
           VALUES (?, 'referral', ?, ?, ?, NOW())
         `, [
@@ -170,7 +170,7 @@ async function processReferralRewards() {
     // === [추가] 추천수당 지급액 만큼만 출금가능포인트 동시 update! ===
     for (const member_id in referralUpdateMap) {
       const total = referralUpdateMap[member_id];
-      await connection.promise().query(
+      await connection.query(
         'UPDATE members SET withdrawable_point = withdrawable_point + ? WHERE id = ?',
         [total, member_id]
       );

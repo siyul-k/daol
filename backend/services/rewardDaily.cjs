@@ -6,7 +6,7 @@ const { getAvailableRewardAmountByMemberIds } = require('../utils/rewardLimit.cj
 async function processDailyRewards() {
   try {
     // 1. 구매내역(기본+BCODE) - 승인/활성만, 기준일(최초구매일) 포함
-    const [products] = await connection.promise().query(`
+    const [products] = await connection.query(`
       SELECT 
         p.id AS purchase_id, p.member_id, p.pv, p.type, p.active, p.created_at,
         m.rec_1_id, m.rec_2_id, m.rec_3_id, m.rec_4_id, m.rec_5_id,
@@ -20,7 +20,7 @@ async function processDailyRewards() {
     `);
 
     // 2. 데일리 수당률
-    const [[rateRow]] = await connection.promise().query(`
+    const [[rateRow]] = await connection.query(`
       SELECT rate FROM bonus_config
       WHERE reward_type = 'daily' AND level = 0
       ORDER BY updated_at DESC
@@ -30,7 +30,7 @@ async function processDailyRewards() {
     if (dailyRate > 1) dailyRate = dailyRate / 100;
 
     // 3. 매칭 수당률 (10대까지)
-    const [matchingRows] = await connection.promise().query(`
+    const [matchingRows] = await connection.query(`
       SELECT level, rate FROM bonus_config
       WHERE reward_type = 'daily_matching'
       ORDER BY level ASC
@@ -43,7 +43,7 @@ async function processDailyRewards() {
     }
 
     // 4. 오늘 지급내역(중복방지)
-    const [todayLogs] = await connection.promise().query(`
+    const [todayLogs] = await connection.query(`
       SELECT member_id, type, source FROM rewards_log
       WHERE DATE(created_at) = CURDATE()
     `);
@@ -61,7 +61,7 @@ async function processDailyRewards() {
     const availableMap = await getAvailableRewardAmountByMemberIds(memberIds);
 
     // 6. 수당금지 여부 캐싱
-    const [blockRows] = await connection.promise().query(
+    const [blockRows] = await connection.query(
       `SELECT id, is_reward_blocked FROM members WHERE id IN (?)`, [memberIds]
     );
     const blockMap = {};
@@ -112,15 +112,6 @@ async function processDailyRewards() {
       for (let i = 0; i < recs.length; i++) {
         const recId = recs[i];
         const level = i + 1;
-        for (let i = 0; i < recs.length; i++) {
-  const recId = recs[i];
-  const level = i + 1;
-  // ↓↓↓↓↓ 로그 추가
-  if (!recId) console.log(`[매칭DEBUG] ${level}대: recId 없음`);
-  if (!matchRateMap[level]) console.log(`[매칭DEBUG] ${level}대: 매칭 rate 없음`);
-  if (blockMap[recId]) console.log(`[매칭DEBUG] ${level}대: blockMap`);
-  // ... 이하 동일
-}
 
         if (!recId || !matchRateMap[level]) continue;
         if (blockMap[recId]) continue;
@@ -156,7 +147,7 @@ async function processDailyRewards() {
       `;
       const now = new Date().toISOString().slice(0, 19).replace('T', ' ');
       const values = rewardInserts.map(r => [...r, now]);
-      await connection.promise().query(insertQuery, [values]);
+      await connection.query(insertQuery, [values]);
 
       // ✅ 지급액이 있는 건만 출금가능포인트 동시에 update!
       // 1. member_id별 지급액 합산
@@ -169,7 +160,7 @@ async function processDailyRewards() {
       // 2. 각 회원별로 update
       for (const member_id in memberRewardMap) {
         const total = memberRewardMap[member_id];
-        await connection.promise().query(
+        await connection.query(
           'UPDATE members SET withdrawable_point = withdrawable_point + ? WHERE id = ?',
           [total, member_id]
         );

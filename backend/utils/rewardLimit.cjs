@@ -5,7 +5,7 @@ const COUNTED_TYPES = ['daily', 'daily_matching', 'recommend', 'adjust'];
 
 async function hasRecommendedUserWithNormalProduct(myMemberId) {
   try {
-    const [rows] = await connection.promise().query(
+    const [rows] = await connection.query(
       `SELECT p.id
        FROM members m
        JOIN purchases p ON m.id = p.member_id
@@ -25,13 +25,13 @@ async function hasRecommendedUserWithNormalProduct(myMemberId) {
 
 async function getAvailableRewardAmount(member_id) {
   try {
-    const [[member]] = await connection.promise().query(
+    const [[member]] = await connection.query(
       `SELECT id FROM members WHERE id = ? AND is_blacklisted = 0`,
       [member_id]
     );
     if (!member) return 0;
 
-    const [products] = await connection.promise().query(
+    const [products] = await connection.query(
       `SELECT pv, type FROM purchases WHERE member_id = ? AND status = 'approved'`,
       [member_id]
     );
@@ -43,14 +43,14 @@ async function getAvailableRewardAmount(member_id) {
     let totalLimit = 0;
     for (const { pv, type } of products) {
       if (type === 'normal') {
-        const rate = hasRecommendedQualified ? 3.6 : 2.0;
+        const rate = hasRecommendedQualified ? 3.0 : 2.0;
         totalLimit += pv * rate;
       } else if (type === 'bcode') {
         totalLimit += pv * 1.0;
       }
     }
 
-    const [[row]] = await connection.promise().query(
+    const [[row]] = await connection.query(
       `SELECT IFNULL(SUM(amount), 0) AS total 
        FROM rewards_log 
        WHERE member_id = ? AND type IN (?)`,
@@ -68,7 +68,7 @@ async function getAvailableRewardAmount(member_id) {
 
 async function getAvailableRewardAmountByUsername(username) {
   try {
-    const [[row]] = await connection.promise().query(
+    const [[row]] = await connection.query(
       `SELECT id FROM members WHERE username = ? AND is_blacklisted = 0 LIMIT 1`,
       [username]
     );
@@ -84,17 +84,17 @@ async function getAvailableRewardAmountByMemberIds(memberIds) {
   if (!Array.isArray(memberIds) || memberIds.length === 0) return {};
 
   const qs = memberIds.map(() => '?').join(',');
-  const [members] = await connection.promise().query(
+  const [members] = await connection.query(
     `SELECT id FROM members WHERE id IN (${qs}) AND is_blacklisted = 0`,
     memberIds
   );
   if (members.length === 0) return {};
 
-  const [products] = await connection.promise().query(
+  const [products] = await connection.query(
     `SELECT member_id, pv, type FROM purchases WHERE member_id IN (${qs}) AND status = 'approved'`,
     memberIds
   );
-  const [rewardRows] = await connection.promise().query(
+  const [rewardRows] = await connection.query(
     `SELECT member_id, IFNULL(SUM(amount),0) AS total
      FROM rewards_log WHERE member_id IN (${qs}) AND type IN ('daily','daily_matching','recommend','adjust')
      GROUP BY member_id`,
@@ -103,7 +103,7 @@ async function getAvailableRewardAmountByMemberIds(memberIds) {
   const rewardMap = {};
   for (const r of rewardRows) rewardMap[r.member_id] = r.total || 0;
 
-  const [recRows] = await connection.promise().query(
+  const [recRows] = await connection.query(
     `SELECT m.recommender_id, COUNT(*) as cnt
      FROM members m
      JOIN purchases p ON m.id = p.member_id
@@ -125,7 +125,7 @@ async function getAvailableRewardAmountByMemberIds(memberIds) {
     let totalLimit = 0;
     for (const p of prods) {
       if (p.type === 'normal') {
-        const rate = hasRecommendedQualified ? 3.6 : 2.0;
+        const rate = hasRecommendedQualified ? 3.0 : 2.0;
         totalLimit += p.pv * rate;
       } else if (p.type === 'bcode') {
         totalLimit += p.pv * 1.0;

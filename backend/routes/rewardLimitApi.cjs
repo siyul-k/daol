@@ -31,7 +31,7 @@ async function calculateRewardLimit(member_id) {
   for (const row of rows) {
     const { type, pv } = row;
     if (type === 'normal') {
-      totalLimit += hasSubRecProduct ? pv * 3.6 : pv * 2.0;
+      totalLimit += hasSubRecProduct ? pv * 3.0 : pv * 2.0;
     }
     if (type === 'bcode') {
       totalLimit += pv * 1.0;
