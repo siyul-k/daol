@@ -3,6 +3,7 @@ const connection = require('../db.cjs');
 
 const COUNTED_TYPES = ['daily', 'daily_matching', 'recommend', 'adjust'];
 
+// 추천 하위 중 normal 상품 보유 여부
 async function hasRecommendedUserWithNormalProduct(myMemberId) {
   try {
     const [rows] = await connection.query(
@@ -23,6 +24,7 @@ async function hasRecommendedUserWithNormalProduct(myMemberId) {
   }
 }
 
+// 단일 회원 한도
 async function getAvailableRewardAmount(member_id) {
   try {
     const [[member]] = await connection.query(
@@ -50,11 +52,12 @@ async function getAvailableRewardAmount(member_id) {
       }
     }
 
+    // ⭐ IN 쿼리 확장 (spread) 적용!
     const [[row]] = await connection.query(
       `SELECT IFNULL(SUM(amount), 0) AS total 
        FROM rewards_log 
-       WHERE member_id = ? AND type IN (?)`,
-      [member_id, COUNTED_TYPES]
+       WHERE member_id = ? AND type IN (${COUNTED_TYPES.map(() => '?').join(',')})`,
+      [member_id, ...COUNTED_TYPES]
     );
     const totalRewarded = row.total || 0;
 
@@ -66,6 +69,7 @@ async function getAvailableRewardAmount(member_id) {
   }
 }
 
+// username으로 한도
 async function getAvailableRewardAmountByUsername(username) {
   try {
     const [[row]] = await connection.query(
@@ -80,6 +84,7 @@ async function getAvailableRewardAmountByUsername(username) {
   }
 }
 
+// 여러명 한도 (배치)
 async function getAvailableRewardAmountByMemberIds(memberIds) {
   if (!Array.isArray(memberIds) || memberIds.length === 0) return {};
 
@@ -96,9 +101,9 @@ async function getAvailableRewardAmountByMemberIds(memberIds) {
   );
   const [rewardRows] = await connection.query(
     `SELECT member_id, IFNULL(SUM(amount),0) AS total
-     FROM rewards_log WHERE member_id IN (${qs}) AND type IN ('daily','daily_matching','recommend','adjust')
+     FROM rewards_log WHERE member_id IN (${qs}) AND type IN (${COUNTED_TYPES.map(() => '?').join(',')})
      GROUP BY member_id`,
-    memberIds
+    [...memberIds, ...COUNTED_TYPES]
   );
   const rewardMap = {};
   for (const r of rewardRows) rewardMap[r.member_id] = r.total || 0;

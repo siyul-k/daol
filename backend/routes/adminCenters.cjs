@@ -99,8 +99,8 @@ router.post('/', async (req, res) => {
     // 하위 회원들의 center_id 업데이트 (배정/변경)
     if (descendants.length > 0) {
       await pool.query(
-        `UPDATE members SET center_id = ? WHERE id IN (?)`,
-        [newCenterId, descendants]
+      `UPDATE members SET center_id = ? WHERE id IN (${descendants.map(()=>'?').join(',')})`,
+        [newCenterId, ...descendants]
       );
     }
 

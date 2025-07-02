@@ -60,12 +60,15 @@ async function processDailyRewards() {
     ];
     const availableMap = await getAvailableRewardAmountByMemberIds(memberIds);
 
-    // 6. 수당금지 여부 캐싱
-    const [blockRows] = await connection.query(
-      `SELECT id, is_reward_blocked FROM members WHERE id IN (?)`, [memberIds]
-    );
-    const blockMap = {};
-    for (const r of blockRows) blockMap[r.id] = r.is_reward_blocked;
+    // 6. 수당금지 여부 캐싱 - **빈 배열 체크 추가!**
+    let blockMap = {};
+    if (memberIds.length > 0) {
+      const [blockRows] = await connection.query(
+        `SELECT id, is_reward_blocked FROM members WHERE id IN (${memberIds.map(()=>'?').join(',')})`,
+        memberIds
+      );
+      for (const r of blockRows) blockMap[r.id] = r.is_reward_blocked;
+    }
 
     // 7. 매칭수당 지급을 위해 하위 10대별 기준일 미리 캐싱
     // (내 기준일: 내 first_purchase_at)

@@ -54,18 +54,19 @@ router.get('/:username', async (req, res) => {
 
     // 4. PV 합산 (member_id 리스트 기반)
     async function getPVTotal(memberIds) {
-      if (memberIds.length === 0) return 0;
+      if (!Array.isArray(memberIds) || memberIds.length === 0) return 0;
+      const qs = memberIds.map(() => '?').join(',');
       const [rows] = await pool.query(
         `
         SELECT SUM(p.pv) AS total_pv
         FROM purchases p
-        WHERE p.member_id IN (?)
-          AND p.status = 'approved'
+        WHERE p.member_id IN (${qs})
+         AND p.status = 'approved'
           AND p.type = 'normal'
         `,
-        [memberIds]
-      );
-      return rows[0].total_pv || 0;
+        memberIds
+     );
+     return rows[0].total_pv || 0;
     }
 
     const [leftPV, rightPV] = await Promise.all([
