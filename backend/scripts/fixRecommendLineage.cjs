@@ -1,5 +1,5 @@
-// ✅ scripts/fixRecommendLineage.cjs
-const connection = require('../db.cjs');
+// ✅ 파일 경로: backend/scripts/fixRecommendLineage.cjs
+const pool = require('../db.cjs');
 
 /**
  * 전체 회원의 rec_1_id ~ rec_{limitDepth}_id 갱신
@@ -8,15 +8,17 @@ const connection = require('../db.cjs');
  * - 기본 깊이 5 (정산은 1~5대만 사용)
  */
 async function updateAllRecommendLineage(limitDepth = 5, chunkSize = 1000) {
-  // 1) 전체 맵 로드
-  const [rows] = await connection.query(
-    'SELECT id, recommender_id FROM members'
-  );
-  const parent = new Map(rows.map(r => [r.id, r.recommender_id || null]));
-
-  // 2) 트랜잭션
-  await connection.beginTransaction();
+  const conn = await pool.getConnection(); // 풀에서 단일 커넥션 획득
   try {
+    // 1) 전체 맵 로드 (트랜잭션 커넥션 사용)
+    const [rows] = await conn.query(
+      'SELECT id, recommender_id FROM members'
+    );
+    const parent = new Map(rows.map(r => [r.id, r.recommender_id || null]));
+
+    // 2) 트랜잭션 시작
+    await conn.beginTransaction();
+
     let batch = [];
     for (const { id } of rows) {
       const lineage = [];
@@ -41,19 +43,21 @@ async function updateAllRecommendLineage(limitDepth = 5, chunkSize = 1000) {
 
       // 청크 단위 실행
       if (batch.length >= chunkSize) {
-        for (const q of batch) await connection.query(q.sql, [q.id]);
+        for (const q of batch) await conn.query(q.sql, [q.id]);
         batch = [];
       }
     }
     // 잔여 실행
-    for (const q of batch) await connection.query(q.sql, [q.id]);
+    for (const q of batch) await conn.query(q.sql, [q.id]);
 
-    await connection.commit();
+    await conn.commit();
     console.log(`✅ 추천 계보(rec_1_id ~ rec_${limitDepth}_id) 갱신 완료 (members: ${rows.length})`);
   } catch (e) {
-    await connection.rollback();
+    try { await conn.rollback(); } catch (_) {}
     console.error('❌ 계보 갱신 실패:', e);
     throw e;
+  } finally {
+    conn.release(); // 커넥션 반환
   }
 }
 
