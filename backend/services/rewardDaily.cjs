@@ -1,16 +1,66 @@
 // ✅ 파일 경로: backend/services/rewardDaily.cjs
 
 const connection = require('../db.cjs');
-const { getAvailableRewardAmountByMemberIds } = require('../utils/rewardLimit.cjs');
+const { getAllPurchasesRemaining } = require('../utils/rewardLimit.cjs');
 
+/* ────────────────────────────────────────────────────────────────
+ * 공통 유틸
+ * ──────────────────────────────────────────────────────────────── */
+function buildSlotMap(perPurchase) {
+  const map = new Map();
+  for (const r of perPurchase) {
+    if (!map.has(r.memberId)) map.set(r.memberId, []);
+    map.get(r.memberId).push({ purchaseId: r.purchaseId, remaining: Number(r.remaining || 0) });
+  }
+  for (const arr of map.values()) arr.sort((a, b) => a.purchaseId - b.purchaseId);
+  return map;
+}
+
+function allocateFromSlots(slotMap, memberId, amount) {
+  const alloc = [];
+  let rem = Math.max(0, Number(amount || 0));
+  const slots = slotMap.get(memberId) || [];
+  for (const s of slots) {
+    if (rem <= 0) break;
+    const cap = Math.max(0, Number(s.remaining || 0));
+    if (cap <= 0) continue;
+    const take = Math.min(rem, cap);
+    if (take > 0) {
+      alloc.push({ ref_id: s.purchaseId, amount: take });
+      s.remaining = cap - take;
+      rem -= take;
+    }
+  }
+  return { alloc, paid: Number(amount) - rem, lack: rem };
+}
+
+function nowStr() {
+  const d = new Date();
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+}
+
+/* ────────────────────────────────────────────────────────────────
+ * KST 날짜 유틸 (요약/대시보드 갱신용)
+ * ──────────────────────────────────────────────────────────────── */
+function kstDateStr(date = new Date()) {
+  const t = new Date(date.getTime() + 9 * 3600 * 1000);
+  return t.toISOString().slice(0, 10); // YYYY-MM-DD
+}
+function todayKST() { return kstDateStr(new Date()); }
+function yesterdayKST() { return kstDateStr(new Date(Date.now() - 24 * 3600 * 1000)); }
+function chunk(arr, n = 1000) { const out = []; for (let i=0;i<arr.length;i+=n) out.push(arr.slice(i,i+n)); return out; }
+
+/* ────────────────────────────────────────────────────────────────
+ * 메인 정산
+ * ──────────────────────────────────────────────────────────────── */
 async function processDailyRewards() {
   try {
-    // 1. 구매내역(기본+BCODE) - 승인/활성만, 기준일(최초구매일) 포함
+    /* 1) 승인 구매 + 추천 1~5대 + 기준일 */
     const [products] = await connection.query(`
       SELECT 
         p.id AS purchase_id, p.member_id, p.pv, p.type, p.active, p.created_at,
         m.rec_1_id, m.rec_2_id, m.rec_3_id, m.rec_4_id, m.rec_5_id,
-        m.rec_6_id, m.rec_7_id, m.rec_8_id, m.rec_9_id, m.rec_10_id,
         m.first_purchase_at,
         m.is_reward_blocked
       FROM purchases p
@@ -19,158 +69,287 @@ async function processDailyRewards() {
       ORDER BY p.created_at ASC
     `);
 
-    // 2. 데일리 수당률
+    /* 2) 데일리 수당률 */
     const [[rateRow]] = await connection.query(`
       SELECT rate FROM bonus_config
       WHERE reward_type = 'daily' AND level = 0
       ORDER BY updated_at DESC
       LIMIT 1
     `);
-    let dailyRate = rateRow?.rate || 0.02;
-    if (dailyRate > 1) dailyRate = dailyRate / 100;
+    let dailyRate = Number(rateRow?.rate ?? 0.02);
+    if (dailyRate > 1) dailyRate /= 100;
 
-    // 3. 매칭 수당률 (10대까지)
+    /* 3) 매칭 수당률 (1~5대만) */
     const [matchingRows] = await connection.query(`
       SELECT level, rate FROM bonus_config
-      WHERE reward_type = 'daily_matching'
+      WHERE reward_type = 'daily_matching' AND level BETWEEN 1 AND 5
       ORDER BY level ASC
     `);
     const matchRateMap = {};
     for (const row of matchingRows) {
-      let rate = row.rate;
-      if (rate > 1) rate = rate / 100;
-      matchRateMap[row.level] = rate;
+      let r = Number(row.rate);
+      if (r > 1) r /= 100;
+      matchRateMap[row.level] = r;
     }
 
-    // 4. 오늘 지급내역(중복방지)
+    /* 4) 오늘 이미 지급된 조합(중복방지) */
     const [todayLogs] = await connection.query(`
-      SELECT member_id, type, source FROM rewards_log
-      WHERE DATE(created_at) = CURDATE()
+      SELECT member_id, type, source
+      FROM rewards_log
+      WHERE created_at >= CURDATE()
+        AND created_at <  DATE_ADD(CURDATE(), INTERVAL 1 DAY)
     `);
-    const existsMap = new Set(todayLogs.map(r => `${r.member_id}_${r.type}_${r.source}`));
+    const existsSet = new Set(todayLogs.map(r => `${r.member_id}_${r.type}_${r.source}`));
 
-    // 5. 한도 batch 캐싱
+    /* 5) 이번 런에서 관여하는 모든 회원(본인 + 상위1~5대) */
     const memberIds = [
       ...new Set(
         products.flatMap(p => [
-          p.member_id, p.rec_1_id, p.rec_2_id, p.rec_3_id, p.rec_4_id,
-          p.rec_5_id, p.rec_6_id, p.rec_7_id, p.rec_8_id, p.rec_9_id, p.rec_10_id
+          p.member_id, p.rec_1_id, p.rec_2_id, p.rec_3_id, p.rec_4_id, p.rec_5_id
         ]).filter(Boolean)
       )
     ];
-    const availableMap = await getAvailableRewardAmountByMemberIds(memberIds);
 
-    // 6. 수당금지 여부 캐싱 - **빈 배열 체크 추가!**
-    let blockMap = {};
+    /* 6) 슬롯(구매별 잔여한도) */
+    const perPurchase = await getAllPurchasesRemaining(memberIds);
+    const slotMap = buildSlotMap(perPurchase);
+
+    /* 7) 수당금지 캐시 */
+    const blockMap = {};
     if (memberIds.length > 0) {
       const [blockRows] = await connection.query(
         `SELECT id, is_reward_blocked FROM members WHERE id IN (${memberIds.map(()=>'?').join(',')})`,
         memberIds
       );
-      for (const r of blockRows) blockMap[r.id] = r.is_reward_blocked;
+      for (const r of blockRows) blockMap[r.id] = !!r.is_reward_blocked;
     }
 
-    // 7. 매칭수당 지급을 위해 하위 10대별 기준일 미리 캐싱
-    // (내 기준일: 내 first_purchase_at)
-    const memberFirstPurchaseAtMap = {};
-    for (const p of products) {
-      memberFirstPurchaseAtMap[p.member_id] = p.first_purchase_at;
-    }
+    /* 8) 기준일 캐시 */
+    const memberFirstAt = {};
+    for (const p of products) memberFirstAt[p.member_id] = p.first_purchase_at;
 
-    // 8. 수당 지급 준비
-    const rewardInserts = [];
+    /* 9) INSERT 버퍼 & 출금가능포인트 누적 */
+    const inserts = []; // [member_id, type, source(=purchase_id), ref_id, amount, memo, created_at]
+    const addWithdrawMap = {}; // member_id -> sum(>0)
 
     for (const p of products) {
       const {
-        purchase_id, member_id, pv, type, active,
-        rec_1_id, rec_2_id, rec_3_id, rec_4_id, rec_5_id,
-        rec_6_id, rec_7_id, rec_8_id, rec_9_id, rec_10_id
+        purchase_id, member_id, pv, type, active, created_at,
+        rec_1_id, rec_2_id, rec_3_id, rec_4_id, rec_5_id
       } = p;
 
-      // ① 데일리 (Bcode면 active=1만)
-      if (type === 'bcode' && active === 0) continue;
-      if (blockMap[member_id]) continue;
-
-      const dailyAmount = Math.floor(pv * dailyRate);
-      const key = `${member_id}_daily_${purchase_id}`;
-
-      if (!existsMap.has(key)) {
-        const available = availableMap[member_id] ?? 0;
-        if (available < dailyAmount) {
-          rewardInserts.push([member_id, 'daily', purchase_id, 0, '한도초과(데일리)']);
-        } else {
-          rewardInserts.push([member_id, 'daily', purchase_id, dailyAmount, '데일리수당']);
-          availableMap[member_id] -= dailyAmount;
+      /* ─── ① 데일리: normal은 항상 / bcode는 active=1일 때만 ─── */
+      const isDailyTarget = (type === 'normal') || (type === 'bcode' && active === 1);
+      if (isDailyTarget && !blockMap[member_id]) {
+        const need = Math.floor(pv * dailyRate);
+        const key  = `${member_id}_daily_${purchase_id}`;
+        if (!existsSet.has(key)) {
+          const { alloc, paid } = allocateFromSlots(slotMap, member_id, need);
+          if (paid > 0) {
+            for (const a of alloc) {
+              inserts.push([member_id, 'daily', purchase_id, a.ref_id, a.amount, '데일리수당', nowStr()]);
+            }
+            addWithdrawMap[member_id] = (addWithdrawMap[member_id] || 0) + paid;
+          } else {
+            inserts.push([member_id, 'daily', purchase_id, null, 0, '한도초과(데일리)', nowStr()]);
+          }
         }
       }
 
-      // ② 매칭수당: normal만, 하위 10대의 기준일 이후 데일리만 매칭
-      if (type !== 'normal') continue;
+      /* ─── ② 데일리 매칭: normal만, 상위 1~5대, 조상 기준일 이후 매출만 ─── */
+      if (type === 'normal') {
+        const recs = [rec_1_id, rec_2_id, rec_3_id, rec_4_id, rec_5_id];
+        const baseDaily = Math.floor(pv * dailyRate);
 
-      const recs = [
-        rec_1_id, rec_2_id, rec_3_id, rec_4_id, rec_5_id,
-        rec_6_id, rec_7_id, rec_8_id, rec_9_id, rec_10_id
-      ];
+        for (let i = 0; i < recs.length; i++) {
+          const recId = recs[i];
+          const level = i + 1;
+          if (!recId || !matchRateMap[level]) continue;
+          if (blockMap[recId]) continue;
 
-      for (let i = 0; i < recs.length; i++) {
-        const recId = recs[i];
-        const level = i + 1;
+          const ancestorFirst = memberFirstAt[recId];
+          if (!ancestorFirst) continue;
+          if (new Date(created_at) < new Date(ancestorFirst)) continue;
 
-        if (!recId || !matchRateMap[level]) continue;
-        if (blockMap[recId]) continue;
+          const need = Math.floor(baseDaily * matchRateMap[level]);
+          const key  = `${recId}_daily_matching_${purchase_id}`;
+          if (existsSet.has(key)) continue;
 
-        // ⚡ 매칭수당 기준일 계산
-        // - 내 기준일보다 먼저 구매된 하위 회원의 데일리(같은날 포함)만 매칭
-        const myFirstPurchaseAt = memberFirstPurchaseAtMap[recId];
-        if (!myFirstPurchaseAt) continue;
-
-        // 하위 회원이 구매한 상품(p)의 created_at이 recId의 기준일 이후인가?
-        if (new Date(p.created_at) < new Date(myFirstPurchaseAt)) continue;
-
-        const matchAmount = Math.floor(dailyAmount * matchRateMap[level]);
-        const recKey = `${recId}_daily_matching_${purchase_id}`;
-
-        if (!existsMap.has(recKey)) {
-          const recAvailable = availableMap[recId] ?? 0;
-          if (recAvailable < matchAmount) {
-            rewardInserts.push([recId, 'daily_matching', purchase_id, 0, `한도초과(매칭-${level}대)`]);
+          const { alloc, paid } = allocateFromSlots(slotMap, recId, need);
+          if (paid > 0) {
+            for (const a of alloc) {
+              inserts.push([recId, 'daily_matching', purchase_id, a.ref_id, a.amount, `데일리매칭-${level}대`, nowStr()]);
+            }
+            addWithdrawMap[recId] = (addWithdrawMap[recId] || 0) + paid;
           } else {
-            rewardInserts.push([recId, 'daily_matching', purchase_id, matchAmount, `데일리매칭-${level}대`]);
-            availableMap[recId] -= matchAmount;
+            inserts.push([recId, 'daily_matching', purchase_id, null, 0, `한도초과(매칭-${level}대)`, nowStr()]);
           }
         }
       }
     }
 
-    // 9. 일괄 INSERT + 출금가능포인트 동시에 UPDATE
-    if (rewardInserts.length > 0) {
-      const insertQuery = `
-        INSERT INTO rewards_log (member_id, type, source, amount, memo, created_at)
-        VALUES ?
-      `;
-      const now = new Date().toISOString().slice(0, 19).replace('T', ' ');
-      const values = rewardInserts.map(r => [...r, now]);
-      await connection.query(insertQuery, [values]);
+    /* 10) 일괄 INSERT + 출금가능포인트(>0만) 업데이트 */
+    if (inserts.length > 0) {
+      await connection.query(
+        `INSERT IGNORE INTO rewards_log (member_id, type, source, ref_id, amount, memo, created_at)
+         VALUES ?`,
+        [inserts]
+      );
 
-      // ✅ 지급액이 있는 건만 출금가능포인트 동시에 update!
-      // 1. member_id별 지급액 합산
-      const memberRewardMap = {};
-      for (const [member_id, , , amount] of rewardInserts) {
-        if (amount > 0) {
-          memberRewardMap[member_id] = (memberRewardMap[member_id] || 0) + amount;
+      for (const id of Object.keys(addWithdrawMap)) {
+        const sum = addWithdrawMap[id];
+        if (sum > 0) {
+          await connection.query(
+            'UPDATE members SET withdrawable_point = withdrawable_point + ? WHERE id = ?',
+            [sum, id]
+          );
         }
       }
-      // 2. 각 회원별로 update
-      for (const member_id in memberRewardMap) {
-        const total = memberRewardMap[member_id];
+    }
+
+    /* ────────────────────────────────────────────────────────────
+     * ✅ 여기서 "단 한 번만" 요약/대시보드 갱신
+     *  - reward_daily_summary: 어제/오늘(KST) 총합을 정확값으로 덮어쓰기(멱등)
+     *  - member_stats: 어제/오늘에 로그가 있었던 회원만 스냅샷으로 재계산(멱등)
+     * ──────────────────────────────────────────────────────────── */
+    const y = yesterdayKST();
+    const t = todayKST();
+
+    // 10-1) reward_daily_summary (어제/오늘)
+    const [sumRows] = await connection.query(
+      `
+      SELECT member_id, reward_date, type, SUM(amount) AS total_amount
+        FROM rewards_log
+       WHERE is_deleted = 0
+         AND reward_date IN (?, ?)
+       GROUP BY member_id, reward_date, type
+      `,
+      [y, t]
+    );
+    if (sumRows.length) {
+      const execDate = t;
+      const values = sumRows.map(r => [
+        r.member_id, r.reward_date, r.type, Number(r.total_amount || 0), execDate
+      ]);
+      await connection.query(
+        `
+        INSERT INTO reward_daily_summary
+          (member_id, reward_date, type, total_amount, executed_date)
+        VALUES ?
+        ON DUPLICATE KEY UPDATE
+          total_amount  = VALUES(total_amount),
+          executed_date = VALUES(executed_date)
+        `,
+        [values]
+      );
+    }
+
+    // 10-2) member_stats (어제/오늘에 로그가 있었던 회원만)
+    const [affRows] = await connection.query(
+      `
+      SELECT DISTINCT member_id
+        FROM rewards_log
+       WHERE is_deleted = 0
+         AND reward_date IN (?, ?)
+      `,
+      [y, t]
+    );
+    const ids = affRows.map(r => r.member_id);
+    for (const batch of chunk(ids, 1000)) {
+      // 승인 패키지 '합산 금액'
+      const [pkgRows] = await connection.query(
+        `
+        SELECT member_id, IFNULL(SUM(amount),0) AS amt
+          FROM purchases
+         WHERE status='approved'
+           AND member_id IN (${batch.map(()=>'?').join(',')})
+         GROUP BY member_id
+        `,
+        batch
+      );
+      const pkgMap = Object.fromEntries(pkgRows.map(r => [r.member_id, Number(r.amt)]));
+
+      // 입금/출금(완료)
+      const [depRows] = await connection.query(
+        `
+        SELECT member_id, IFNULL(SUM(amount),0) AS total
+          FROM deposit_requests
+         WHERE status='완료'
+           AND member_id IN (${batch.map(()=>'?').join(',')})
+         GROUP BY member_id
+        `,
+        batch
+      );
+      const depMap = Object.fromEntries(depRows.map(r => [r.member_id, Number(r.total)]));
+
+      const [wdRows] = await connection.query(
+   `
+   SELECT member_id, IFNULL(SUM(amount),0) AS total
+     FROM withdraw_requests
+    WHERE status IN ('요청','완료','requested','completed')
+      AND member_id IN (${batch.map(()=>'?').join(',')})
+    GROUP BY member_id
+   `,
+   batch
+ );
+      const wdMap = Object.fromEntries(wdRows.map(r => [r.member_id, Number(r.total)]));
+
+      // 받은 수당 전체 합계
+      const [rwRows] = await connection.query(
+        `
+        SELECT member_id, IFNULL(SUM(amount),0) AS total
+          FROM rewards_log
+         WHERE is_deleted = 0
+           AND member_id IN (${batch.map(()=>'?').join(',')})
+         GROUP BY member_id
+        `,
+        batch
+      );
+      const rwMap = Object.fromEntries(rwRows.map(r => [r.member_id, Number(r.total)]));
+
+      // 현재 포인트
+      const [ptRows] = await connection.query(
+        `
+        SELECT id AS member_id, withdrawable_point, shopping_point
+          FROM members
+         WHERE id IN (${batch.map(()=>'?').join(',')})
+        `,
+        batch
+      );
+      const ptMap = Object.fromEntries(
+        ptRows.map(r => [r.member_id, { w: Number(r.withdrawable_point), s: Number(r.shopping_point) }])
+      );
+
+      const values = batch.map(id => [
+        id,
+        pkgMap[id] || 0,
+        depMap[id] || 0,
+        rwMap[id] || 0,
+        wdMap[id] || 0,
+        ptMap[id]?.w || 0,
+        ptMap[id]?.s || 0
+      ]);
+
+      if (values.length) {
         await connection.query(
-          'UPDATE members SET withdrawable_point = withdrawable_point + ? WHERE id = ?',
-          [total, member_id]
+          `
+          INSERT INTO member_stats
+            (member_id, packages_amount, total_deposit, total_reward, total_withdraw, withdrawable_point, shopping_point)
+          VALUES ?
+          ON DUPLICATE KEY UPDATE
+            packages_amount    = VALUES(packages_amount),
+            total_deposit      = VALUES(total_deposit),
+            total_reward       = VALUES(total_reward),
+            total_withdraw     = VALUES(total_withdraw),
+            withdrawable_point = VALUES(withdrawable_point),
+            shopping_point     = VALUES(shopping_point)
+          `,
+          [values]
         );
       }
     }
 
-    console.log(`✅ 데일리 + 매칭 정산 완료 (${rewardInserts.length}건)`);
+    console.log(`✅ 데일리 + 매칭(1~5대) 정산 완료 & 요약/대시보드 갱신 완료`);
   } catch (err) {
     console.error('❌ 데일리 정산 실패:', err);
   }

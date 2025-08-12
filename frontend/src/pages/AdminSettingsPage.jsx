@@ -4,8 +4,9 @@ import React, { useEffect, useState } from 'react';
 import axios from '../axiosConfig';
 
 const dayLabels = ['월', '화', '수', '목', '금', '토', '일'];
-const dayKeys = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
+const dayKeys   = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
 
+/* ✅ 라벨맵에 새 키만 추가 (설명값이 없을 때 라벨 대체용) */
 const labelMap = {
   daily_reward_percent: '데일리(%)',
   recommender_reward_percent: '추천(%)',
@@ -14,12 +15,14 @@ const labelMap = {
   withdraw_fee_percent: '출금수수료(%)',
   withdraw_shopping_point_percent: '쇼핑포인트 적립(%)',
   withdraw_min_amount: '최소 출금금액(원)',
-  // sponsor, rank 관련 항목 삭제
-  // rank_reward_enabled: '직급수당 정산 허용(ON/OFF)', 
+
+  /* ⬇️ 새로 바뀐 키 */
+  site_block_start_hour: '접속불가 시작시간',
+  site_block_end_hour:   '접속불가 종료시간',
 };
 
 export default function AdminSettingsPage() {
-  const [settings, setSettings] = useState({});
+  const [settings, setSettings]   = useState({});
   const [activeTab, setActiveTab] = useState('percent');
 
   useEffect(() => {
@@ -53,17 +56,14 @@ export default function AdminSettingsPage() {
     updateValue(key, updated.join(','));
   };
 
-  const renderHourOptions = () => {
-    return [...Array(24).keys()].map(hour => (
-      <option key={hour} value={hour}>{hour}</option>
-    ));
-  };
+  const renderHourOptions = () =>
+    [...Array(24).keys()].map(h => <option key={h} value={h}>{h}</option>);
 
   return (
     <div className="p-6">
       <h2 className="text-xl font-bold mb-4">환경 설정</h2>
 
-      {/* ✅ 탭 선택 */}
+      {/* 탭 */}
       <div className="mb-4 flex space-x-4">
         <button
           className={`px-4 py-2 rounded ${activeTab === 'percent' ? 'bg-green-700 text-white' : 'bg-gray-200'}`}
@@ -76,11 +76,10 @@ export default function AdminSettingsPage() {
         >수당 지급일</button>
       </div>
 
-      {/* ✅ 수당 퍼센트 */}
+      {/* 수당 퍼센트 */}
       {activeTab === 'percent' && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {Object.entries(settings).map(([key, item]) => {
-            // ✅ percent 타입 항목 (rank/sponsor 관련 제외)
             if (
               item.type === 'percent' &&
               key !== 'rank_reward_percent' &&
@@ -100,14 +99,10 @@ export default function AdminSettingsPage() {
                 </div>
               );
             }
-
-            // ✅ boolean 타입 항목 (예: 직급수당 정산 ON/OFF, 삭제)
-            // if (item.type === 'bool' && key === 'rank_reward_enabled') { ... }
-
             return null;
           })}
 
-          {/* ✅ 최소 출금금액 항목 (int이지만 퍼센트 탭에 표시) */}
+          {/* 최소 출금금액(원) */}
           {settings.withdraw_min_amount && (
             <div>
               <label className="block text-sm font-medium mb-1">
@@ -117,14 +112,14 @@ export default function AdminSettingsPage() {
                 type="number"
                 value={settings.withdraw_min_amount.value}
                 onChange={e => updateValue('withdraw_min_amount', e.target.value)}
-                className="border p-2 w-32"
+                className="border p-2 w-40"
               /> 원
             </div>
           )}
         </div>
       )}
 
-      {/* ✅ 수당 지급일 탭 */}
+      {/* 지급일/시간(접속불가 시간 포함) */}
       {activeTab === 'schedule' && (
         <div className="space-y-6">
           {Object.entries(settings).map(([key, item]) => {
@@ -136,15 +131,13 @@ export default function AdminSettingsPage() {
                   <div className="flex space-x-2 flex-wrap">
                     {dayLabels.map((label, i) => {
                       const dayKey = dayKeys[i];
-                      const isChecked = selected.includes(dayKey);
+                      const checked = selected.includes(dayKey);
                       return (
                         <button
                           key={dayKey}
                           type="button"
                           onClick={() => toggleDay(key, dayKey)}
-                          className={`px-3 py-1 rounded border ${
-                            isChecked ? 'bg-green-600 text-white' : 'bg-gray-100'
-                          }`}
+                          className={`px-3 py-1 rounded border ${checked ? 'bg-green-600 text-white' : 'bg-gray-100'}`}
                         >
                           {label}
                         </button>
@@ -155,10 +148,13 @@ export default function AdminSettingsPage() {
               );
             }
 
+            // ⬇️ int 타입(시간) 항목: 라벨을 labelMap > description > key 순으로 표시
             if (item.type === 'int' && key !== 'withdraw_min_amount') {
               return (
                 <div key={key}>
-                  <label className="block text-sm font-medium mb-1">{item.description || key}</label>
+                  <label className="block text-sm font-medium mb-1">
+                    {labelMap[key] || item.description || key}
+                  </label>
                   <select
                     value={item.value}
                     onChange={e => updateValue(key, e.target.value)}

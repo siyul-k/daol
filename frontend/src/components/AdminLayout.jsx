@@ -1,14 +1,24 @@
 // ✅ 파일 위치: frontend/src/components/AdminLayout.jsx
-import React, { useState } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
-import MemberStats from '../pages/MemberStats';
-import DepositStats from '../pages/DepositStats';
-import WithdrawStats from '../pages/WithdrawStats';
+
+// ⬇️ 통계 컴포넌트는 lazy 로드(컴포넌트 바깥 최상단에서 선언)
+const MemberStats   = React.lazy(() => import('../pages/MemberStats'));
+const DepositStats  = React.lazy(() => import('../pages/DepositStats'));
+const WithdrawStats = React.lazy(() => import('../pages/WithdrawStats'));
 
 export default function AdminLayout() {
   const { pathname } = useLocation();
   const navigate = useNavigate();
-  const [menuOpen, setMenuOpen] = useState(null); // 클릭용 토글
+  const [menuOpen, setMenuOpen] = useState(null); // 드롭다운 토글 상태
+
+  // 관리자 경로일 때만 통계 위젯 렌더
+  const isAdminPath = pathname.startsWith('/admin/');
+
+  // 라우트 변경 시 드롭다운 자동 닫기
+  useEffect(() => {
+    setMenuOpen(null);
+  }, [pathname]);
 
   const navLinkClass = (path) =>
     `px-4 py-2 text-sm font-medium hover:text-yellow-300 ${
@@ -25,10 +35,15 @@ export default function AdminLayout() {
     navigate('/admin/login');
   };
 
-  let StatsComponent = null;
-  if (pathname.startsWith('/admin/members')) StatsComponent = MemberStats;
-  else if (pathname.startsWith('/admin/deposit')) StatsComponent = DepositStats;
-  else if (pathname.startsWith('/admin/withdraws')) StatsComponent = WithdrawStats;
+  // 어떤 통계를 보여줄지 "엘리먼트"로 결정 (lazy 컴포넌트를 직접 렌더)
+  let StatsEl = null;
+  if (pathname.startsWith('/admin/members')) {
+    StatsEl = <MemberStats />;
+  } else if (pathname.startsWith('/admin/deposit')) {
+    StatsEl = <DepositStats />;
+  } else if (pathname.startsWith('/admin/withdraws')) {
+    StatsEl = <WithdrawStats />;
+  }
 
   const toggleMenu = (menuKey) => {
     setMenuOpen((prev) => (prev === menuKey ? null : menuKey));
@@ -112,10 +127,12 @@ export default function AdminLayout() {
         </nav>
       </header>
 
-      {/* 통계 컴포넌트 */}
-      {StatsComponent && (
+      {/* 통계 컴포넌트 (관리자 경로일 때만 lazy 로드) */}
+      {isAdminPath && StatsEl && (
         <div className="bg-white shadow p-4 md:p-6">
-          <StatsComponent />
+          <Suspense fallback={null}>
+            {StatsEl}
+          </Suspense>
         </div>
       )}
 
