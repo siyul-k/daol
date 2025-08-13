@@ -1,3 +1,4 @@
+// ✅ 파일 경로: src/pages/PointSummaryPage.jsx
 import React, { useEffect, useState } from "react";
 import axios from "../axiosConfig";
 
@@ -25,45 +26,44 @@ export default function PointSummaryPage() {
         setLoading(false);
       }
     };
-
     fetchData();
   }, []);
 
-  const sumByType = (type) =>
-    rewards
-      .filter((r) => r.type === type)
+  const sumByTypes = (types) => {
+    const list = (Array.isArray(types) ? types : [types]).map((t) => t.toLowerCase());
+    return rewards
+      .filter((r) => list.includes(r.type?.toLowerCase()))
       .reduce((sum, r) => sum + Number(r.amount || 0), 0);
+  };
 
   const total = rewards.reduce((sum, r) => sum + Number(r.amount || 0), 0);
 
-  // 센터와 센터추천 모두 포함해서 총 합계 계산
-  const sumCenterTotal = () =>
-    rewards
-      .filter((r) => r.type === "center" || r.type === "center_recommend")
-      .reduce((sum, r) => sum + Number(r.amount || 0), 0);
+  // 센터와 센터추천 모두 포함해서 총 합계
+  const sumCenterTotal = () => sumByTypes(["center", "center_recommend"]);
 
-  // 한도 달성률 계산에서는 센터, 센터추천 제외
+  // 한도 달성률(센터 제외)
   const sumExcludingCenter = () =>
     rewards
       .filter((r) => r.type !== "center" && r.type !== "center_recommend")
       .reduce((sum, r) => sum + Number(r.amount || 0), 0);
 
-  // 후원, 직급 삭제. 추천 추가!
-  const rewardNames = {
-    referral: "추천",
-    daily: "데일리",
-    daily_matching: "매칭"
-    // sponsor, rank 제거
-  };
+  // ✅ 타일 구성 (추천 = referral + recommend)
+  const categories = [
+    { label: "추천", types: ["referral", "recommend"] },
+    { label: "데일리", types: ["daily"] },
+    { label: "매칭", types: ["daily_matching"] },
+  ];
 
   const sumByDate = () => {
     const grouped = {};
     rewards.forEach((r) => {
-      const date = r.created_at?.slice(0, 10);
+      const date =
+        (r.created_at_kst && r.created_at_kst.slice(0, 10)) ||
+        (r.created_at && r.created_at.slice(0, 10)) ||
+        "";
       if (!grouped[date]) grouped[date] = 0;
       grouped[date] += Number(r.amount || 0);
     });
-
     return Object.entries(grouped).sort((a, b) => new Date(b[0]) - new Date(a[0]));
   };
 
@@ -101,11 +101,11 @@ export default function PointSummaryPage() {
               <div className="text-2xl font-bold text-green-700">{total.toLocaleString()}</div>
             </div>
 
-            {/* 항목별 요약 */}
-            {Object.keys(rewardNames).map((key) => (
-              <div key={key} className="bg-white shadow p-4 rounded border text-center">
-                <div className="text-gray-500 mb-1">{rewardNames[key]}</div>
-                <div className="font-semibold">{sumByType(key).toLocaleString()}</div>
+            {/* ✅ 항목별 요약 타일 */}
+            {categories.map((cat) => (
+              <div key={cat.label} className="bg-white shadow p-4 rounded border text-center">
+                <div className="text-gray-500 mb-1">{cat.label}</div>
+                <div className="font-semibold">{sumByTypes(cat.types).toLocaleString()}</div>
               </div>
             ))}
 
@@ -128,15 +128,17 @@ export default function PointSummaryPage() {
               </thead>
               <tbody>
                 {sumByDate().length > 0 ? (
-                  sumByDate().map(([date, total], idx) => (
+                  sumByDate().map(([date, dayTotal], idx) => (
                     <tr key={idx}>
                       <td className="border px-3 py-2">{date}</td>
-                      <td className="border px-3 py-2 text-center">{total.toLocaleString()}</td>
+                      <td className="border px-3 py-2 text-center">{dayTotal.toLocaleString()}</td>
                     </tr>
                   ))
                 ) : (
                   <tr>
-                    <td colSpan="2" className="text-center py-4 text-gray-500">수당 내역이 없습니다.</td>
+                    <td colSpan="2" className="text-center py-4 text-gray-500">
+                      수당 내역이 없습니다.
+                    </td>
                   </tr>
                 )}
               </tbody>

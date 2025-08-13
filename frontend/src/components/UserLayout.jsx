@@ -36,11 +36,11 @@ export default function UserLayout({ children }) {
   const navItems = [
     { label: "대시보드", path: "/dashboard", icon: <Home size={16} /> },
     {
-      label: "포인트 내역",
+      label: "포인트내역",
       icon: <DollarSign size={16} />,
       children: [
-        { label: "포인트 내역", path: "/point" },
-        { label: "포인트 요약", path: "/point/summary" },
+        { label: "포인트내역", path: "/point" },
+        { label: "포인트요약", path: "/point/summary" },
       ],
     },
     {
@@ -76,7 +76,7 @@ export default function UserLayout({ children }) {
       ],
     },
     { label: "공지사항", path: "/notices", icon: <Bell size={16} /> },
-    { label: "프로필 설정", path: "/settings", icon: <Settings size={16} /> },
+    { label: "프로필", path: "/settings", icon: <Settings size={16} /> },
     { label: "로그아웃", action: handleLogout, icon: <LogOut size={16} /> },
   ];
 

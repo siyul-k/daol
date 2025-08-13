@@ -1,5 +1,4 @@
 // ✅ 파일 경로: frontend/src/pages/WithdrawPage.jsx
-
 import React, { useEffect, useState } from 'react';
 import axios from '../axiosConfig';
 
@@ -19,6 +18,7 @@ export default function WithdrawPage() {
     withdraw_min_amount: 0,
   });
 
+  // ✅ 서버 계산값과 동일한 기준으로 표기 (normal, center 모두 /api/withdraw/available 사용)
   const [available, setAvailable] = useState({ general: 0, center: 0 });
   const [allowed, setAllowed] = useState({ general: true, center: false });
 
@@ -34,7 +34,7 @@ export default function WithdrawPage() {
   useEffect(() => {
     if (!username) return;
 
-    // 회원 은행정보 가져오기
+    // 회원 은행정보
     axios.get(`/api/members/username/${username}`)
       .then(res => {
         const d = res.data;
@@ -46,39 +46,29 @@ export default function WithdrawPage() {
       })
       .catch(() => console.warn('회원정보 로드 실패'));
 
-    // 출금 설정값 불러오기
+    // 설정값
     axios.get('/api/settings')
       .then(res => {
         const map = {};
         (res.data || []).forEach(r => { map[r.key_name] = r.value; });
         setSettings({
           withdraw_fee_percent: parseFloat(map.withdraw_fee_percent || 0),
-          withdraw_min_amount: parseInt(map.withdraw_min_amount || '0')
+          withdraw_min_amount: parseInt(map.withdraw_min_amount || '0', 10)
         });
       })
       .catch(() => console.warn('설정 로드 실패'));
 
-    // ✅ 일반 출금가능금액 (초고속 API)
-    axios.get(`/api/withdrawable-points/${username}`)
-      .then(res => {
-        setAvailable(prev => ({
-          ...prev,
-          general: res.data.withdrawable || 0
-        }));
-      })
-      .catch(() => console.warn('일반 출금가능금액 조회 실패'));
-
-    // ✅ 센터 출금가능금액 (기존 방식 유지)
+    // ✅ 출금 가능액 (서버와 동일 공식)
     axios.get(`/api/withdraw/available?username=${username}`)
       .then(res => {
-        setAvailable(prev => ({
-          ...prev,
-          center: res.data.center || 0
-        }));
+        setAvailable({
+          general: res.data?.normal || 0,
+          center:  res.data?.center || 0
+        });
       })
-      .catch(() => console.warn('센터 출금가능금액 조회 실패'));
+      .catch(() => console.warn('출금가능금액 조회 실패'));
 
-    // 출금 가능여부 (type만)
+    // 출금 가능여부(요일/시간/최소금액)
     axios.get('/api/withdraw/check', { params: { type: 'normal', amount: 0 } })
       .then(res => setAllowed(prev => ({ ...prev, general: res.data.canWithdraw })))
       .catch(() => console.warn('일반 출금 체크 실패'));
@@ -99,10 +89,9 @@ export default function WithdrawPage() {
     const amt = parseInt(value, 10) || 0;
     const feeRate = Number(settings.withdraw_fee_percent || 0);
     const fee = Math.floor(amt * feeRate / 100);
-    const payout = amt - fee;
+    const payout = Math.max(0, amt - fee); // 화면용: (신청금액 - 수수료)
 
-    const update = { request_amount: value, fee, payout: payout > 0 ? payout : 0 };
-
+    const update = { request_amount: value, fee, payout };
     if (typeLabel === 'general') setGeneral(update);
     else setCenter(update);
 
@@ -152,8 +141,8 @@ export default function WithdrawPage() {
       });
       alert('출금 신청이 완료되었습니다.');
       window.location.href = '/withdraw-history';
-    } catch {
-      alert('서버 오류로 출금 신청에 실패했습니다.');
+    } catch (e) {
+      alert(e?.response?.data?.error || '서버 오류로 출금 신청에 실패했습니다.');
     }
   };
 

@@ -1,8 +1,7 @@
 // ✅ 파일 경로: src/pages/PointPage.jsx
-
 import React, { useEffect, useState } from "react";
 import axios from "../axiosConfig";
-import { formatKST } from '../utils/time';  // 1. utils 시간 변환 함수 임포트
+import { formatKST } from '../utils/time';
 
 export default function PointPage() {
   const [rewards, setRewards] = useState([]);
@@ -21,24 +20,23 @@ export default function PointPage() {
         setLoading(false);
       }
     };
-
     fetchRewards();
   }, []);
 
-  // 항목별 필터링
   const groupByType = (types) => {
+    const list = Array.isArray(types) ? types : [types];
     return Array.isArray(rewards)
-      ? rewards.filter((r) => types.includes(r.type?.toLowerCase()))
+      ? rewards.filter((r) => list.includes(r.type?.toLowerCase()))
       : [];
   };
 
-  // 테이블 렌더 함수
   const renderTable = (typeLabel, typeKeys) => {
-    const data = groupByType(Array.isArray(typeKeys) ? typeKeys : [typeKeys]);
+    const data = groupByType(typeKeys);
     const key = Array.isArray(typeKeys) ? typeKeys.join("_") : typeKeys;
 
     const perPage = perPageMap[key] || 10;
     const visibleData = perPage === "ALL" ? data : data.slice(0, Number(perPage));
+    const isAdjust = (Array.isArray(typeKeys) ? typeKeys : [typeKeys]).includes("adjust");
 
     return (
       <div className="mb-10 overflow-x-auto">
@@ -57,28 +55,20 @@ export default function PointPage() {
             {visibleData.length > 0 ? (
               visibleData.map((item) => (
                 <tr key={item.id}>
-                  {/* 2. 날짜 출력 부분에서 한국 시간 변환 함수 호출 */}
+                  <td className="border px-3 py-2">{formatKST(item.created_at)}</td>
+                  <td className="border px-3 py-2">{item.member_username}</td>
                   <td className="border px-3 py-2">
-                    {formatKST(item.created_at)}
-                  </td>
-
-                  <td className="border px-3 py-2">
-                    {item.member_username}
-                  </td>
-                  <td className="border px-3 py-2">
-                    {typeKeys.includes("adjust")
+                    {isAdjust
                       ? "관리자"
                       : (item.member_username === item.source_username
                           ? item.member_username
-                          : (item.source_username || "-")
-                        )
-                    }
+                          : (item.source_username || "-"))}
                   </td>
                   <td className="border px-3 py-2">
                     {Number(item.amount).toLocaleString()}
                   </td>
                   <td className="border px-3 py-2">
-                    {typeKeys.includes("adjust") ? item.memo || "포인트가감" : (item.memo || typeLabel)}
+                    {isAdjust ? (item.memo || "포인트가감") : (item.memo || typeLabel)}
                   </td>
                 </tr>
               ))
@@ -129,7 +119,8 @@ export default function PointPage() {
         <p>불러오는 중...</p>
       ) : (
         <>
-          {renderTable("추천", "referral")}
+          {/* ✅ 추천: referral + recommend 둘 다 표시 */}
+          {renderTable("추천", ["referral", "recommend"])}
           {renderTable("데일리", "daily")}
           {renderTable("매칭", "daily_matching")}
           {renderTable("센터", ["center", "center_recommend"])}

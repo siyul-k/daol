@@ -22,12 +22,13 @@ router.get('/', async (req, res) => {
         r.*,
         m_self.username AS member_username,
         r.memo,
-        m_purchase.username AS source_username,
+        COALESCE(m_user.username, m_purchase.username) AS source_username,
         CONVERT_TZ(r.created_at, '+00:00', '+09:00') AS created_at_kst
       FROM rewards_log r
       LEFT JOIN members m_self ON r.member_id = m_self.id
       LEFT JOIN purchases p ON r.source = p.id
       LEFT JOIN members m_purchase ON p.member_id = m_purchase.id
+      LEFT JOIN members m_user ON r.source = m_user.id
       WHERE r.member_id = ?
       ORDER BY r.created_at DESC
     `;
