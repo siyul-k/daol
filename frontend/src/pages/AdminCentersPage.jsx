@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import axios from '../axiosConfig';
+import { formatKST } from '../utils/time'; // ✅ KST 변환 추가
 
 const AdminCentersPage = () => {
   const [centers, setCenters] = useState([]);
@@ -92,7 +93,7 @@ const AdminCentersPage = () => {
       fetchCenters();
       alert('삭제되었습니다');
     } catch (err) {
-      alert(err.response.data.error);
+      alert(err.response?.data?.error || '삭제 실패');
     }
   };
 
@@ -209,7 +210,8 @@ const AdminCentersPage = () => {
             {centers.map((center, idx) => (
               <tr key={center.id}>
                 <td className="border p-2">{idx + 1}</td>
-                <td className="border p-2">{center.created_at?.slice(0, 19).replace('T', ' ') || '-'}</td>
+                {/* ✅ UTC → KST 변환 표시 */}
+                <td className="border p-2">{formatKST(center.created_at)}</td>
                 {editId === center.id ? (
                   <>
                     <td className="border p-2">

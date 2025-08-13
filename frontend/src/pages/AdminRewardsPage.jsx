@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import axios from '../axiosConfig';
+import { formatKST } from '../utils/time'; // ✅ KST 변환 추가
 
 const PAGE_SIZE_OPTIONS = [25, 50, 100, 150, 9999]; // 9999 = 전체
 const PAGE_LABELS = ['25개씩', '50개씩', '100개씩', '150개씩', '전체'];
@@ -172,7 +173,7 @@ export default function AdminRewardsPage() {
                 rewards.map((item, idx) => (
                   <tr key={idx}>
                     <td className="border px-2 py-1 text-center whitespace-nowrap">
-                      {new Date(item.created_at).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' })}
+                      {formatKST(item.created_at)} {/* ✅ UTC → KST 변환 */}
                     </td>
                     <td className="border px-2 py-1 text-center whitespace-nowrap">{item.type}</td>
                     <td className="border px-2 py-1 text-center whitespace-nowrap">{item.member_username}</td>

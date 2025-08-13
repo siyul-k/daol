@@ -149,7 +149,7 @@ async function processDailyRewards() {
         if (!existsSet.has(key)) {
           const { alloc, paid } = allocateFromSlots(slotMap, member_id, need);
           if (paid > 0) {
-            inserts.push([member_id, 'daily', member_id, purchase_id, paid, '데일리수당', nowStr()]);
+            inserts.push([member_id, 'daily', member_id, purchase_id, paid, '데일리', nowStr()]);
             addWithdrawMap[member_id] = (addWithdrawMap[member_id] || 0) + paid;
           } else {
             inserts.push([member_id, 'daily', member_id, purchase_id, 0, '한도초과(데일리)', nowStr()]);
