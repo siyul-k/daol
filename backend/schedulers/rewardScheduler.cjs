@@ -21,7 +21,7 @@ const { updateAllRecommendLineage } = require('../scripts/fixRecommendLineage.cj
 // });
 
 // ✅ 매일 23:30 (KST) = 14:30 (UTC) → 추천수당 정산 전 계보 갱신
-cron.schedule('30 23 * * *', async () => {
+cron.schedule('30 14 * * *', async () => {
   const now = new Date();
   console.log(`⏱️ [${format(now, 'yyyy-MM-dd HH:mm:ss')}] 추천계보 갱신 시작`);
   try {
@@ -35,7 +35,7 @@ cron.schedule('30 23 * * *', async () => {
 });
 
 // ✅ 매일 00:30 (KST) = 15:30 (UTC) → 데일리수당 정산
-cron.schedule('30 0 * * *', async () => {
+cron.schedule('30 15 * * *', async () => {
   const now = new Date();
   console.log(`⏱️ [${format(now, 'yyyy-MM-dd HH:mm:ss')}] 데일리수당 정산 시작`);
   try {
