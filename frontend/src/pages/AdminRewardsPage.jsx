@@ -2,9 +2,9 @@
 
 import React, { useEffect, useState } from 'react';
 import axios from '../axiosConfig';
-import { formatKST } from '../utils/time'; // ✅ KST 변환 추가
+import { formatKST } from '../utils/time';
 
-const PAGE_SIZE_OPTIONS = [25, 50, 100, 150, 9999]; // 9999 = 전체
+const PAGE_SIZE_OPTIONS = [25, 50, 100, 150, 9999];
 const PAGE_LABELS = ['25개씩', '50개씩', '100개씩', '150개씩', '전체'];
 
 export default function AdminRewardsPage() {
@@ -26,12 +26,7 @@ export default function AdminRewardsPage() {
   const fetchRewards = async (_page = page, _limit = limit) => {
     setLoading(true);
     try {
-      const params = {
-        page: _page,
-        limit: _limit,
-        searchId,
-        type,
-      };
+      const params = { page: _page, limit: _limit, searchId, type };
       if (startDate) params.startDate = startDate;
       if (endDate) params.endDate = endDate;
 
@@ -59,9 +54,7 @@ export default function AdminRewardsPage() {
       if (startDate) params.startDate = startDate;
       if (endDate) params.endDate = endDate;
       const query = new URLSearchParams(params).toString();
-      const res = await axios.get('/api/admin/rewards/export?' + query, {
-        responseType: 'blob',
-      });
+      const res = await axios.get('/api/admin/rewards/export?' + query, { responseType: 'blob' });
       const url = URL.createObjectURL(new Blob([res.data]));
       const link = document.createElement('a');
       link.href = url;
@@ -69,37 +62,30 @@ export default function AdminRewardsPage() {
       document.body.appendChild(link);
       link.click();
       link.remove();
-    } catch {
-      // handle error
-    }
+    } catch {}
   };
 
-  // 필터 변경 시 page 초기화
-  const onSearchIdChange = (val) => { setSearchId(val); setPage(1); };
-  const onTypeChange = (val) => { setType(val); setPage(1); };
-  const onStartDateChange = (val) => { setStartDate(val); setPage(1); };
-  const onEndDateChange = (val) => { setEndDate(val); setPage(1); };
-
-  // 페이지네이션
   const totalPages = Math.ceil(total / limit);
 
   return (
     <div className="p-2 sm:p-6 w-full">
       <h2 className="text-base sm:text-2xl font-bold mb-2 sm:mb-4">수당관리</h2>
 
-      {/* 필터·버튼 영역 (반응형) */}
+      {/* 필터·버튼 영역 */}
       <div className="flex flex-wrap gap-2 items-center mb-3 sm:mb-4">
         <input
           type="text"
           placeholder="검색할 아이디"
           value={searchId}
-          onChange={e => onSearchIdChange(e.target.value)}
-          className="border px-2 py-1 rounded text-xs sm:text-sm w-24 sm:w-36"
+          onChange={e => { setSearchId(e.target.value); setPage(1); }}
+          className="border px-2 py-1 rounded text-xs sm:text-sm w-24 sm:w-36
+                     dark:bg-gray-900 dark:border-white/10 dark:text-gray-100"
         />
         <select
           value={type}
-          onChange={e => onTypeChange(e.target.value)}
-          className="border px-2 py-1 rounded text-xs sm:text-sm w-24 sm:w-36"
+          onChange={e => { setType(e.target.value); setPage(1); }}
+          className="border px-2 py-1 rounded text-xs sm:text-sm w-24 sm:w-36
+                     dark:bg-gray-900 dark:border-white/10 dark:text-gray-100"
         >
           <option value="">전체 종류</option>
           <option value="daily">데일리</option>
@@ -109,28 +95,27 @@ export default function AdminRewardsPage() {
           <option value="center">센터피</option>
           <option value="center_recommend">센터추천피</option>
         </select>
-        {/* 기간 검색 */}
-        <span className="text-xs">기간</span>
+        <span className="text-xs dark:text-gray-300">기간</span>
         <input
           type="date"
           value={startDate}
-          onChange={e => onStartDateChange(e.target.value)}
-          className="border px-2 py-1 rounded text-xs sm:text-sm w-28 sm:w-40"
-          placeholder="시작일"
+          onChange={e => { setStartDate(e.target.value); setPage(1); }}
+          className="border px-2 py-1 rounded text-xs sm:text-sm w-28 sm:w-40
+                     dark:bg-gray-900 dark:border-white/10 dark:text-gray-100"
         />
-        <span>~</span>
+        <span className="dark:text-gray-300">~</span>
         <input
           type="date"
           value={endDate}
-          onChange={e => onEndDateChange(e.target.value)}
-          className="border px-2 py-1 rounded text-xs sm:text-sm w-28 sm:w-40"
-          placeholder="종료일"
+          onChange={e => { setEndDate(e.target.value); setPage(1); }}
+          className="border px-2 py-1 rounded text-xs sm:text-sm w-28 sm:w-40
+                     dark:bg-gray-900 dark:border-white/10 dark:text-gray-100"
         />
-        {/* 개수 선택 */}
         <select
           value={limit}
           onChange={e => { setLimit(Number(e.target.value)); setPage(1); }}
-          className="border rounded px-2 py-1 text-xs sm:text-sm"
+          className="border rounded px-2 py-1 text-xs sm:text-sm
+                     dark:bg-gray-900 dark:border-white/10 dark:text-gray-100"
         >
           {PAGE_SIZE_OPTIONS.map((n, i) => (
             <option key={n} value={n}>{PAGE_LABELS[i]}</option>
@@ -152,39 +137,35 @@ export default function AdminRewardsPage() {
         </div>
       </div>
 
-      {/* 테이블 (반응형, 모바일 가로 스크롤) */}
+      {/* 테이블 */}
       <div className="w-full overflow-x-auto">
         {loading ? (
           <p className="p-4 text-center text-gray-500 text-sm">불러오는 중...</p>
         ) : (
-          <table className="min-w-[750px] w-full border text-xs sm:text-sm">
-            <thead className="bg-gray-100">
+          <table className="min-w-[750px] w-full text-xs sm:text-sm
+                             border border-gray-200 dark:border-white/10">
+            <thead className="bg-gray-100 dark:bg-gray-700 dark:text-white">
               <tr>
-                <th className="border px-2 py-1 text-center whitespace-nowrap w-32">등록일</th>
-                <th className="border px-2 py-1 text-center whitespace-nowrap w-20">종류</th>
-                <th className="border px-2 py-1 text-center whitespace-nowrap w-24">아이디</th>
-                <th className="border px-2 py-1 text-center whitespace-nowrap w-20">포인트</th>
-                <th className="border px-2 py-1 text-center whitespace-nowrap w-24">수당원천</th>
-                <th className="border px-2 py-1 text-center whitespace-nowrap w-48">상세내용</th>
+                {['등록일','종류','아이디','포인트','수당원천','상세내용'].map(h => (
+                  <th key={h} className="border px-2 py-1 text-center whitespace-nowrap dark:border-white/10">{h}</th>
+                ))}
               </tr>
             </thead>
-            <tbody>
+            <tbody className="bg-white dark:bg-gray-800 dark:text-gray-100">
               {rewards.length > 0 ? (
                 rewards.map((item, idx) => (
-                  <tr key={idx}>
-                    <td className="border px-2 py-1 text-center whitespace-nowrap">
-                      {formatKST(item.created_at)} {/* ✅ UTC → KST 변환 */}
-                    </td>
-                    <td className="border px-2 py-1 text-center whitespace-nowrap">{item.type}</td>
-                    <td className="border px-2 py-1 text-center whitespace-nowrap">{item.member_username}</td>
-                    <td className="border px-2 py-1 text-right whitespace-nowrap">{item.amount.toLocaleString()}</td>
-                    <td className="border px-2 py-1 text-center whitespace-nowrap">{item.source_username || '-'}</td>
-                    <td className="border px-2 py-1 text-center whitespace-nowrap">{item.memo || '-'}</td>
+                  <tr key={idx} className="border-t border-gray-200 dark:border-white/10 hover:bg-gray-50 dark:hover:bg-gray-700/60">
+                    <td className="border px-2 py-1 text-center whitespace-nowrap dark:border-white/10">{formatKST(item.created_at)}</td>
+                    <td className="border px-2 py-1 text-center whitespace-nowrap dark:border-white/10">{item.type}</td>
+                    <td className="border px-2 py-1 text-center whitespace-nowrap dark:border-white/10">{item.member_username}</td>
+                    <td className="border px-2 py-1 text-right whitespace-nowrap dark:border-white/10">{item.amount.toLocaleString()}</td>
+                    <td className="border px-2 py-1 text-center whitespace-nowrap dark:border-white/10">{item.source_username || '-'}</td>
+                    <td className="border px-2 py-1 text-center whitespace-nowrap dark:border-white/10">{item.memo || '-'}</td>
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td colSpan="6" className="text-center py-4 text-gray-500">데이터가 없습니다.</td>
+                  <td colSpan="6" className="text-center py-4 text-gray-500 dark:text-gray-400">데이터가 없습니다.</td>
                 </tr>
               )}
             </tbody>
@@ -199,7 +180,10 @@ export default function AdminRewardsPage() {
             <button
               key={i}
               onClick={() => setPage(i + 1)}
-              className={`px-3 py-1 rounded border text-xs sm:text-sm ${page === i + 1 ? 'bg-blue-600 text-white' : 'bg-white'}`}
+              className={`px-3 py-1 rounded border text-xs sm:text-sm 
+                         ${page === i + 1 
+                           ? 'bg-blue-600 text-white' 
+                           : 'bg-white dark:bg-gray-800 dark:text-gray-100 dark:border-white/10'}`}
             >
               {i + 1}
             </button>

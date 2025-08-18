@@ -6,7 +6,6 @@ import axios from '../axiosConfig';
 const dayLabels = ['월', '화', '수', '목', '금', '토', '일'];
 const dayKeys   = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
 
-/* ✅ 라벨맵에 새 키만 추가 (설명값이 없을 때 라벨 대체용) */
 const labelMap = {
   daily_reward_percent: '데일리(%)',
   recommender_reward_percent: '추천(%)',
@@ -15,8 +14,6 @@ const labelMap = {
   withdraw_fee_percent: '출금수수료(%)',
   withdraw_shopping_point_percent: '쇼핑포인트 적립(%)',
   withdraw_min_amount: '최소 출금금액(원)',
-
-  /* ⬇️ 새로 바뀐 키 */
   site_block_start_hour: '접속불가 시작시간',
   site_block_end_hour:   '접속불가 종료시간',
 };
@@ -60,18 +57,26 @@ export default function AdminSettingsPage() {
     [...Array(24).keys()].map(h => <option key={h} value={h}>{h}</option>);
 
   return (
-    <div className="p-6">
+    <div className="p-6 dark:bg-gray-900 dark:text-gray-100 min-h-screen">
       <h2 className="text-xl font-bold mb-4">환경 설정</h2>
 
       {/* 탭 */}
       <div className="mb-4 flex space-x-4">
         <button
-          className={`px-4 py-2 rounded ${activeTab === 'percent' ? 'bg-green-700 text-white' : 'bg-gray-200'}`}
+          className={`px-4 py-2 rounded ${
+            activeTab === 'percent'
+              ? 'bg-green-700 text-white'
+              : 'bg-gray-200 dark:bg-gray-700 dark:text-gray-100'
+          }`}
           onClick={() => setActiveTab('percent')}
         >수당 퍼센트</button>
 
         <button
-          className={`px-4 py-2 rounded ${activeTab === 'schedule' ? 'bg-green-700 text-white' : 'bg-gray-200'}`}
+          className={`px-4 py-2 rounded ${
+            activeTab === 'schedule'
+              ? 'bg-green-700 text-white'
+              : 'bg-gray-200 dark:bg-gray-700 dark:text-gray-100'
+          }`}
           onClick={() => setActiveTab('schedule')}
         >수당 지급일</button>
       </div>
@@ -94,7 +99,8 @@ export default function AdminSettingsPage() {
                     type="number"
                     value={item.value}
                     onChange={e => updateValue(key, e.target.value)}
-                    className="border p-2 w-32"
+                    className="border p-2 w-32
+                               dark:bg-gray-800 dark:border-white/10 dark:text-gray-100"
                   /> %
                 </div>
               );
@@ -102,7 +108,6 @@ export default function AdminSettingsPage() {
             return null;
           })}
 
-          {/* 최소 출금금액(원) */}
           {settings.withdraw_min_amount && (
             <div>
               <label className="block text-sm font-medium mb-1">
@@ -112,14 +117,15 @@ export default function AdminSettingsPage() {
                 type="number"
                 value={settings.withdraw_min_amount.value}
                 onChange={e => updateValue('withdraw_min_amount', e.target.value)}
-                className="border p-2 w-40"
+                className="border p-2 w-40
+                           dark:bg-gray-800 dark:border-white/10 dark:text-gray-100"
               /> 원
             </div>
           )}
         </div>
       )}
 
-      {/* 지급일/시간(접속불가 시간 포함) */}
+      {/* 지급일/시간 */}
       {activeTab === 'schedule' && (
         <div className="space-y-6">
           {Object.entries(settings).map(([key, item]) => {
@@ -137,7 +143,11 @@ export default function AdminSettingsPage() {
                           key={dayKey}
                           type="button"
                           onClick={() => toggleDay(key, dayKey)}
-                          className={`px-3 py-1 rounded border ${checked ? 'bg-green-600 text-white' : 'bg-gray-100'}`}
+                          className={`px-3 py-1 rounded border ${
+                            checked
+                              ? 'bg-green-600 text-white'
+                              : 'bg-gray-100 dark:bg-gray-700 dark:text-gray-100 dark:border-white/10'
+                          }`}
                         >
                           {label}
                         </button>
@@ -148,7 +158,6 @@ export default function AdminSettingsPage() {
               );
             }
 
-            // ⬇️ int 타입(시간) 항목: 라벨을 labelMap > description > key 순으로 표시
             if (item.type === 'int' && key !== 'withdraw_min_amount') {
               return (
                 <div key={key}>
@@ -158,14 +167,14 @@ export default function AdminSettingsPage() {
                   <select
                     value={item.value}
                     onChange={e => updateValue(key, e.target.value)}
-                    className="border p-2 w-32"
+                    className="border p-2 w-32
+                               dark:bg-gray-800 dark:border-white/10 dark:text-gray-100"
                   >
                     {renderHourOptions()}
                   </select> 시
                 </div>
               );
             }
-
             return null;
           })}
         </div>

@@ -1,5 +1,4 @@
 // ✅ 파일 위치: frontend/src/pages/AdminNoticesPage.jsx
-
 import React, { useState, useEffect } from 'react';
 import axios from '../axiosConfig';
 import { Trash2, Edit, PlusCircle } from 'lucide-react';
@@ -76,7 +75,7 @@ export default function AdminNoticesPage() {
   };
 
   return (
-    <div className="p-2 sm:p-6 bg-white text-black min-h-screen">
+    <div className="p-2 sm:p-6 bg-white dark:bg-[#0f1120] text-black dark:text-gray-100 min-h-screen transition-colors">
       <div className="flex flex-col sm:flex-row justify-between items-center mb-4 gap-2">
         <h2 className="text-xl sm:text-3xl font-bold whitespace-nowrap">공지사항 목록</h2>
         <button
@@ -92,29 +91,29 @@ export default function AdminNoticesPage() {
       ) : (
         <div className="w-full overflow-x-auto">
           <table className="min-w-[520px] w-full table-auto border-collapse text-xs sm:text-sm">
-            <thead className="bg-gray-100">
+            <thead className="bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200">
               <tr>
-                <th className="border px-2 sm:px-3 py-2 text-left whitespace-nowrap">등록일</th>
-                <th className="border px-2 sm:px-3 py-2 text-left whitespace-nowrap">제목</th>
-                <th className="border px-2 sm:px-3 py-2 text-left whitespace-nowrap">작성자</th>
-                <th className="border px-2 sm:px-3 py-2 text-center whitespace-nowrap">동작</th>
+                <th className="border px-2 sm:px-3 py-2 text-left whitespace-nowrap dark:border-gray-700">등록일</th>
+                <th className="border px-2 sm:px-3 py-2 text-left whitespace-nowrap dark:border-gray-700">제목</th>
+                <th className="border px-2 sm:px-3 py-2 text-left whitespace-nowrap dark:border-gray-700">작성자</th>
+                <th className="border px-2 sm:px-3 py-2 text-center whitespace-nowrap dark:border-gray-700">동작</th>
               </tr>
             </thead>
             <tbody>
               {notices.length > 0 ? (
                 notices.map((n) => (
-                  <tr key={n.id} className="hover:bg-gray-50">
-                    <td className="border px-2 sm:px-3 py-2 whitespace-nowrap">
+                  <tr key={n.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                    <td className="border px-2 sm:px-3 py-2 whitespace-nowrap dark:border-gray-700">
                       {new Date(n.created_at).toLocaleDateString()}
                     </td>
-                    <td className="border px-2 sm:px-3 py-2 break-all">{n.title}</td>
-                    <td className="border px-2 sm:px-3 py-2 whitespace-nowrap">관리자</td>
-                    <td className="border px-2 sm:px-3 py-2 text-center space-x-1 sm:space-x-2 whitespace-nowrap">
+                    <td className="border px-2 sm:px-3 py-2 break-all dark:border-gray-700">{n.title}</td>
+                    <td className="border px-2 sm:px-3 py-2 whitespace-nowrap dark:border-gray-700">관리자</td>
+                    <td className="border px-2 sm:px-3 py-2 text-center space-x-1 sm:space-x-2 whitespace-nowrap dark:border-gray-700">
                       <button onClick={() => openEdit(n)}>
-                        <Edit size={16} className="text-gray-700 hover:text-black" />
+                        <Edit size={16} className="text-gray-700 dark:text-gray-300 hover:text-black dark:hover:text-white" />
                       </button>
                       <button onClick={() => handleDelete(n.id)}>
-                        <Trash2 size={16} className="text-gray-700 hover:text-black" />
+                        <Trash2 size={16} className="text-gray-700 dark:text-gray-300 hover:text-black dark:hover:text-white" />
                       </button>
                     </td>
                   </tr>
@@ -134,7 +133,7 @@ export default function AdminNoticesPage() {
       {/* === Modal === */}
       {showModal && (
         <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50 px-2">
-          <div className="bg-white p-3 sm:p-6 rounded-lg shadow-lg w-full max-w-xs sm:max-w-lg text-black">
+          <div className="bg-white dark:bg-gray-900 p-3 sm:p-6 rounded-lg shadow-lg w-full max-w-xs sm:max-w-lg text-black dark:text-gray-100">
             <h3 className="text-lg sm:text-2xl mb-4 font-semibold">
               {editingId == null ? '공지 추가' : '공지 수정'}
             </h3>
@@ -143,7 +142,7 @@ export default function AdminNoticesPage() {
                 <label className="block mb-1 font-medium">제목</label>
                 <input
                   type="text"
-                  className="w-full px-2 py-2 rounded border text-xs sm:text-base"
+                  className="w-full px-2 py-2 rounded border text-xs sm:text-base dark:bg-gray-800 dark:border-gray-700 dark:text-gray-100"
                   value={form.title}
                   onChange={(e) => setForm({ ...form, title: e.target.value })}
                   required
@@ -154,7 +153,7 @@ export default function AdminNoticesPage() {
               <div>
                 <label className="block mb-1 font-medium">내용</label>
                 <textarea
-                  className="w-full px-2 py-2 rounded border h-28 sm:h-32 resize-none text-xs sm:text-base"
+                  className="w-full px-2 py-2 rounded border h-28 sm:h-32 resize-none text-xs sm:text-base dark:bg-gray-800 dark:border-gray-700 dark:text-gray-100"
                   value={form.content}
                   onChange={(e) => setForm({ ...form, content: e.target.value })}
                   required
@@ -166,7 +165,7 @@ export default function AdminNoticesPage() {
                 <button
                   type="button"
                   onClick={() => setShowModal(false)}
-                  className="px-3 py-2 bg-gray-300 hover:bg-gray-400 rounded text-xs sm:text-base"
+                  className="px-3 py-2 bg-gray-300 hover:bg-gray-400 rounded text-xs sm:text-base dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-gray-200"
                 >
                   취소
                 </button>

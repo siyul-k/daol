@@ -1,8 +1,9 @@
 // ✅ 파일 위치: frontend/src/components/AdminLayout.jsx
 import React, { useState, useEffect, Suspense } from 'react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import ThemeToggle from "@/components/ThemeToggle";   // ✅ 다크/라이트 토글 버튼
 
-// ⬇️ 통계 컴포넌트는 lazy 로드(컴포넌트 바깥 최상단에서 선언)
+// ⬇️ 통계 컴포넌트 lazy 로드
 const MemberStats   = React.lazy(() => import('../pages/MemberStats'));
 const DepositStats  = React.lazy(() => import('../pages/DepositStats'));
 const WithdrawStats = React.lazy(() => import('../pages/WithdrawStats'));
@@ -21,14 +22,12 @@ export default function AdminLayout() {
   }, [pathname]);
 
   const navLinkClass = (path) =>
-    `px-4 py-2 text-sm font-medium hover:text-yellow-300 ${
-      pathname.startsWith(path) ? 'text-yellow-300' : 'text-white'
-    }`;
+    `px-4 py-2 text-sm font-medium hover:text-yellow-300 
+     ${pathname.startsWith(path) ? 'text-yellow-300' : 'text-gray-800 dark:text-gray-200'}`;
 
   const dropdownItemClass = (path) =>
-    `block px-4 py-1 text-sm whitespace-nowrap hover:text-yellow-300 ${
-      pathname.startsWith(path) ? 'text-yellow-300' : 'text-white'
-    }`;
+    `block px-4 py-1 text-sm whitespace-nowrap hover:text-yellow-300 
+     ${pathname.startsWith(path) ? 'text-yellow-300' : 'text-gray-800 dark:text-gray-200'}`;
 
   const handleLogout = () => {
     localStorage.removeItem('admin');
@@ -50,15 +49,18 @@ export default function AdminLayout() {
   };
 
   return (
-    <div className="flex flex-col min-h-screen">
+    <div className="flex flex-col min-h-screen bg-gray-50 dark:bg-[#0f1120] text-gray-900 dark:text-gray-100 transition-colors">
       {/* 상단 바 */}
-      <header className="bg-gray-800 text-white shadow sticky top-0 z-50">
+      <header className="bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100 shadow sticky top-0 z-50">
         <div className="flex justify-between items-center px-4 py-3 md:px-6">
           <div className="text-xl font-bold">📊 Admin</div>
+
+          {/* ✅ 테마 토글 버튼 */}
+          <ThemeToggle />
         </div>
 
         {/* 네비게이션 바 */}
-        <nav className="bg-gray-900 text-white flex flex-wrap px-4 md:px-6 space-x-6 text-sm">
+        <nav className="bg-gray-100 dark:bg-gray-800 flex flex-wrap px-4 md:px-6 space-x-6 text-sm">
           <Link to="/admin/notices" className={navLinkClass('/admin/notices')}>공지사항</Link>
           <Link to="/admin/members" className={navLinkClass('/admin/members')}>회원관리</Link>
 
@@ -68,7 +70,7 @@ export default function AdminLayout() {
               조직도 ▾
             </button>
             {menuOpen === 'org' && (
-              <div className="absolute bg-gray-800 shadow mt-1 rounded z-40">
+              <div className="absolute bg-white dark:bg-gray-900 shadow mt-1 rounded z-40">
                 <Link to="/admin/tree" className={dropdownItemClass('/admin/tree/full')}>
                   추천 조직도
                 </Link>
@@ -85,7 +87,7 @@ export default function AdminLayout() {
               지급관리 ▾
             </button>
             {menuOpen === 'reward' && (
-              <div className="absolute bg-gray-800 shadow mt-1 rounded z-40">
+              <div className="absolute bg-white dark:bg-gray-900 shadow mt-1 rounded z-40">
                 <Link to="/admin/code-rewards" className={dropdownItemClass('/admin/code-rewards')}>
                   코드지급
                 </Link>
@@ -108,7 +110,7 @@ export default function AdminLayout() {
               환경설정 ▾
             </button>
             {menuOpen === 'setting' && (
-              <div className="absolute bg-gray-800 shadow mt-1 rounded z-40">
+              <div className="absolute bg-white dark:bg-gray-900 shadow mt-1 rounded z-40">
                 <Link to="/admin/settings" className={dropdownItemClass('/admin/settings')}>
                   수당퍼센트
                 </Link>
@@ -117,7 +119,7 @@ export default function AdminLayout() {
                 </Link>
                 <button
                   onClick={handleLogout}
-                  className="block w-full text-left px-4 py-1 text-sm text-red-400 hover:text-red-300"
+                  className="block w-full text-left px-4 py-1 text-sm text-red-500 hover:text-red-300"
                 >
                   로그아웃
                 </button>
@@ -129,15 +131,13 @@ export default function AdminLayout() {
 
       {/* 통계 컴포넌트 (관리자 경로일 때만 lazy 로드) */}
       {isAdminPath && StatsEl && (
-        <div className="bg-white shadow p-4 md:p-6">
-          <Suspense fallback={null}>
-            {StatsEl}
-          </Suspense>
+        <div className="px-4 md:px-6 py-4">
+          <Suspense fallback={null}>{StatsEl}</Suspense>
         </div>
       )}
 
       {/* 본문 콘텐츠 */}
-      <main className="flex-1 bg-gray-50 p-4 md:p-6">
+      <main className="flex-1 bg-gray-50 dark:bg-[#0f1120] p-4 md:p-6">
         <Outlet />
       </main>
     </div>

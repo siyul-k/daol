@@ -43,7 +43,7 @@ export default function PointAdjustPage() {
     try {
       const payload = {
         member_id: userInfo.id,
-        point: parseInt(amount),
+        point: parseInt(amount, 10),
         type: 'adjustment',
         description: memo || '관리자 보정',
       };
@@ -75,19 +75,21 @@ export default function PointAdjustPage() {
   };
 
   return (
-    <div className="p-2 sm:p-6 w-full">
+    <div className="p-2 sm:p-6 w-full text-gray-900 dark:text-gray-100">
       <h2 className="text-base sm:text-2xl font-bold mb-4 sm:mb-6">포인트지급</h2>
 
-      {/* 버튼 영역 (반응형) */}
+      {/* 버튼 영역 */}
       <div className="flex flex-wrap gap-2 mb-4">
         <button
-          className="flex items-center bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded transition-all text-sm"
+          className="flex items-center px-4 py-2 rounded text-sm
+                     bg-blue-600 text-white hover:bg-blue-700"
           onClick={() => setShowModal(true)}
         >
           <PlusCircle size={18} className="mr-2" /> 포인트 지급
         </button>
         <button
-          className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded transition-all text-sm"
+          className="px-4 py-2 rounded text-sm
+                     bg-green-600 text-white hover:bg-green-700"
           onClick={handleExport}
         >
           내보내기
@@ -95,30 +97,44 @@ export default function PointAdjustPage() {
       </div>
 
       <div className="w-full overflow-x-auto">
-        <table className="min-w-[720px] w-full border text-xs sm:text-sm text-center">
-          <thead className="bg-gray-100">
+        <table
+          className="min-w-[720px] w-full border-collapse text-xs sm:text-sm text-center
+                     border border-gray-200 dark:border-gray-700"
+        >
+          <thead className="bg-gray-100 dark:bg-gray-800">
             <tr>
-              <th className="p-2 whitespace-nowrap">ID</th>
-              <th className="whitespace-nowrap">아이디</th>
-              <th className="whitespace-nowrap">이름</th>
-              <th className="whitespace-nowrap">포인트</th>
-              <th className="whitespace-nowrap">비고</th>
-              <th className="whitespace-nowrap">일시</th>
-              <th className="whitespace-nowrap">삭제</th>
+              {['ID','아이디','이름','포인트','비고','일시','삭제'].map((h) => (
+                <th
+                  key={h}
+                  className="p-2 whitespace-nowrap border border-gray-200 dark:border-gray-700
+                             text-gray-700 dark:text-gray-200"
+                >
+                  {h}
+                </th>
+              ))}
             </tr>
           </thead>
           <tbody>
             {adjustList.map((row) => (
-              <tr key={row.id} className="border-t">
-                <td>{row.id}</td>
-                <td>{row.username}</td>
-                <td>{row.name}</td>
-                <td className="text-right">{row.point?.toLocaleString()}</td>
-                <td>{row.description}</td>
-                <td>{row.created_at?.slice(0, 19).replace('T', ' ')}</td>
-                <td>
-                  <button onClick={() => handleDelete(row.id)}>
-                    <Trash2 size={16} className="text-red-500 hover:text-red-700" />
+              <tr
+                key={row.id}
+                className="border-t border-gray-200 dark:border-gray-700
+                           hover:bg-gray-50 dark:hover:bg-gray-700/60"
+              >
+                <td className="px-2 py-2">{row.id}</td>
+                <td className="px-2 py-2">{row.username}</td>
+                <td className="px-2 py-2">{row.name}</td>
+                <td className="px-2 py-2 text-right">{row.point?.toLocaleString()}</td>
+                <td className="px-2 py-2">{row.description}</td>
+                <td className="px-2 py-2">
+                  {row.created_at?.slice(0, 19).replace('T', ' ')}
+                </td>
+                <td className="px-2 py-2">
+                  <button onClick={() => handleDelete(row.id)} title="삭제">
+                    <Trash2
+                      size={16}
+                      className="text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300"
+                    />
                   </button>
                 </td>
               </tr>
@@ -129,35 +145,54 @@ export default function PointAdjustPage() {
 
       {/* 등록 모달 */}
       {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-          <div className="bg-white p-4 sm:p-6 rounded-lg shadow w-full max-w-xs sm:max-w-md">
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+          <div
+            className="w-full max-w-xs sm:max-w-md rounded-lg shadow p-4 sm:p-6
+                       bg-white text-gray-900
+                       dark:bg-gray-800 dark:text-gray-100"
+            style={{ maxHeight: '90vh', overflowY: 'auto' }}
+          >
             <h3 className="text-lg font-semibold mb-3 flex items-center">
               <PlusCircle className="mr-2 text-blue-600" /> 포인트 지급 등록
             </h3>
+
             <input
               type="text"
-              className="border w-full p-2 mb-2 rounded"
+              className="border w-full p-2 mb-2 rounded
+                         border-gray-300 bg-white text-gray-900
+                         dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100
+                         placeholder-gray-400 dark:placeholder-gray-400"
               placeholder="아이디 입력"
               value={inputUsername}
               onChange={(e) => setInputUsername(e.target.value)}
             />
             <button
-              className="bg-gray-700 text-white px-3 py-1 mb-2 rounded"
+              className="px-3 py-1 mb-2 rounded
+                         bg-gray-700 text-white hover:bg-gray-600
+                         dark:bg-blue-600 dark:hover:bg-blue-500"
               onClick={handleCheckUsername}
             >
               아이디 확인
             </button>
-            {userInfo.valid && <p className="mb-2 text-green-600">이름: {userInfo.name}</p>}
+
+            {userInfo.valid && (
+              <p className="mb-2 text-green-600 dark:text-green-400">이름: {userInfo.name}</p>
+            )}
+
             <input
               type="number"
-              className="border w-full p-2 mb-2 rounded"
+              className="border w-full p-2 mb-2 rounded
+                         border-gray-300 bg-white text-gray-900
+                         dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
               placeholder="지급 포인트"
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
             />
             <input
               type="text"
-              className="border w-full p-2 mb-4 rounded"
+              className="border w-full p-2 mb-4 rounded
+                         border-gray-300 bg-white text-gray-900
+                         dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
               placeholder="비고"
               value={memo}
               onChange={(e) => setMemo(e.target.value)}
@@ -165,13 +200,16 @@ export default function PointAdjustPage() {
 
             <div className="flex justify-end gap-2">
               <button
-                className="px-3 py-1 bg-gray-300 rounded"
+                className="px-3 py-1 rounded
+                           bg-gray-300 hover:bg-gray-400
+                           dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-gray-100"
                 onClick={() => setShowModal(false)}
               >
                 취소
               </button>
               <button
-                className="px-3 py-1 bg-blue-600 text-white rounded"
+                className="px-3 py-1 rounded
+                           bg-blue-600 text-white hover:bg-blue-500"
                 onClick={handleCreate}
               >
                 등록

@@ -18,21 +18,40 @@ export default function WithdrawStats() {
 
   return (
     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-      <div className="bg-white border rounded p-4 text-center shadow">
-        <div className="text-gray-500 text-sm">총 출금금액</div>
-        <div className="text-xl font-bold">{stats.total.toLocaleString()} 원</div>
+      {/* 총 출금금액 */}
+      <div className="bg-white dark:bg-gray-800 border dark:border-gray-700 
+                      rounded p-4 text-center shadow">
+        <div className="text-gray-500 dark:text-gray-400 text-sm">총 출금금액</div>
+        <div className="text-xl font-bold text-gray-900 dark:text-gray-100">
+          {stats.total.toLocaleString()} 원
+        </div>
       </div>
-      <div className="bg-white border rounded p-4 text-center shadow">
-        <div className="text-gray-500 text-sm">오늘 출금금액</div>
-        <div className="text-xl font-bold">{stats.today.toLocaleString()} 원</div>
+
+      {/* 오늘 출금금액 */}
+      <div className="bg-white dark:bg-gray-800 border dark:border-gray-700 
+                      rounded p-4 text-center shadow">
+        <div className="text-gray-500 dark:text-gray-400 text-sm">오늘 출금금액</div>
+        <div className="text-xl font-bold text-gray-900 dark:text-gray-100">
+          {stats.today.toLocaleString()} 원
+        </div>
       </div>
-      <div className="bg-white border rounded p-4 text-center shadow">
-        <div className="text-gray-500 text-sm">당월 출금금액</div>
-        <div className="text-xl font-bold">{stats.thisMonth.toLocaleString()} 원</div>
+
+      {/* 당월 출금금액 */}
+      <div className="bg-white dark:bg-gray-800 border dark:border-gray-700 
+                      rounded p-4 text-center shadow">
+        <div className="text-gray-500 dark:text-gray-400 text-sm">당월 출금금액</div>
+        <div className="text-xl font-bold text-gray-900 dark:text-gray-100">
+          {stats.thisMonth.toLocaleString()} 원
+        </div>
       </div>
-      <div className="bg-white border rounded p-4 text-center shadow">
-        <div className="text-gray-500 text-sm">전월 출금금액</div>
-        <div className="text-xl font-bold">{stats.lastMonth.toLocaleString()} 원</div>
+
+      {/* 전월 출금금액 */}
+      <div className="bg-white dark:bg-gray-800 border dark:border-gray-700 
+                      rounded p-4 text-center shadow">
+        <div className="text-gray-500 dark:text-gray-400 text-sm">전월 출금금액</div>
+        <div className="text-xl font-bold text-gray-900 dark:text-gray-100">
+          {stats.lastMonth.toLocaleString()} 원
+        </div>
       </div>
     </div>
   );

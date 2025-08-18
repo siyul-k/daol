@@ -18,11 +18,7 @@ export default function AdminCodeGivePage() {
 
   const fetchCodes = async () => {
     try {
-      const query = new URLSearchParams({
-        ...filters,
-        page,
-        limit,
-      }).toString();
+      const query = new URLSearchParams({ ...filters, page, limit }).toString();
       const res = await axios.get(`/api/admin/code-give?${query}`);
       setCodes(res.data.rows);
       setTotal(res.data.total);
@@ -82,10 +78,11 @@ export default function AdminCodeGivePage() {
   const handleToggleActive = async (id, current) => {
     try {
       await axios.put(`/api/admin/code-give/${id}`, { active: current ? 0 : 1 });
-      fetchCodes();
     } catch (err) {
       alert('상태 변경 실패');
       console.error(err);
+    } finally {
+      fetchCodes();
     }
   };
 
@@ -103,7 +100,7 @@ export default function AdminCodeGivePage() {
   }, [page, limit]);
 
   return (
-    <div className="p-2 sm:p-4">
+    <div className="p-2 sm:p-4 text-gray-900 dark:text-gray-100">
       <h2 className="text-base sm:text-xl font-bold mb-2 sm:mb-4">코드 상품 지급</h2>
 
       {/* 필터 영역 */}
@@ -111,22 +108,34 @@ export default function AdminCodeGivePage() {
         <input
           type="text"
           placeholder="아이디 검색"
-          className="border px-2 py-1 text-xs sm:text-sm rounded"
+          className="border border-gray-300 rounded px-2 py-1 text-xs sm:text-sm
+                     bg-white placeholder-gray-400 text-gray-900
+                     dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100 dark:placeholder-gray-400"
           value={filters.username}
           onChange={(e) => setFilters({ ...filters, username: e.target.value })}
         />
         <input
           type="text"
           placeholder="이름 검색"
-          className="border px-2 py-1 text-xs sm:text-sm rounded"
+          className="border border-gray-300 rounded px-2 py-1 text-xs sm:text-sm
+                     bg-white placeholder-gray-400 text-gray-900
+                     dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100 dark:placeholder-gray-400"
           value={filters.name}
           onChange={(e) => setFilters({ ...filters, name: e.target.value })}
         />
-        <button className="px-3 py-1 bg-gray-700 text-white rounded text-xs sm:text-sm" onClick={handleSearch}>
+        <button
+          className="px-3 py-1 rounded text-xs sm:text-sm
+                     bg-gray-700 text-white hover:bg-gray-600
+                     dark:bg-blue-600 dark:hover:bg-blue-500"
+          onClick={handleSearch}
+        >
           검색
         </button>
+
         <select
-          className="border px-2 py-1 ml-auto text-xs sm:text-sm rounded"
+          className="ml-auto border border-gray-300 rounded px-2 py-1 text-xs sm:text-sm
+                     bg-white text-gray-900
+                     dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100"
           value={limit}
           onChange={(e) => setLimit(e.target.value === 'all' ? 'all' : Number(e.target.value))}
         >
@@ -135,8 +144,10 @@ export default function AdminCodeGivePage() {
           <option value={50}>50개씩</option>
           <option value="all">전체보기</option>
         </select>
+
         <button
-          className="ml-2 px-3 py-2 bg-blue-600 text-white rounded text-xs sm:text-sm flex items-center"
+          className="ml-2 px-3 py-2 rounded text-xs sm:text-sm flex items-center
+                     bg-blue-600 text-white hover:bg-blue-500"
           onClick={() => setShowModal(true)}
         >
           <PlusCircle className="inline-block mr-1" size={16} />
@@ -146,41 +157,54 @@ export default function AdminCodeGivePage() {
 
       {/* 테이블 (반응형) */}
       <div className="w-full overflow-x-auto">
-        <table className="min-w-[600px] w-full border text-xs sm:text-sm text-center">
-          <thead className="bg-gray-100">
+        <table
+          className="min-w-[600px] w-full border-collapse text-xs sm:text-sm text-center
+                     border border-gray-200 dark:border-gray-700"
+        >
+          <thead className="bg-gray-100 dark:bg-gray-800">
             <tr>
-              <th className="py-2 whitespace-nowrap">등록일</th>
-              <th className="whitespace-nowrap">아이디</th>
-              <th className="whitespace-nowrap">이름</th>
-              <th className="whitespace-nowrap">금액</th>
-              <th className="whitespace-nowrap">PV</th>
-              <th className="whitespace-nowrap">상태</th>
-              <th className="whitespace-nowrap">수정</th>
-              <th className="whitespace-nowrap">삭제</th>
+              {['등록일','아이디','이름','금액','PV','상태','수정','삭제'].map((h) => (
+                <th
+                  key={h}
+                  className="px-3 py-2 whitespace-nowrap border border-gray-200 dark:border-gray-700
+                             text-gray-700 dark:text-gray-200"
+                >
+                  {h}
+                </th>
+              ))}
             </tr>
           </thead>
           <tbody>
             {codes.map((row) => (
-              <tr key={row.id} className="border-t">
-                <td>
+              <tr
+                key={row.id}
+                className="border-t border-gray-200 dark:border-gray-700
+                           hover:bg-gray-50 dark:hover:bg-gray-700/60"
+              >
+                <td className="px-2 py-2">
                   {row.created_at
-                    ? new Date(new Date(row.created_at).getTime() + 9 * 60 * 60 * 1000)
-                        .toLocaleString('ko-KR')
+                    ? new Date(new Date(row.created_at).getTime() + 9 * 60 * 60 * 1000).toLocaleString('ko-KR')
                     : ''}
                 </td>
-                <td>{row.username}</td>
-                <td>{row.name}</td>
-                <td>{row.amount.toLocaleString()}</td>
-                <td>{row.pv.toLocaleString()}</td>
-                <td>{row.active ? '활성' : '비활성'}</td>
-                <td>
-                  <button onClick={() => handleToggleActive(row.id, row.active)}>
-                    <Pencil size={16} className="text-blue-500 hover:text-blue-700" />
+                <td className="px-2 py-2">{row.username}</td>
+                <td className="px-2 py-2">{row.name}</td>
+                <td className="px-2 py-2">{row.amount.toLocaleString()}</td>
+                <td className="px-2 py-2">{row.pv.toLocaleString()}</td>
+                <td className="px-2 py-2">{row.active ? '활성' : '비활성'}</td>
+                <td className="px-2 py-2">
+                  <button onClick={() => handleToggleActive(row.id, row.active)} title="상태 변경">
+                    <Pencil
+                      size={16}
+                      className="text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300"
+                    />
                   </button>
                 </td>
-                <td>
-                  <button onClick={() => handleDelete(row.id)}>
-                    <Trash2 size={16} className="text-red-500 hover:text-red-700" />
+                <td className="px-2 py-2">
+                  <button onClick={() => handleDelete(row.id)} title="삭제">
+                    <Trash2
+                      size={16}
+                      className="text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300"
+                    />
                   </button>
                 </td>
               </tr>
@@ -196,7 +220,9 @@ export default function AdminCodeGivePage() {
             <button
               key={i}
               onClick={() => setPage(i + 1)}
-              className={`px-3 py-1 border rounded ${page === i + 1 ? 'bg-blue-600 text-white' : ''}`}
+              className={`px-3 py-1 rounded border
+                         border-gray-300 dark:border-gray-600
+                         ${page === i + 1 ? 'bg-blue-600 text-white' : 'dark:text-gray-100'}`}
             >
               {i + 1}
             </button>
@@ -206,31 +232,44 @@ export default function AdminCodeGivePage() {
 
       {/* 등록 모달 (반응형) */}
       {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
           <div
-            className="bg-white p-3 sm:p-6 rounded-xl shadow w-full max-w-xs sm:max-w-md"
+            className="w-full max-w-xs sm:max-w-md rounded-xl shadow p-3 sm:p-6
+                       bg-white text-gray-900
+                       dark:bg-gray-800 dark:text-gray-100"
             style={{ maxHeight: '90vh', overflowY: 'auto' }}
           >
             <h3 className="text-base sm:text-lg font-semibold mb-2 sm:mb-3">코드 지급 등록</h3>
+
             <div className="flex flex-col gap-2">
               <input
                 type="text"
-                className="border w-full p-1 sm:p-2 rounded text-xs sm:text-sm"
+                className="border border-gray-300 rounded w-full p-1 sm:p-2 text-xs sm:text-sm
+                           bg-white placeholder-gray-400 text-gray-900
+                           dark:bg-gray-900 dark:border-gray-600 dark:text-gray-100 dark:placeholder-gray-400"
                 placeholder="아이디 입력"
                 value={newCode.username}
                 onChange={(e) => setNewCode({ ...newCode, username: e.target.value })}
               />
               <button
-                className="bg-gray-700 text-white px-2 py-1 sm:px-3 sm:py-1 rounded text-xs sm:text-sm"
+                className="px-2 py-1 sm:px-3 sm:py-1 rounded text-xs sm:text-sm
+                           bg-gray-700 text-white hover:bg-gray-600
+                           dark:bg-blue-600 dark:hover:bg-blue-500"
                 onClick={handleCheckUsername}
               >
                 아이디 확인
               </button>
+
               {usernameCheck.valid && (
-                <p className="mb-1 text-green-600 text-xs sm:text-sm">이름: {usernameCheck.name}</p>
+                <p className="mb-1 text-green-600 dark:text-green-400 text-xs sm:text-sm">
+                  이름: {usernameCheck.name}
+                </p>
               )}
+
               <select
-                className="border w-full p-1 sm:p-2 rounded text-xs sm:text-sm"
+                className="border border-gray-300 rounded w-full p-1 sm:p-2 text-xs sm:text-sm
+                           bg-white text-gray-900
+                           dark:bg-gray-900 dark:border-gray-600 dark:text-gray-100"
                 value={newCode.product_id}
                 onChange={(e) => setNewCode({ ...newCode, product_id: e.target.value })}
               >
@@ -242,15 +281,19 @@ export default function AdminCodeGivePage() {
                 ))}
               </select>
             </div>
+
             <div className="flex flex-col sm:flex-row justify-end gap-2 mt-4">
               <button
-                className="px-2 py-1 bg-gray-300 rounded text-xs sm:text-sm"
+                className="px-2 py-1 rounded text-xs sm:text-sm
+                           bg-gray-300 hover:bg-gray-400
+                           dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-gray-100"
                 onClick={() => setShowModal(false)}
               >
                 취소
               </button>
               <button
-                className="px-2 py-1 bg-blue-600 text-white rounded text-xs sm:text-sm"
+                className="px-2 py-1 rounded text-xs sm:text-sm
+                           bg-blue-600 text-white hover:bg-blue-500"
                 onClick={handleCreate}
               >
                 등록

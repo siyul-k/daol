@@ -182,8 +182,9 @@ export default function AdminMembersPage() {
   };
 
   return (
-    <div className="p-2 sm:p-6 overflow-auto">
+    <div className="p-2 sm:p-6 overflow-auto bg-white dark:bg-[#0f1120] text-black dark:text-gray-100 min-h-screen transition-colors">
       <h2 className="text-xl sm:text-2xl mb-2 sm:mb-4 font-bold">회원 목록</h2>
+
       {/* 🔍 검색 필터 */}
       <div className="flex flex-wrap gap-2 mb-3 sm:mb-4 items-center">
         {['username', 'name', 'recommender', 'center', 'date'].map(key => (
@@ -197,7 +198,7 @@ export default function AdminMembersPage() {
               <select
                 value={filters.center || ''}
                 onChange={e => handleFilterChange('center', e.target.value)}
-                className="border p-1 rounded"
+                className="border p-1 rounded dark:bg-gray-800 dark:border-gray-700 dark:text-gray-100"
               >
                 <option value="">센터명 검색</option>
                 {centers.map(c => (
@@ -209,7 +210,7 @@ export default function AdminMembersPage() {
                 type="date"
                 value={filters.date || ''}
                 onChange={e => handleFilterChange(key, e.target.value)}
-                className="border p-1 rounded"
+                className="border p-1 rounded dark:bg-gray-800 dark:border-gray-700 dark:text-gray-100"
                 onKeyDown={handleKeyDown}
               />
             ) : (
@@ -222,18 +223,28 @@ export default function AdminMembersPage() {
                 }
                 value={filters[key] || ''}
                 onChange={e => handleFilterChange(key, e.target.value)}
-                className="border p-1 rounded"
+                className="border p-1 rounded dark:bg-gray-800 dark:border-gray-700 dark:text-gray-100"
                 onKeyDown={handleKeyDown}
               />
             )}
           </div>
         ))}
-        <button onClick={handleSearch} className="bg-blue-600 text-white px-2 py-1 rounded text-xs sm:text-sm">검색</button>
-        <button onClick={handleDownloadExcel} className="bg-green-600 text-white px-2 py-1 rounded text-xs sm:text-sm">엑셀 다운로드</button>
+        <button
+          onClick={handleSearch}
+          className="bg-blue-600 hover:bg-blue-500 text-white px-2 py-1 rounded text-xs sm:text-sm"
+        >
+          검색
+        </button>
+        <button
+          onClick={handleDownloadExcel}
+          className="bg-green-600 hover:bg-green-500 text-white px-2 py-1 rounded text-xs sm:text-sm"
+        >
+          엑셀 다운로드
+        </button>
         <select
           value={limit}
           onChange={e => { setLimit(Number(e.target.value)); setPage(1); }}
-          className="border p-1 rounded text-xs sm:text-sm"
+          className="border p-1 rounded text-xs sm:text-sm dark:bg-gray-800 dark:border-gray-700 dark:text-gray-100"
         >
           {[10, 20, 30, 50, 100].map(n => (
             <option key={n} value={n}>{n}개씩 보기</option>
@@ -241,75 +252,79 @@ export default function AdminMembersPage() {
         </select>
       </div>
 
-      {/* 📋 테이블 (가로스크롤 반응형, 한줄 유지) */}
+      {/* 📋 테이블 */}
       {loading ? <p>Loading...</p> : (
         <div className="w-full overflow-x-auto">
           <table className="min-w-[900px] w-full border-collapse text-xs sm:text-sm mb-4">
-            <thead className="bg-gray-100">
+            <thead className="bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200">
               <tr>
                 {/* 정렬 가능 컬럼 */}
                 <th
-                  className="border p-1 text-center whitespace-nowrap cursor-pointer select-none"
+                  className="border dark:border-gray-700 p-1 text-center whitespace-nowrap cursor-pointer select-none"
                   onClick={() => handleSort('created_at')}
                 >
                   등록일<span className="text-blue-500">{renderSortSymbol('created_at')}</span>
                 </th>
-                <th className="border p-1 text-center whitespace-nowrap">동작</th>
+                <th className="border dark:border-gray-700 p-1 text-center whitespace-nowrap">동작</th>
                 <th
-                  className="border p-1 text-center whitespace-nowrap cursor-pointer select-none"
+                  className="border dark:border-gray-700 p-1 text-center whitespace-nowrap cursor-pointer select-none"
                   onClick={() => handleSort('username')}
                 >
                   아이디<span className="text-blue-500">{renderSortSymbol('username')}</span>
                 </th>
                 <th
-                  className="border p-1 text-center whitespace-nowrap cursor-pointer select-none"
+                  className="border dark:border-gray-700 p-1 text-center whitespace-nowrap cursor-pointer select-none"
                   onClick={() => handleSort('name')}
                 >
                   이름<span className="text-blue-500">{renderSortSymbol('name')}</span>
                 </th>
-                <th className="border p-1 text-center whitespace-nowrap">핸드폰</th>
+                <th className="border dark:border-gray-700 p-1 text-center whitespace-nowrap">핸드폰</th>
                 <th
-                  className="border p-1 text-center whitespace-nowrap cursor-pointer select-none"
+                  className="border dark:border-gray-700 p-1 text-center whitespace-nowrap cursor-pointer select-none"
                   onClick={() => handleSort('center_name')}
                 >
                   센터<span className="text-blue-500">{renderSortSymbol('center_name')}</span>
                 </th>
-                <th className="border p-1 text-center whitespace-nowrap">추천인</th>
+                <th className="border dark:border-gray-700 p-1 text-center whitespace-nowrap">추천인</th>
                 <th
-                  className="border p-1 text-center whitespace-nowrap cursor-pointer select-none"
+                  className="border dark:border-gray-700 p-1 text-center whitespace-nowrap cursor-pointer select-none"
                   onClick={() => handleSort('is_withdraw_blocked')}
                 >
                   출금금지<span className="text-blue-500">{renderSortSymbol('is_withdraw_blocked')}</span>
                 </th>
                 <th
-                  className="border p-1 text-center whitespace-nowrap cursor-pointer select-none"
+                  className="border dark:border-gray-700 p-1 text-center whitespace-nowrap cursor-pointer select-none"
                   onClick={() => handleSort('is_reward_blocked')}
                 >
                   수당금지<span className="text-blue-500">{renderSortSymbol('is_reward_blocked')}</span>
                 </th>
-                <th className="border p-1 text-center whitespace-nowrap">은행</th>
-                <th className="border p-1 text-center whitespace-nowrap">예금주</th>
-                <th className="border p-1 text-center whitespace-nowrap">계좌번호</th>
+                <th className="border dark:border-gray-700 p-1 text-center whitespace-nowrap">은행</th>
+                <th className="border dark:border-gray-700 p-1 text-center whitespace-nowrap">예금주</th>
+                <th className="border dark:border-gray-700 p-1 text-center whitespace-nowrap">계좌번호</th>
               </tr>
             </thead>
             <tbody>
               {members.map(m => (
-                <tr key={m.id}>
-                  <td className="border p-1 text-center whitespace-nowrap">{formatKST(m.created_at)}</td>
-                  <td className="border p-1 text-center whitespace-nowrap">
-                    <button onClick={() => handleEditClick(m)} className="p-1"><Edit size={16} /></button>
-                    <button onClick={() => handleDelete(m.id)} className="p-1"><Trash2 size={16} /></button>
+                <tr key={m.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                  <td className="border dark:border-gray-700 p-1 text-center whitespace-nowrap">{formatKST(m.created_at)}</td>
+                  <td className="border dark:border-gray-700 p-1 text-center whitespace-nowrap">
+                    <button onClick={() => handleEditClick(m)} className="p-1">
+                      <Edit size={16} className="text-gray-700 dark:text-gray-300 hover:text-black dark:hover:text-white" />
+                    </button>
+                    <button onClick={() => handleDelete(m.id)} className="p-1">
+                      <Trash2 size={16} className="text-gray-700 dark:text-gray-300 hover:text-black dark:hover:text-white" />
+                    </button>
                   </td>
-                  <td className="border p-1 text-center whitespace-nowrap">{m.username}</td>
-                  <td className="border p-1 text-center whitespace-nowrap">{m.name}</td>
-                  <td className="border p-1 text-center whitespace-nowrap">{m.phone}</td>
-                  <td className="border p-1 text-center whitespace-nowrap">{m.center_name || ''}</td>
-                  <td className="border p-1 text-center whitespace-nowrap">{getUsernameById(m.recommender_id) || ''}</td>
-                  <td className="border p-1 text-center whitespace-nowrap">{m.is_withdraw_blocked ? '✅' : ''}</td>
-                  <td className="border p-1 text-center whitespace-nowrap">{m.is_reward_blocked ? '✅' : ''}</td>
-                  <td className="border p-1 text-center whitespace-nowrap">{m.bank_name}</td>
-                  <td className="border p-1 text-center whitespace-nowrap">{m.account_holder}</td>
-                  <td className="border p-1 text-center whitespace-nowrap">{m.account_number}</td>
+                  <td className="border dark:border-gray-700 p-1 text-center whitespace-nowrap">{m.username}</td>
+                  <td className="border dark:border-gray-700 p-1 text-center whitespace-nowrap">{m.name}</td>
+                  <td className="border dark:border-gray-700 p-1 text-center whitespace-nowrap">{m.phone}</td>
+                  <td className="border dark:border-gray-700 p-1 text-center whitespace-nowrap">{m.center_name || ''}</td>
+                  <td className="border dark:border-gray-700 p-1 text-center whitespace-nowrap">{getUsernameById(m.recommender_id) || ''}</td>
+                  <td className="border dark:border-gray-700 p-1 text-center whitespace-nowrap">{m.is_withdraw_blocked ? '✅' : ''}</td>
+                  <td className="border dark:border-gray-700 p-1 text-center whitespace-nowrap">{m.is_reward_blocked ? '✅' : ''}</td>
+                  <td className="border dark:border-gray-700 p-1 text-center whitespace-nowrap">{m.bank_name}</td>
+                  <td className="border dark:border-gray-700 p-1 text-center whitespace-nowrap">{m.account_holder}</td>
+                  <td className="border dark:border-gray-700 p-1 text-center whitespace-nowrap">{m.account_number}</td>
                 </tr>
               ))}
             </tbody>
@@ -322,7 +337,7 @@ export default function AdminMembersPage() {
         {Array.from({ length: Math.ceil(total / limit) }, (_, i) => (
           <button
             key={i}
-            className={`px-2 py-1 border rounded ${page === i + 1 ? 'bg-blue-600 text-white' : ''}`}
+            className={`px-2 py-1 border dark:border-gray-700 rounded ${page === i + 1 ? 'bg-blue-600 text-white dark:bg-blue-500' : 'bg-transparent'}`}
             onClick={() => setPage(i + 1)}
           >
             {i + 1}
@@ -330,11 +345,11 @@ export default function AdminMembersPage() {
         ))}
       </div>
 
-      {/* ✅ 수정 모달 (반응형, 모바일에서 최적화) */}
+      {/* ✅ 수정 모달 */}
       {editMember && (
         <div className="fixed inset-0 z-50 bg-black bg-opacity-40 flex items-center justify-center">
           <div
-            className="bg-white p-3 sm:p-5 rounded-xl shadow-lg w-full max-w-xs sm:max-w-md"
+            className="bg-white dark:bg-gray-900 text-black dark:text-gray-100 p-3 sm:p-5 rounded-xl shadow-lg w-full max-w-xs sm:max-w-md"
             style={{ maxHeight: '90vh', overflowY: 'auto' }}
           >
             <h3 className="mb-3 font-bold text-base sm:text-lg">
@@ -345,13 +360,15 @@ export default function AdminMembersPage() {
               onSubmit={e => { e.preventDefault(); handleEditSave(); }}
             >
               <label className="text-xs font-semibold">이름
-                <input className="border w-full p-1 rounded mt-1"
+                <input
+                  className="border dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 w-full p-1 rounded mt-1"
                   value={editMember.name || ''}
                   onChange={e => setEditMember({ ...editMember, name: e.target.value })}
                 />
               </label>
               <label className="text-xs font-semibold">전화번호
-                <input className="border w-full p-1 rounded mt-1"
+                <input
+                  className="border dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 w-full p-1 rounded mt-1"
                   value={editMember.phone || ''}
                   onChange={e => setEditMember({ ...editMember, phone: e.target.value })}
                 />
@@ -360,7 +377,7 @@ export default function AdminMembersPage() {
                 <select
                   value={editMember.center_id || ''}
                   onChange={e => setEditMember({ ...editMember, center_id: e.target.value })}
-                  className="border p-1 rounded w-full mt-1"
+                  className="border dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 p-1 rounded w-full mt-1"
                 >
                   <option value="">센터 선택</option>
                   {centers.map(c => (
@@ -369,7 +386,8 @@ export default function AdminMembersPage() {
                 </select>
               </label>
               <label className="text-xs font-semibold">은행
-                <select className="border w-full p-1 rounded mt-1"
+                <select
+                  className="border dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 w-full p-1 rounded mt-1"
                   value={editMember.bank_name || ''}
                   onChange={e => setEditMember({ ...editMember, bank_name: e.target.value })}
                 >
@@ -378,19 +396,22 @@ export default function AdminMembersPage() {
                 </select>
               </label>
               <label className="text-xs font-semibold">예금주
-                <input className="border w-full p-1 rounded mt-1"
+                <input
+                  className="border dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 w-full p-1 rounded mt-1"
                   value={editMember.account_holder || ''}
                   onChange={e => setEditMember({ ...editMember, account_holder: e.target.value })}
                 />
               </label>
               <label className="text-xs font-semibold">계좌번호
-                <input className="border w-full p-1 rounded mt-1"
+                <input
+                  className="border dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 w-full p-1 rounded mt-1"
                   value={editMember.account_number || ''}
                   onChange={e => setEditMember({ ...editMember, account_number: e.target.value })}
                 />
               </label>
               <label className="text-xs font-semibold">추천인
-                <input className="border w-full p-1 rounded mt-1"
+                <input
+                  className="border dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 w-full p-1 rounded mt-1"
                   value={editMember.recommender || ''}
                   onChange={e => setEditMember({ ...editMember, recommender: e.target.value })}
                   placeholder="추천인 아이디(username) 입력"
@@ -419,15 +440,26 @@ export default function AdminMembersPage() {
                 </label>
               </div>
               <div className="flex flex-col sm:flex-row justify-end gap-2 mt-4">
-                <button type="button" onClick={handlePasswordReset}
-                  className="px-2 py-1 bg-yellow-400 rounded text-xs font-semibold"
-                >비번 초기화</button>
-                <button type="button" onClick={() => setEditMember(null)}
-                  className="px-2 py-1 bg-gray-300 rounded text-xs font-semibold"
-                >취소</button>
-                <button type="submit"
-                  className="px-2 py-1 bg-blue-600 text-white rounded text-xs font-semibold"
-                >저장</button>
+                <button
+                  type="button"
+                  onClick={handlePasswordReset}
+                  className="px-2 py-1 bg-yellow-400 hover:bg-yellow-300 rounded text-xs font-semibold"
+                >
+                  비번 초기화
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEditMember(null)}
+                  className="px-2 py-1 bg-gray-300 hover:bg-gray-400 dark:bg-gray-700 dark:hover:bg-gray-600 rounded text-xs font-semibold dark:text-gray-200"
+                >
+                  취소
+                </button>
+                <button
+                  type="submit"
+                  className="px-2 py-1 bg-blue-600 hover:bg-blue-500 text-white rounded text-xs font-semibold"
+                >
+                  저장
+                </button>
               </div>
             </form>
           </div>

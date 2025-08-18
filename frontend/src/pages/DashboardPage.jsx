@@ -127,13 +127,30 @@ export default function DashboardPage() {
           link="/withdraw-history"
           gradient="from-sky-400 to-blue-500"
         />
-        <Card
-          icon={<Coins className="size-6" />}
-          title="출금가능 포인트"
-          value={formatNumber(data.withdrawableAmount)}
-          link="/withdraw"
-          gradient="from-purple-400 to-pink-500"
-        />
+        
+  <Card
+  icon={
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      className="w-6 h-6 text-yellow-400"   // 바깥 원 크기 그대로 유지
+    >
+      {/* 바깥 원 */}
+      <circle cx="12" cy="12" r="10" fill="#facc15" />
+      {/* 안쪽 원 */}
+      <circle cx="12" cy="12" r="7" fill="#eab308" />
+      {/* 중앙 다이아몬드 (크기 키움) */}
+      <path d="M12 5 L19 12 L12 19 L5 12 Z" fill="#fef08a" />
+    </svg>
+  }
+  title="출금가능 포인트"
+  value={formatNumber(data.withdrawableAmount)}
+  link="/withdraw"
+  gradient="from-yellow-400 to-yellow-600"
+/>
+
+
         <Card
           icon={<Coins className="size-6" />}
           title="쇼핑포인트"

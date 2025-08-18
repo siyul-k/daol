@@ -18,22 +18,24 @@ export default function MemberStats() {
 
   return (
     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-      <div className="bg-white border rounded p-4 text-center shadow">
-        <div className="text-gray-500 text-sm">전체회원</div>
-        <div className="text-xl font-bold">{stats.total}</div>
-      </div>
-      <div className="bg-white border rounded p-4 text-center shadow">
-        <div className="text-gray-500 text-sm">오늘등록</div>
-        <div className="text-xl font-bold">{stats.today}</div>
-      </div>
-      <div className="bg-white border rounded p-4 text-center shadow">
-        <div className="text-gray-500 text-sm">블랙리스트</div>
-        <div className="text-xl font-bold">{stats.blacklist}</div>
-      </div>
-      <div className="bg-white border rounded p-4 text-center shadow">
-        <div className="text-gray-500 text-sm">센터장</div>
-        <div className="text-xl font-bold">{stats.center}</div>
-      </div>
+      <StatCard title="전체회원" value={stats.total} />
+      <StatCard title="오늘등록" value={stats.today} />
+      <StatCard title="블랙리스트" value={stats.blacklist} />
+      <StatCard title="센터장" value={stats.center} />
+    </div>
+  );
+}
+
+function StatCard({ title, value }) {
+  return (
+    <div
+      className="
+        bg-white border border-gray-200 text-gray-900 shadow rounded p-4 text-center
+        dark:bg-gray-800 dark:border-gray-700 dark:text-gray-100
+      "
+    >
+      <div className="text-gray-500 dark:text-gray-400 text-sm">{title}</div>
+      <div className="text-xl font-bold">{value}</div>
     </div>
   );
 }

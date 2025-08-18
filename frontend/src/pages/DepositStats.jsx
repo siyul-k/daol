@@ -11,24 +11,23 @@ export default function DepositStats() {
       .catch(err => console.error('입금 통계 조회 실패:', err));
   }, []);
 
+  const Card = ({ label, value }) => (
+    <div
+      className="rounded p-4 text-center shadow border
+                 bg-white text-gray-900 border-gray-200
+                 dark:bg-gray-800 dark:text-gray-100 dark:border-gray-700"
+    >
+      <div className="text-gray-500 text-sm dark:text-gray-400">{label}</div>
+      <div className="text-xl font-bold">{value?.toLocaleString?.() || 0} 원</div>
+    </div>
+  );
+
   return (
     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-      <div className="bg-white border rounded p-4 text-center shadow">
-        <div className="text-gray-500 text-sm">총 입금금액</div>
-        <div className="text-xl font-bold">{stats.total?.toLocaleString?.() || 0} 원</div>
-      </div>
-      <div className="bg-white border rounded p-4 text-center shadow">
-        <div className="text-gray-500 text-sm">오늘 입금금액</div>
-        <div className="text-xl font-bold">{stats.today?.toLocaleString?.() || 0} 원</div>
-      </div>
-      <div className="bg-white border rounded p-4 text-center shadow">
-        <div className="text-gray-500 text-sm">당월 입금금액</div>
-        <div className="text-xl font-bold">{stats.month?.toLocaleString?.() || 0} 원</div>
-      </div>
-      <div className="bg-white border rounded p-4 text-center shadow">
-        <div className="text-gray-500 text-sm">전월 입금금액</div>
-        <div className="text-xl font-bold">{stats.prevMonth?.toLocaleString?.() || 0} 원</div>
-      </div>
+      <Card label="총 입금금액" value={stats.total} />
+      <Card label="오늘 입금금액" value={stats.today} />
+      <Card label="당월 입금금액" value={stats.month} />
+      <Card label="전월 입금금액" value={stats.prevMonth} />
     </div>
   );
 }
