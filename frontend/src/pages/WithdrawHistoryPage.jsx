@@ -1,9 +1,9 @@
+// ✅ 파일 경로: frontend/src/pages/WithdrawHistoryPage.jsx
 import React, { useEffect, useState } from 'react';
 import axios from '../axiosConfig';
-import { formatKST } from '../utils/time';  // 시간 변환 함수 import
+import { formatKST } from '../utils/time';
 
 export default function WithdrawHistoryPage() {
-  // localStorage 값: '1234:alice' 또는 'alice'
   const stored = localStorage.getItem('username') || '';
   let member_id = '';
   let username = '';
@@ -19,7 +19,6 @@ export default function WithdrawHistoryPage() {
 
   useEffect(() => {
     if (!member_id && !username) return;
-
     const params = member_id ? { member_id } : { username };
 
     axios
@@ -41,36 +40,36 @@ export default function WithdrawHistoryPage() {
         <p>출금 내역이 없습니다.</p>
       ) : (
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[1100px] border border-gray-300 text-center">
-            <thead className="bg-gray-100">
+          <table className="w-full min-w-[1100px] border border-gray-300 dark:border-gray-600 text-center">
+            <thead className="bg-gray-100 dark:bg-gray-700">
               <tr>
-                <th className="border px-3 py-2">등록일시</th>
-                <th className="border px-3 py-2">종류</th>
-                <th className="border px-3 py-2">상태</th>
-                <th className="border px-3 py-2">출금신청금액</th>
-                <th className="border px-3 py-2">수수료</th>
-                <th className="border px-3 py-2">출금액</th>
-                <th className="border px-3 py-2">쇼핑포인트</th>
-                <th className="border px-3 py-2">입금은행</th>
-                <th className="border px-3 py-2">예금주</th>
-                <th className="border px-3 py-2">계좌번호</th>
-                <th className="border px-3 py-2">비고</th>
+                <th className="border border-gray-300 dark:border-gray-600 px-3 py-2 text-gray-800 dark:text-gray-200">등록일시</th>
+                <th className="border border-gray-300 dark:border-gray-600 px-3 py-2 text-gray-800 dark:text-gray-200">종류</th>
+                <th className="border border-gray-300 dark:border-gray-600 px-3 py-2 text-gray-800 dark:text-gray-200">상태</th>
+                <th className="border border-gray-300 dark:border-gray-600 px-3 py-2 text-gray-800 dark:text-gray-200">출금신청금액</th>
+                <th className="border border-gray-300 dark:border-gray-600 px-3 py-2 text-gray-800 dark:text-gray-200">수수료</th>
+                <th className="border border-gray-300 dark:border-gray-600 px-3 py-2 text-gray-800 dark:text-gray-200">출금액</th>
+                <th className="border border-gray-300 dark:border-gray-600 px-3 py-2 text-gray-800 dark:text-gray-200">쇼핑포인트</th>
+                <th className="border border-gray-300 dark:border-gray-600 px-3 py-2 text-gray-800 dark:text-gray-200">입금은행</th>
+                <th className="border border-gray-300 dark:border-gray-600 px-3 py-2 text-gray-800 dark:text-gray-200">예금주</th>
+                <th className="border border-gray-300 dark:border-gray-600 px-3 py-2 text-gray-800 dark:text-gray-200">계좌번호</th>
+                <th className="border border-gray-300 dark:border-gray-600 px-3 py-2 text-gray-800 dark:text-gray-200">비고</th>
               </tr>
             </thead>
             <tbody>
               {list.map(row => (
-                <tr key={row.id}>
-                  <td className="border px-3 py-2">{formatKST(row.created_at)}</td> {/* 시간 변환 적용 */}
-                  <td className="border px-3 py-2">{row.type === 'normal' ? '일반' : '센터'}</td>
-                  <td className="border px-3 py-2">{row.status}</td>
-                  <td className="border px-3 py-2 text-right">{Number(row.amount).toLocaleString()}</td>
-                  <td className="border px-3 py-2 text-right">{Number(row.fee).toLocaleString()}</td>
-                  <td className="border px-3 py-2 text-right">{Number(row.payout).toLocaleString()}</td>
-                  <td className="border px-3 py-2 text-right">{Number(row.shopping_point || 0).toLocaleString()}</td>
-                  <td className="border px-3 py-2">{row.bank_name}</td>
-                  <td className="border px-3 py-2">{row.account_holder}</td>
-                  <td className="border px-3 py-2">{row.account_number}</td>
-                  <td className="border px-3 py-2">{row.memo || '-'}</td>
+                <tr key={row.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                  <td className="border border-gray-300 dark:border-gray-600 px-3 py-2 text-gray-900 dark:text-gray-100">{formatKST(row.created_at)}</td>
+                  <td className="border border-gray-300 dark:border-gray-600 px-3 py-2 text-gray-900 dark:text-gray-100">{row.type === 'normal' ? '일반' : '센터'}</td>
+                  <td className="border border-gray-300 dark:border-gray-600 px-3 py-2 text-gray-900 dark:text-gray-100">{row.status}</td>
+                  <td className="border border-gray-300 dark:border-gray-600 px-3 py-2 text-right text-gray-900 dark:text-gray-100">{Number(row.amount).toLocaleString()}</td>
+                  <td className="border border-gray-300 dark:border-gray-600 px-3 py-2 text-right text-gray-900 dark:text-gray-100">{Number(row.fee).toLocaleString()}</td>
+                  <td className="border border-gray-300 dark:border-gray-600 px-3 py-2 text-right text-gray-900 dark:text-gray-100">{Number(row.payout).toLocaleString()}</td>
+                  <td className="border border-gray-300 dark:border-gray-600 px-3 py-2 text-right text-gray-900 dark:text-gray-100">{Number(row.shopping_point || 0).toLocaleString()}</td>
+                  <td className="border border-gray-300 dark:border-gray-600 px-3 py-2 text-gray-900 dark:text-gray-100">{row.bank_name}</td>
+                  <td className="border border-gray-300 dark:border-gray-600 px-3 py-2 text-gray-900 dark:text-gray-100">{row.account_holder}</td>
+                  <td className="border border-gray-300 dark:border-gray-600 px-3 py-2 text-gray-900 dark:text-gray-100">{row.account_number}</td>
+                  <td className="border border-gray-300 dark:border-gray-600 px-3 py-2 text-gray-900 dark:text-gray-100">{row.memo || '-'}</td>
                 </tr>
               ))}
             </tbody>

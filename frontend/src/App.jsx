@@ -3,7 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-d
 
 // ─ 관리자 레이아웃 ─
 import AdminLayout from "./components/AdminLayout";
-import AdminProtectedRoute from "./components/AdminProtectedRoute"; // ⭐️추가
+import AdminProtectedRoute from "./components/AdminProtectedRoute";
 
 // ─ 사용자 레이아웃 ─
 import UserLayout from "./components/UserLayout";
@@ -11,21 +11,20 @@ import UserLayout from "./components/UserLayout";
 // ─ 관리자 페이지 ─
 import AdminLogin from "./pages/AdminLogin";
 import AdminMembersPage from "./pages/AdminMembersPage";
-import AdminTreePage from "./pages/AdminTreePage";             // 추천 조직도
-import AdminTreeSponsorPage from "./pages/AdminTreeSponsorPage"; // 후원 조직도
+import AdminTreePage from "./pages/AdminTreePage";
+import AdminTreeSponsorPage from "./pages/AdminTreeSponsorPage";
 import AdminDepositPage from "./pages/AdminDepositPage";
 import AdminWithdrawPage from "./pages/AdminWithdrawPage";
 import PointAdjustPage from "./pages/PointAdjustPage";
 import AdminNoticesPage from "./pages/AdminNoticesPage";
-import AdminCodeGivePage from "./pages/AdminCodeGivePage";     // 관리자 코드지급 페이지
-import AdminProductsPage from "./pages/AdminProductsPage"; 
+import AdminCodeGivePage from "./pages/AdminCodeGivePage";
+import AdminProductsPage from "./pages/AdminProductsPage";
 import AdminRewardsPage from "./pages/AdminRewardsPage";
 import AdminCentersPage from "./pages/AdminCentersPage";
 import AdminSettingsPage from "./pages/AdminSettingsPage";
-import AdminAdminsPage from "./pages/AdminAdminsPage";         // ✅ 관리자계정 설정 페이지
-//import ComingSoonPage from "./pages/ComingSoonPage";
+import AdminAdminsPage from "./pages/AdminAdminsPage";
 
-// ─ 일반 회원 페이지 ─
+// ─ 회원 페이지 ─
 import LoginPage from "./pages/LoginPage";
 import SignupPage from "./pages/SignupPage";
 import DashboardPage from "./pages/DashboardPage";
@@ -39,11 +38,13 @@ import WithdrawHistoryPage from "./pages/WithdrawHistoryPage";
 import NoticePage from "./pages/NoticePage";
 import ProductPage from "./pages/ProductPage";
 import ProductHistoryPage from "./pages/ProductHistoryPage";
-//import SponsorTreePage from "./pages/SponsorTreePage";
 import RecommendTreePage from "./pages/RecommendTreePage";
 
-// ─ 로그인 정보 훅 ─
+// ─ 로그인 훅 ─
 import { useAuth } from "./hooks/useAuth";
+
+// ─ 테마 컨텍스트 ─
+import { ThemeProvider } from "@/contexts/ThemeContext";
 
 export default function App() {
   const { member_id: currentUser } = useAuth();
@@ -51,66 +52,140 @@ export default function App() {
   return (
     <Router>
       <Routes>
-        {/* ─────────────── 회원 라우팅 ─────────────── */}
-        <Route path="/" element={<Navigate to="/login" replace />} />
+        {/* ─────────────── 회원 라우팅 (ThemeProvider 적용) ─────────────── */}
+        <Route
+          path="/"
+          element={<Navigate to="/login" replace />}
+        />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/signup" element={<SignupPage />} />
 
+        {/* 회원 레이아웃 + 테마 적용 */}
         <Route
           path="/dashboard"
-          element={<UserLayout><DashboardPage /></UserLayout>}
+          element={
+            <ThemeProvider>
+              <UserLayout>
+                <DashboardPage />
+              </UserLayout>
+            </ThemeProvider>
+          }
         />
         <Route
           path="/point"
-          element={<UserLayout><PointPage /></UserLayout>}
+          element={
+            <ThemeProvider>
+              <UserLayout>
+                <PointPage />
+              </UserLayout>
+            </ThemeProvider>
+          }
         />
         <Route
           path="/point/summary"
-          element={<UserLayout><PointSummaryPage /></UserLayout>}
+          element={
+            <ThemeProvider>
+              <UserLayout>
+                <PointSummaryPage />
+              </UserLayout>
+            </ThemeProvider>
+          }
         />
         <Route
           path="/settings"
-          element={<UserLayout><SettingsPage /></UserLayout>}
+          element={
+            <ThemeProvider>
+              <UserLayout>
+                <SettingsPage />
+              </UserLayout>
+            </ThemeProvider>
+          }
         />
-        {/* ✅ 조직도: 추천만 회원 메뉴에 유지, 후원 조직도는 관리자만 */}
         <Route
           path="/tree/recommend"
-          element={<UserLayout><RecommendTreePage /></UserLayout>}
+          element={
+            <ThemeProvider>
+              <UserLayout>
+                <RecommendTreePage />
+              </UserLayout>
+            </ThemeProvider>
+          }
         />
-        {/* /tree/sponsor는 제거 또는 접근 제한 (회원 메뉴에서는 숨김) */}
         <Route
           path="/deposit"
-          element={<UserLayout><DepositPage /></UserLayout>}
+          element={
+            <ThemeProvider>
+              <UserLayout>
+                <DepositPage />
+              </UserLayout>
+            </ThemeProvider>
+          }
         />
         <Route
           path="/deposit-history"
-          element={<UserLayout><DepositHistoryPage /></UserLayout>}
+          element={
+            <ThemeProvider>
+              <UserLayout>
+                <DepositHistoryPage />
+              </UserLayout>
+            </ThemeProvider>
+          }
         />
         <Route
           path="/withdraw"
-          element={<UserLayout><WithdrawPage /></UserLayout>}
+          element={
+            <ThemeProvider>
+              <UserLayout>
+                <WithdrawPage />
+              </UserLayout>
+            </ThemeProvider>
+          }
         />
         <Route
           path="/withdraw-history"
-          element={<UserLayout><WithdrawHistoryPage /></UserLayout>}
+          element={
+            <ThemeProvider>
+              <UserLayout>
+                <WithdrawHistoryPage />
+              </UserLayout>
+            </ThemeProvider>
+          }
         />
         <Route
           path="/notices"
-          element={<UserLayout><NoticePage /></UserLayout>}
+          element={
+            <ThemeProvider>
+              <UserLayout>
+                <NoticePage />
+              </UserLayout>
+            </ThemeProvider>
+          }
         />
         <Route
           path="/product"
-          element={<UserLayout><ProductPage /></UserLayout>}
+          element={
+            <ThemeProvider>
+              <UserLayout>
+                <ProductPage />
+              </UserLayout>
+            </ThemeProvider>
+          }
         />
         <Route
           path="/product-history"
-          element={<UserLayout><ProductHistoryPage /></UserLayout>}
+          element={
+            <ThemeProvider>
+              <UserLayout>
+                <ProductHistoryPage />
+              </UserLayout>
+            </ThemeProvider>
+          }
         />
 
         {/* ─────────────── 관리자 로그인 ─────────────── */}
         <Route path="/admin/login" element={<AdminLogin />} />
 
-        {/* ─────────── 관리자 공통 레이아웃 보호 적용 ─────────── */}
+        {/* ─────────── 관리자 레이아웃 (ThemeProvider 미적용 → 라이트 고정) ─────────── */}
         <Route
           path="/admin/*"
           element={

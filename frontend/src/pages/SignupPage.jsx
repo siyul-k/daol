@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import axios from "../axiosConfig";
+import cityBg from "../assets/city-bg.jpg"; // 🔥 도시 네온 배경
 
 export default function SignupPage() {
   const navigate = useNavigate();
@@ -25,7 +26,6 @@ export default function SignupPage() {
 
   const usernameRegex = /^[a-zA-Z0-9]*$/;
 
-  // 입력 변경 핸들러 (입력 시 체크 해제)
   const handleChange = (e) => {
     const { name, value } = e.target;
     setForm((prev) => ({ ...prev, [name]: value }));
@@ -34,7 +34,6 @@ export default function SignupPage() {
     if (name === "recommender") setRecommenderChecked(false);
   };
 
-  // 센터/추천인 정보 확인
   const checkUser = async (type) => {
     setErrors((prev) => ({ ...prev, [type + "Check"]: "" }));
     try {
@@ -66,11 +65,8 @@ export default function SignupPage() {
     }
   };
 
-  // 회원가입 요청
   const handleSubmit = async (e) => {
     e.preventDefault();
-
-    // 필수 입력 체크
     const newErrors = {};
     if (!form.username) newErrors.username = "이 항목을 입력해주세요.";
     else if (!usernameRegex.test(form.username)) newErrors.username = "영어/숫자만 입력하세요.";
@@ -84,11 +80,9 @@ export default function SignupPage() {
     if (!recommenderChecked) newErrors.recommenderCheck = "추천인 확인 버튼을 눌러주세요.";
 
     setErrors(newErrors);
-
     if (Object.keys(newErrors).length > 0) return;
 
     try {
-      // id값 기반 회원가입 요청
       const [centerRes, recommenderRes] = await Promise.all([
         axios.get(`/api/lookup/center`, { params: { center: form.center } }),
         axios.get(`/api/lookup/recommender`, { params: { username: form.recommender } }),
@@ -119,37 +113,26 @@ export default function SignupPage() {
     }
   };
 
-  // 인풋 스타일
   const inputStyle = (err) => ({
-    border: err ? "1.5px solid #ef4444" : "1px solid #d1d5db",
+    border: err ? "1.5px solid #ef4444" : "1px solid rgba(255,255,255,0.2)",
     outline: "none",
-    borderRadius: "6px",
+    borderRadius: "8px",
     padding: "12px",
     fontSize: "15px",
-    background: "#fafafa",
-    color: "#222",
-    marginBottom: "2px"
+    background: "rgba(255,255,255,0.05)",
+    color: "white",
+    marginBottom: "2px",
   });
 
-  // 파란 버튼 스타일
   const blueBtnStyle = {
     padding: "0.75rem",
-    backgroundColor: "#3b82f6",
+    background: "linear-gradient(90deg, #3b82f6 0%, #9333ea 100%)",
     color: "white",
     fontWeight: "bold",
-    borderRadius: "6px",
+    borderRadius: "8px",
     border: "none",
     cursor: "pointer",
-    transition: "background 0.2s",
   };
-
-  const blueBtnHover = {
-    backgroundColor: "#2563eb"
-  };
-
-  // 버튼에 hover 스타일 적용 위해 상태 사용
-  const [centerBtnHover, setCenterBtnHover] = useState(false);
-  const [recBtnHover, setRecBtnHover] = useState(false);
 
   return (
     <div
@@ -158,59 +141,79 @@ export default function SignupPage() {
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        backgroundColor: "#f3f4f6",
+        backgroundImage: `url(${cityBg})`,
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+        position: "relative",
       }}
     >
+      {/* 어두운 오버레이 */}
+      <div
+        style={{
+          position: "absolute",
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: "rgba(0,0,0,0.55)",
+          zIndex: 0,
+        }}
+      />
+
       <div
         style={{
           width: "100%",
-          maxWidth: "480px",
-          padding: "2rem",
-          backgroundColor: "#ffffff",
-          borderRadius: "12px",
-          boxShadow: "0 4px 12px rgba(0, 0, 0, 0.05)",
+          maxWidth: "500px",
+          padding: "2.5rem",
+          background: "rgba(30,33,57,0.6)",
+          border: "1px solid rgba(255,255,255,0.1)",
+          borderRadius: "16px",
+          boxShadow: "0 8px 32px rgba(0,0,0,0.6)",
+          backdropFilter: "blur(12px)",
+          zIndex: 1,
         }}
       >
-        <h1 style={{ fontSize: "20px", marginBottom: "1rem", fontWeight: "bold", textAlign: "center" }}>
-          회원등록 신청
+        <h1
+          style={{
+            fontSize: "28px",
+            fontWeight: "bold",
+            textAlign: "center",
+            marginBottom: "1rem",
+            background: "linear-gradient(to right, #00c6ff, #0072ff)",
+            WebkitBackgroundClip: "text",
+            WebkitTextFillColor: "transparent",
+          }}
+        >
+          회원등록
         </h1>
-        <p style={{ textAlign: "center", marginBottom: "1.5rem", color: "#6b7280" }}>
+        <p style={{ textAlign: "center", marginBottom: "1.5rem", color: "#d1d5db" }}>
           아래 항목을 입력해주세요
         </p>
-        <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "0.7rem" }}>
+
+        <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "0.8rem" }}>
           {/* 아이디 */}
-          <div style={{ display: "flex", flexDirection: "column" }}>
-            <input
-              name="username"
-              placeholder="아이디(영어/숫자만)"
-              value={form.username}
-              onChange={handleChange}
-              style={inputStyle(errors.username)}
-              autoComplete="off"
-              maxLength={20}
-            />
-            {errors.username && (
-              <span style={{ color: "#ef4444", fontSize: "13px", marginLeft: "4px" }}>
-                {errors.username}
-              </span>
-            )}
-          </div>
+          <input
+            name="username"
+            placeholder="아이디(영어/숫자만)"
+            value={form.username}
+            onChange={handleChange}
+            style={inputStyle(errors.username)}
+            autoComplete="off"
+            maxLength={20}
+          />
+          {errors.username && <span style={{ color: "#f87171", fontSize: "13px" }}>{errors.username}</span>}
+
           {/* 이름 */}
-          <div style={{ display: "flex", flexDirection: "column" }}>
-            <input
-              name="name"
-              placeholder="이름"
-              value={form.name}
-              onChange={handleChange}
-              style={inputStyle(errors.name)}
-              autoComplete="off"
-            />
-            {errors.name && (
-              <span style={{ color: "#ef4444", fontSize: "13px", marginLeft: "4px" }}>
-                {errors.name}
-              </span>
-            )}
-          </div>
+          <input
+            name="name"
+            placeholder="이름"
+            value={form.name}
+            onChange={handleChange}
+            style={inputStyle(errors.name)}
+            autoComplete="off"
+          />
+          {errors.name && <span style={{ color: "#f87171", fontSize: "13px" }}>{errors.name}</span>}
+
           {/* 이메일 */}
           <input
             name="email"
@@ -220,123 +223,74 @@ export default function SignupPage() {
             style={inputStyle(false)}
             autoComplete="off"
           />
+
           {/* 비밀번호 */}
-          <div style={{ display: "flex", flexDirection: "column" }}>
+          <input
+            type="password"
+            name="password"
+            placeholder="비밀번호"
+            value={form.password}
+            onChange={handleChange}
+            style={inputStyle(errors.password)}
+            autoComplete="off"
+          />
+          {errors.password && <span style={{ color: "#f87171", fontSize: "13px" }}>{errors.password}</span>}
+
+          {/* 센터 + 확인 */}
+          <div style={{ display: "flex", gap: "0.5rem" }}>
             <input
-              type="password"
-              name="password"
-              placeholder="비밀번호"
-              value={form.password}
+              name="center"
+              placeholder="센터"
+              value={form.center}
               onChange={handleChange}
-              style={inputStyle(errors.password)}
+              style={{ ...inputStyle(errors.center), flex: 1 }}
               autoComplete="off"
             />
-            {errors.password && (
-              <span style={{ color: "#ef4444", fontSize: "13px", marginLeft: "4px" }}>
-                {errors.password}
-              </span>
-            )}
-          </div>
-
-          {/* 센터 + 확인버튼 */}
-          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-            <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
-              <input
-                name="center"
-                placeholder="센터"
-                value={form.center}
-                onChange={handleChange}
-                style={inputStyle(errors.center)}
-                autoComplete="off"
-              />
-              {errors.center && (
-                <span style={{ color: "#ef4444", fontSize: "13px", marginLeft: "4px" }}>
-                  {errors.center}
-                </span>
-              )}
-            </div>
-            <button
-              type="button"
-              style={centerBtnHover ? { ...blueBtnStyle, ...blueBtnHover, minWidth: 80 } : { ...blueBtnStyle, minWidth: 80 }}
-              onClick={() => checkUser("center")}
-              onMouseEnter={() => setCenterBtnHover(true)}
-              onMouseLeave={() => setCenterBtnHover(false)}
-            >
+            <button type="button" style={blueBtnStyle} onClick={() => checkUser("center")}>
               센터장 확인
             </button>
           </div>
-          {/* 센터장 이름 */}
           <input value={form.centerName || ""} placeholder="센터장" disabled style={inputStyle(false)} />
-          {errors.centerCheck && (
-            <span style={{ color: "#ef4444", fontSize: "13px", marginLeft: "4px" }}>
-              {errors.centerCheck}
-            </span>
-          )}
+          {errors.center && <span style={{ color: "#f87171", fontSize: "13px" }}>{errors.center}</span>}
+          {errors.centerCheck && <span style={{ color: "#f87171", fontSize: "13px" }}>{errors.centerCheck}</span>}
 
-          {/* 추천인 + 확인버튼 */}
-          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-            <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
-              <input
-                name="recommender"
-                placeholder="추천인"
-                value={form.recommender}
-                onChange={handleChange}
-                style={inputStyle(errors.recommender)}
-                autoComplete="off"
-              />
-              {errors.recommender && (
-                <span style={{ color: "#ef4444", fontSize: "13px", marginLeft: "4px" }}>
-                  {errors.recommender}
-                </span>
-              )}
-            </div>
-            <button
-              type="button"
-              style={recBtnHover ? { ...blueBtnStyle, ...blueBtnHover, minWidth: 80 } : { ...blueBtnStyle, minWidth: 80 }}
-              onClick={() => checkUser("recommender")}
-              onMouseEnter={() => setRecBtnHover(true)}
-              onMouseLeave={() => setRecBtnHover(false)}
-            >
+          {/* 추천인 + 확인 */}
+          <div style={{ display: "flex", gap: "0.5rem" }}>
+            <input
+              name="recommender"
+              placeholder="추천인"
+              value={form.recommender}
+              onChange={handleChange}
+              style={{ ...inputStyle(errors.recommender), flex: 1 }}
+              autoComplete="off"
+            />
+            <button type="button" style={blueBtnStyle} onClick={() => checkUser("recommender")}>
               추천인 확인
             </button>
           </div>
-          {/* 추천인 이름 */}
           <input value={form.recommenderName || ""} placeholder="추천인 이름" disabled style={inputStyle(false)} />
-          {errors.recommenderCheck && (
-            <span style={{ color: "#ef4444", fontSize: "13px", marginLeft: "4px" }}>
-              {errors.recommenderCheck}
-            </span>
-          )}
+          {errors.recommender && <span style={{ color: "#f87171", fontSize: "13px" }}>{errors.recommender}</span>}
+          {errors.recommenderCheck && <span style={{ color: "#f87171", fontSize: "13px" }}>{errors.recommenderCheck}</span>}
 
           {/* 핸드폰 */}
-          <div style={{ display: "flex", flexDirection: "column" }}>
-            <input
-              name="phone"
-              placeholder="핸드폰번호"
-              value={form.phone}
-              onChange={handleChange}
-              style={inputStyle(errors.phone)}
-              autoComplete="off"
-              maxLength={20}
-            />
-            {errors.phone && (
-              <span style={{ color: "#ef4444", fontSize: "13px", marginLeft: "4px" }}>
-                {errors.phone}
-              </span>
-            )}
-          </div>
+          <input
+            name="phone"
+            placeholder="핸드폰번호"
+            value={form.phone}
+            onChange={handleChange}
+            style={inputStyle(errors.phone)}
+            autoComplete="off"
+            maxLength={20}
+          />
+          {errors.phone && <span style={{ color: "#f87171", fontSize: "13px" }}>{errors.phone}</span>}
 
-          <button
-            type="submit"
-            style={blueBtnStyle}
-            onMouseDown={e => e.currentTarget.style.background = "#2563eb"}
-            onMouseUp={e => e.currentTarget.style.background = "#3b82f6"}
-          >
+          <button type="submit" style={blueBtnStyle}>
             회원가입
           </button>
         </form>
+
         <div style={{ marginTop: "1rem", textAlign: "center" }}>
-          <Link to="/login" style={{ fontSize: "14px", color: "#374151", textDecoration: "underline" }}>
+          <Link to="/login" style={{ fontSize: "14px", color: "#00c6ff", textDecoration: "none", fontWeight: "bold" }}>
             로그인
           </Link>
         </div>

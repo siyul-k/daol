@@ -1,3 +1,4 @@
+// ✅ 파일 경로: src/pages/SettingsPage.jsx
 import { useState, useEffect } from "react";
 import axios from "../axiosConfig";
 
@@ -81,63 +82,63 @@ export default function SettingsPage() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
-          <label className="block mb-1 font-medium text-gray-700 text-sm">이름</label>
+          <label className="block mb-1 font-medium text-gray-700 dark:text-gray-300 text-sm">이름</label>
           <input
             name="name"
             value={form.name}
             readOnly
-            className="input w-full border-gray-400 text-gray-800 text-base"
-            style={{ borderWidth: '1.5px' }}
+            className="w-full rounded px-3 py-2 border border-gray-400 dark:border-gray-600 
+                       bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100"
           />
         </div>
         <div>
-          <label className="block mb-1 font-medium text-gray-700 text-sm">추천인</label>
+          <label className="block mb-1 font-medium text-gray-700 dark:text-gray-300 text-sm">추천인</label>
           <input
             name="recommender"
             value={form.recommender}
             readOnly
-            className="input w-full border-gray-400 text-gray-800 text-base"
-            style={{ borderWidth: '1.5px' }}
+            className="w-full rounded px-3 py-2 border border-gray-400 dark:border-gray-600 
+                       bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100"
           />
         </div>
         <div>
-          <label className="block mb-1 font-medium text-gray-700 text-sm">센터</label>
+          <label className="block mb-1 font-medium text-gray-700 dark:text-gray-300 text-sm">센터</label>
           <input
             name="center"
             value={form.center}
             readOnly
-            className="input w-full border-gray-400 text-gray-800 text-base"
-            style={{ borderWidth: '1.5px' }}
+            className="w-full rounded px-3 py-2 border border-gray-400 dark:border-gray-600 
+                       bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100"
           />
         </div>
         <div>
-          <label className="block mb-1 font-medium text-gray-700 text-sm">전화번호</label>
+          <label className="block mb-1 font-medium text-gray-700 dark:text-gray-300 text-sm">전화번호</label>
           <input
             name="phone"
             value={form.phone}
             onChange={handleChange}
-            className="input w-full border-gray-400 text-gray-800 text-base"
-            style={{ borderWidth: '1.5px' }}
+            className="w-full rounded px-3 py-2 border border-gray-400 dark:border-gray-600 
+                       bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100"
           />
         </div>
         <div>
-          <label className="block mb-1 font-medium text-gray-700 text-sm">Email</label>
+          <label className="block mb-1 font-medium text-gray-700 dark:text-gray-300 text-sm">Email</label>
           <input
             name="email"
             value={form.email}
             onChange={handleChange}
-            className="input w-full border-gray-400 text-gray-800 text-base"
-            style={{ borderWidth: '1.5px' }}
+            className="w-full rounded px-3 py-2 border border-gray-400 dark:border-gray-600 
+                       bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100"
           />
         </div>
         <div>
-          <label className="block mb-1 font-medium text-gray-700 text-sm">은행</label>
+          <label className="block mb-1 font-medium text-gray-700 dark:text-gray-300 text-sm">은행</label>
           <select
             name="bank_name"
             value={form.bank_name || ""}
             onChange={handleChange}
-            className="input w-full border-gray-400 text-gray-800 text-base"
-            style={{ borderWidth: '1.5px' }}
+            className="w-full rounded px-3 py-2 border border-gray-400 dark:border-gray-600 
+                       bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100"
           >
             <option value="">은행 선택</option>
             {bankList.map(bank => (
@@ -146,30 +147,30 @@ export default function SettingsPage() {
           </select>
         </div>
         <div>
-          <label className="block mb-1 font-medium text-gray-700 text-sm">계좌번호</label>
+          <label className="block mb-1 font-medium text-gray-700 dark:text-gray-300 text-sm">계좌번호</label>
           <input
             name="account_number"
             value={form.account_number}
             onChange={handleChange}
-            className="input w-full border-gray-400 text-gray-800 text-base"
-            style={{ borderWidth: '1.5px' }}
+            className="w-full rounded px-3 py-2 border border-gray-400 dark:border-gray-600 
+                       bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100"
           />
         </div>
         <div>
-          <label className="block mb-1 font-medium text-gray-700 text-sm">예금주</label>
+          <label className="block mb-1 font-medium text-gray-700 dark:text-gray-300 text-sm">예금주</label>
           <input
             name="account_holder"
             value={form.account_holder}
             onChange={handleChange}
-            className="input w-full border-gray-400 text-gray-800 text-base"
-            style={{ borderWidth: '1.5px' }}
+            className="w-full rounded px-3 py-2 border border-gray-400 dark:border-gray-600 
+                       bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100"
           />
         </div>
       </div>
 
       <button
         onClick={handleSave}
-        className="mt-4 w-full bg-blue-600 text-white py-2 rounded font-semibold"
+        className="mt-4 w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded font-semibold"
       >
         저장
       </button>
@@ -177,44 +178,38 @@ export default function SettingsPage() {
       <h2 className="mt-8 text-xl font-semibold">비밀번호 변경</h2>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
         <div>
-          <label className="block mb-1 font-medium text-gray-700 text-sm">현재 패스워드</label>
+          <label className="block mb-1 font-medium text-gray-700 dark:text-gray-300 text-sm">현재 패스워드</label>
           <input
             type="password"
             name="currentPassword"
             value={passwordForm.currentPassword}
-            onChange={(e) =>
-              setPasswordForm({ ...passwordForm, currentPassword: e.target.value })
-            }
-            className="input w-full border-gray-400 text-gray-800 text-base"
-            style={{ borderWidth: '1.5px' }}
+            onChange={(e) => setPasswordForm({ ...passwordForm, currentPassword: e.target.value })}
+            className="w-full rounded px-3 py-2 border border-gray-400 dark:border-gray-600 
+                       bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100"
             placeholder="현재 패스워드"
           />
         </div>
         <div>
-          <label className="block mb-1 font-medium text-gray-700 text-sm">새 패스워드</label>
+          <label className="block mb-1 font-medium text-gray-700 dark:text-gray-300 text-sm">새 패스워드</label>
           <input
             type="password"
             name="newPassword"
             value={passwordForm.newPassword}
-            onChange={(e) =>
-              setPasswordForm({ ...passwordForm, newPassword: e.target.value })
-            }
-            className="input w-full border-gray-400 text-gray-800 text-base"
-            style={{ borderWidth: '1.5px' }}
+            onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
+            className="w-full rounded px-3 py-2 border border-gray-400 dark:border-gray-600 
+                       bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100"
             placeholder="새 패스워드"
           />
         </div>
         <div>
-          <label className="block mb-1 font-medium text-gray-700 text-sm">패스워드 확인</label>
+          <label className="block mb-1 font-medium text-gray-700 dark:text-gray-300 text-sm">패스워드 확인</label>
           <input
             type="password"
             name="confirmPassword"
             value={passwordForm.confirmPassword}
-            onChange={(e) =>
-              setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })
-            }
-            className="input w-full border-gray-400 text-gray-800 text-base"
-            style={{ borderWidth: '1.5px' }}
+            onChange={(e) => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })}
+            className="w-full rounded px-3 py-2 border border-gray-400 dark:border-gray-600 
+                       bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100"
             placeholder="패스워드 확인"
           />
         </div>
@@ -222,7 +217,7 @@ export default function SettingsPage() {
 
       <button
         onClick={handlePasswordChange}
-        className="mt-4 w-full bg-blue-600 text-white py-2 rounded font-semibold"
+        className="mt-4 w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded font-semibold"
       >
         저장
       </button>

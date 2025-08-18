@@ -18,7 +18,6 @@ export default function WithdrawPage() {
     withdraw_min_amount: 0,
   });
 
-  // ✅ 서버 계산값과 동일한 기준으로 표기 (normal, center 모두 /api/withdraw/available 사용)
   const [available, setAvailable] = useState({ general: 0, center: 0 });
   const [allowed, setAllowed] = useState({ general: true, center: false });
 
@@ -34,7 +33,6 @@ export default function WithdrawPage() {
   useEffect(() => {
     if (!username) return;
 
-    // 회원 은행정보
     axios.get(`/api/members/username/${username}`)
       .then(res => {
         const d = res.data;
@@ -46,7 +44,6 @@ export default function WithdrawPage() {
       })
       .catch(() => console.warn('회원정보 로드 실패'));
 
-    // 설정값
     axios.get('/api/settings')
       .then(res => {
         const map = {};
@@ -58,7 +55,6 @@ export default function WithdrawPage() {
       })
       .catch(() => console.warn('설정 로드 실패'));
 
-    // ✅ 출금 가능액 (서버와 동일 공식)
     axios.get(`/api/withdraw/available?username=${username}`)
       .then(res => {
         setAvailable({
@@ -68,7 +64,6 @@ export default function WithdrawPage() {
       })
       .catch(() => console.warn('출금가능금액 조회 실패'));
 
-    // 출금 가능여부(요일/시간/최소금액)
     axios.get('/api/withdraw/check', { params: { type: 'normal', amount: 0 } })
       .then(res => setAllowed(prev => ({ ...prev, general: res.data.canWithdraw })))
       .catch(() => console.warn('일반 출금 체크 실패'));
@@ -79,7 +74,6 @@ export default function WithdrawPage() {
   }, [username]);
 
   useEffect(() => {
-    // 설정 변경 시 수수료 재계산
     if (general.request_amount) handleInputChange('general', general.request_amount);
     if (center.request_amount) handleInputChange('center', center.request_amount);
     // eslint-disable-next-line
@@ -89,7 +83,7 @@ export default function WithdrawPage() {
     const amt = parseInt(value, 10) || 0;
     const feeRate = Number(settings.withdraw_fee_percent || 0);
     const fee = Math.floor(amt * feeRate / 100);
-    const payout = Math.max(0, amt - fee); // 화면용: (신청금액 - 수수료)
+    const payout = Math.max(0, amt - fee);
 
     const update = { request_amount: value, fee, payout };
     if (typeLabel === 'general') setGeneral(update);
@@ -152,47 +146,61 @@ export default function WithdrawPage() {
     const canApply = allowed[typeLabel];
 
     return (
-      <div className="max-w-md mx-auto bg-white p-6 rounded shadow mb-8">
-        <h2 className="text-xl font-bold mb-4 text-center">{title}</h2>
+      <div className="max-w-md mx-auto bg-white dark:bg-gray-800 p-6 rounded shadow mb-8">
+        <h2 className="text-xl font-bold mb-4 text-center text-gray-700 dark:text-gray-200">
+          {title}
+        </h2>
         <div className="space-y-4">
           <div>
-            <label className="block text-sm text-gray-500">출금가능금액</label>
+            <label className="block text-sm text-gray-500 dark:text-gray-400">출금가능금액</label>
             <input
               readOnly
-              className="w-full p-2 border rounded bg-gray-100 text-right"
+              className="w-full p-2 border rounded bg-gray-100 dark:bg-gray-700 
+                         text-right text-gray-900 dark:text-gray-100
+                         border-gray-300 dark:border-gray-600"
               value={amtAllowed.toLocaleString()}
             />
           </div>
           <div>
-            <label className="block text-sm text-gray-500">출금신청금액</label>
+            <label className="block text-sm text-gray-500 dark:text-gray-400">출금신청금액</label>
             <input
               type="number"
-              className="w-full p-2 border rounded text-right"
+              className="w-full p-2 border rounded 
+                         bg-white dark:bg-gray-900 
+                         text-right text-gray-900 dark:text-gray-100
+                         border-gray-300 dark:border-gray-600"
               placeholder="출금신청금액"
               value={state.request_amount}
               onChange={e => handleInputChange(typeLabel, e.target.value)}
             />
           </div>
           <div>
-            <label className="block text-sm text-gray-500">수수료</label>
+            <label className="block text-sm text-gray-500 dark:text-gray-400">수수료</label>
             <input
               readOnly
-              className="w-full p-2 border rounded bg-gray-100 text-right"
+              className="w-full p-2 border rounded bg-gray-100 dark:bg-gray-700 
+                         text-right text-gray-900 dark:text-gray-100
+                         border-gray-300 dark:border-gray-600"
               value={state.fee.toLocaleString()}
             />
           </div>
           <div>
-            <label className="block text-sm text-gray-500">출금액 (신청금액 - 수수료)</label>
+            <label className="block text-sm text-gray-500 dark:text-gray-400">출금액 (신청금액 - 수수료)</label>
             <input
               readOnly
-              className="w-full p-2 border rounded bg-gray-100 text-right"
+              className="w-full p-2 border rounded bg-gray-100 dark:bg-gray-700 
+                         text-right text-gray-900 dark:text-gray-100
+                         border-gray-300 dark:border-gray-600"
               value={state.payout.toLocaleString()}
             />
           </div>
           <div>
-            <label className="block text-sm text-gray-500">입금은행</label>
+            <label className="block text-sm text-gray-500 dark:text-gray-400">입금은행</label>
             <select
-              className="w-full p-2 border rounded"
+              className="w-full p-2 border rounded 
+                         bg-white dark:bg-gray-900 
+                         text-gray-900 dark:text-gray-100
+                         border-gray-300 dark:border-gray-600"
               value={userInfo.bank_name}
               onChange={e =>
                 setUserInfo(prev => ({ ...prev, bank_name: e.target.value }))
@@ -205,9 +213,12 @@ export default function WithdrawPage() {
             </select>
           </div>
           <div>
-            <label className="block text-sm text-gray-500">예금주</label>
+            <label className="block text-sm text-gray-500 dark:text-gray-400">예금주</label>
             <input
-              className="w-full p-2 border rounded"
+              className="w-full p-2 border rounded 
+                         bg-white dark:bg-gray-900 
+                         text-gray-900 dark:text-gray-100
+                         border-gray-300 dark:border-gray-600"
               value={userInfo.account_holder}
               onChange={e =>
                 setUserInfo(prev => ({ ...prev, account_holder: e.target.value }))
@@ -215,9 +226,12 @@ export default function WithdrawPage() {
             />
           </div>
           <div>
-            <label className="block text-sm text-gray-500">계좌번호</label>
+            <label className="block text-sm text-gray-500 dark:text-gray-400">계좌번호</label>
             <input
-              className="w-full p-2 border rounded"
+              className="w-full p-2 border rounded 
+                         bg-white dark:bg-gray-900 
+                         text-gray-900 dark:text-gray-100
+                         border-gray-300 dark:border-gray-600"
               value={userInfo.account_number}
               onChange={e =>
                 setUserInfo(prev => ({ ...prev, account_number: e.target.value }))
@@ -228,7 +242,7 @@ export default function WithdrawPage() {
         <button
           disabled={!canApply}
           className={`mt-6 w-full py-2 rounded text-white font-bold ${
-            canApply ? 'bg-blue-600 hover:bg-blue-700' : 'bg-gray-300 cursor-not-allowed'
+            canApply ? 'bg-blue-600 hover:bg-blue-700' : 'bg-gray-400 dark:bg-gray-600 cursor-not-allowed'
           }`}
           onClick={() => handleSubmit(typeLabel, state)}
         >

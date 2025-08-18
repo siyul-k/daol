@@ -1,5 +1,4 @@
 // ✅ 파일 경로: frontend/src/pages/ProductPage.jsx
-
 import React, { useEffect, useState } from "react";
 import axios from "../axiosConfig";
 import { useNavigate } from "react-router-dom";
@@ -10,9 +9,9 @@ export default function ProductPage() {
   const [packages, setPackages] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [confirmOpen, setConfirmOpen] = useState(false); // ✅ 추가: 모달 열림 상태
-  const [purchaseLoading, setPurchaseLoading] = useState(false); // ✅ 추가: 구매 중복방지
-  const [selectedPkg, setSelectedPkg] = useState(null); // ✅ 선택 상품 정보
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [purchaseLoading, setPurchaseLoading] = useState(false);
+  const [selectedPkg, setSelectedPkg] = useState(null);
 
   const currentUser = JSON.parse(localStorage.getItem("user"));
 
@@ -23,7 +22,6 @@ export default function ProductPage() {
           axios.get(`/api/purchase-points/${currentUser.username}`),
           axios.get(`/api/packages`)
         ]);
-
         setPointBalance(Number(pointRes.data.available_point || 0));
         setPackages(packageRes.data || []);
       } catch (err) {
@@ -32,16 +30,13 @@ export default function ProductPage() {
         setLoading(false);
       }
     };
-
     fetchData();
   }, [currentUser.username]);
 
-  // ✅ 상품 선택 변경시 상세도 저장
   useEffect(() => {
     setSelectedPkg(packages.find(pkg => pkg.id === selectedId) || null);
   }, [selectedId, packages]);
 
-  // ✅ "구매하기" 버튼 클릭시 모달 오픈
   const handlePurchaseClick = () => {
     if (!selectedId) {
       alert("상품을 선택해주세요.");
@@ -50,7 +45,6 @@ export default function ProductPage() {
     setConfirmOpen(true);
   };
 
-  // ✅ 모달에서 '확인' 시 실제 구매요청
   const handleConfirmPurchase = async () => {
     setPurchaseLoading(true);
     try {
@@ -58,7 +52,6 @@ export default function ProductPage() {
         username: currentUser.username,
         package_id: selectedId
       });
-
       alert("상품 구매가 완료되었습니다.");
       navigate('/product-history');
     } catch (err) {
@@ -75,7 +68,7 @@ export default function ProductPage() {
       <h1 className="text-2xl font-bold mb-6">상품구매신청</h1>
 
       {loading ? (
-        <p className="text-gray-500">불러오는 중...</p>
+        <p className="text-gray-500 dark:text-gray-400">불러오는 중...</p>
       ) : (
         <>
           <div className="mb-4 text-lg">
@@ -88,7 +81,10 @@ export default function ProductPage() {
           <div className="mb-6">
             <label className="block font-semibold mb-2">상품 선택</label>
             <select
-              className="w-full border px-4 py-2 rounded"
+              className="w-full border px-4 py-2 rounded 
+                         bg-white dark:bg-gray-900 
+                         text-gray-900 dark:text-gray-100
+                         border-gray-300 dark:border-gray-600"
               value={selectedId || ""}
               onChange={(e) => setSelectedId(Number(e.target.value))}
               disabled={purchaseLoading}
@@ -110,7 +106,7 @@ export default function ProductPage() {
 
           <button
             onClick={handlePurchaseClick}
-            className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700"
+            className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 disabled:bg-gray-400 dark:disabled:bg-gray-600"
             disabled={purchaseLoading}
           >
             {purchaseLoading ? '구매 중...' : '상품 구매하기'}
@@ -119,21 +115,21 @@ export default function ProductPage() {
           {/* ✅ 구매확인 모달 */}
           {confirmOpen && selectedPkg && (
             <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-40 z-50">
-              <div className="bg-white p-8 rounded shadow-lg max-w-xs text-center">
-                <div className="mb-4 font-semibold text-lg">
+              <div className="bg-white dark:bg-gray-800 p-8 rounded shadow-lg max-w-xs text-center">
+                <div className="mb-4 font-semibold text-lg text-gray-900 dark:text-gray-100">
                   <span className="text-blue-700">{selectedPkg.name}</span><br />
                   {selectedPkg.price.toLocaleString()} 패키지를<br />
                   정말 구매하시겠습니까?
                 </div>
                 <button
-                  className="bg-blue-600 text-white px-4 py-2 rounded mr-2"
+                  className="bg-blue-600 text-white px-4 py-2 rounded mr-2 hover:bg-blue-700 disabled:bg-gray-400 dark:disabled:bg-gray-600"
                   onClick={handleConfirmPurchase}
                   disabled={purchaseLoading}
                 >
                   확인
                 </button>
                 <button
-                  className="bg-gray-300 text-gray-800 px-4 py-2 rounded"
+                  className="bg-gray-300 dark:bg-gray-600 text-gray-800 dark:text-gray-200 px-4 py-2 rounded"
                   onClick={() => setConfirmOpen(false)}
                   disabled={purchaseLoading}
                 >

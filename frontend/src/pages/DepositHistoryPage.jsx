@@ -7,7 +7,7 @@ import { formatKST } from '../utils/time';
 export default function DepositHistoryPage() {
   const navigate = useNavigate();
 
-  // localStorage 파싱은 최초 한 번만 (참조 안정화)
+  // localStorage 파싱은 최초 한 번만
   const [username] = useState(() => {
     try {
       const u = JSON.parse(localStorage.getItem('user') || '{}');
@@ -44,10 +44,11 @@ export default function DepositHistoryPage() {
       }
     })();
 
-    return () => ctrl.abort(); // 언마운트 시 요청 취소
+    return () => ctrl.abort();
   }, [username, navigate]);
 
-  const mapStatus = (s) => (s === '요청' ? 'Pending' : s === '완료' ? 'Complete' : s);
+  const mapStatus = (s) =>
+    s === '요청' ? 'Pending' : s === '완료' ? 'Complete' : s;
 
   return (
     <div className="p-4 md:p-6">
@@ -59,28 +60,50 @@ export default function DepositHistoryPage() {
         <p>조회된 내역이 없습니다.</p>
       ) : (
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[900px] border border-gray-300 text-center">
-            <thead className="bg-gray-100">
+          <table className="w-full min-w-[900px] border border-gray-300 dark:border-gray-600 text-center">
+            <thead className="bg-gray-100 dark:bg-gray-700">
               <tr>
-                <th className="border px-3 py-2">등록일시</th>
-                <th className="border px-3 py-2">상태</th>
-                <th className="border px-3 py-2">입금자명</th>
-                <th className="border px-3 py-2">신청금액</th>
-                <th className="border px-3 py-2">입금확인시간</th>
-                <th className="border px-3 py-2">비고</th>
+                <th className="border border-gray-300 dark:border-gray-600 px-3 py-2 text-gray-800 dark:text-gray-200">
+                  등록일시
+                </th>
+                <th className="border border-gray-300 dark:border-gray-600 px-3 py-2 text-gray-800 dark:text-gray-200">
+                  상태
+                </th>
+                <th className="border border-gray-300 dark:border-gray-600 px-3 py-2 text-gray-800 dark:text-gray-200">
+                  입금자명
+                </th>
+                <th className="border border-gray-300 dark:border-gray-600 px-3 py-2 text-gray-800 dark:text-gray-200">
+                  신청금액
+                </th>
+                <th className="border border-gray-300 dark:border-gray-600 px-3 py-2 text-gray-800 dark:text-gray-200">
+                  입금확인시간
+                </th>
+                <th className="border border-gray-300 dark:border-gray-600 px-3 py-2 text-gray-800 dark:text-gray-200">
+                  비고
+                </th>
               </tr>
             </thead>
             <tbody>
               {history.map((r) => (
-                <tr key={r.id}>
-                  <td className="border px-3 py-2">{formatKST(r.created_at)}</td>
-                  <td className="border px-3 py-2">{mapStatus(r.status)}</td>
-                  <td className="border px-3 py-2">{r.account_holder}</td>
-                  <td className="border px-3 py-2">{Number(r.amount).toLocaleString()}</td>
-                  <td className="border px-3 py-2">
+                <tr key={r.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                  <td className="border border-gray-300 dark:border-gray-600 px-3 py-2 text-gray-900 dark:text-gray-100">
+                    {formatKST(r.created_at)}
+                  </td>
+                  <td className="border border-gray-300 dark:border-gray-600 px-3 py-2 text-gray-900 dark:text-gray-100">
+                    {mapStatus(r.status)}
+                  </td>
+                  <td className="border border-gray-300 dark:border-gray-600 px-3 py-2 text-gray-900 dark:text-gray-100">
+                    {r.account_holder}
+                  </td>
+                  <td className="border border-gray-300 dark:border-gray-600 px-3 py-2 text-gray-900 dark:text-gray-100">
+                    {Number(r.amount).toLocaleString()}
+                  </td>
+                  <td className="border border-gray-300 dark:border-gray-600 px-3 py-2 text-gray-900 dark:text-gray-100">
                     {r.completed_at ? formatKST(r.completed_at) : '-'}
                   </td>
-                  <td className="border px-3 py-2">{r.memo || '-'}</td>
+                  <td className="border border-gray-300 dark:border-gray-600 px-3 py-2 text-gray-900 dark:text-gray-100">
+                    {r.memo || '-'}
+                  </td>
                 </tr>
               ))}
             </tbody>

@@ -1,5 +1,4 @@
 // ✅ 파일 경로: src/pages/DepositPage.jsx
-
 import React, { useState } from 'react';
 import axios from '../axiosConfig';
 import { useNavigate } from 'react-router-dom';
@@ -32,11 +31,15 @@ export default function DepositPage() {
     <div className="p-6">
       <h2 className="text-xl font-bold mb-6 text-center">입금 신청</h2>
       <div className="flex justify-center">
-        <div className="flex flex-col gap-2 max-w-md w-full">
+        <div className="flex flex-col gap-3 max-w-md w-full">
+          {/* 금액 선택 */}
           <select
             value={form.amount}
             onChange={(e) => setForm({ ...form, amount: e.target.value })}
-            className="border px-3 py-2 rounded"
+            className="border border-gray-300 dark:border-gray-600 
+                       bg-white dark:bg-gray-800 
+                       text-gray-900 dark:text-gray-100 
+                       px-3 py-2 rounded"
           >
             <option value="">금액 선택</option>
             {[600000, 1200000, 2400000, 3600000, 7200000, 12000000].map((v) => (
@@ -45,21 +48,38 @@ export default function DepositPage() {
               </option>
             ))}
           </select>
+
+          {/* 예금주 */}
           <input
             type="text"
             placeholder="예금주"
             value={form.account_holder}
             onChange={(e) => setForm({ ...form, account_holder: e.target.value })}
-            className="border px-3 py-2 rounded"
+            className="border border-gray-300 dark:border-gray-600 
+                       bg-white dark:bg-gray-800 
+                       text-gray-900 dark:text-gray-100 
+                       px-3 py-2 rounded"
           />
+
+          {/* 비고 */}
           <input
             type="text"
             placeholder="비고 (선택)"
             value={form.memo}
             onChange={(e) => setForm({ ...form, memo: e.target.value })}
-            className="border px-3 py-2 rounded"
+            className="border border-gray-300 dark:border-gray-600 
+                       bg-white dark:bg-gray-800 
+                       text-gray-900 dark:text-gray-100 
+                       px-3 py-2 rounded"
           />
-          <button onClick={handleSubmit} className="bg-blue-600 text-white px-4 py-2 rounded">
+
+          {/* 버튼 */}
+          <button
+            onClick={handleSubmit}
+            className="bg-blue-600 hover:bg-blue-700 
+                       text-white font-semibold 
+                       px-4 py-2 rounded transition"
+          >
             입금 신청
           </button>
         </div>

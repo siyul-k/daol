@@ -1,7 +1,6 @@
-// ✅ 파일 경로: src/pages/PointPage.jsx
 import React, { useEffect, useState } from "react";
 import axios from "../axiosConfig";
-import { formatKST } from '../utils/time';
+import { formatKST } from "../utils/time";
 
 export default function PointPage() {
   const [rewards, setRewards] = useState([]);
@@ -41,40 +40,59 @@ export default function PointPage() {
     return (
       <div className="mb-10 overflow-x-auto">
         <h2 className="text-xl font-bold mb-4">{typeLabel}</h2>
-        <table className="w-full min-w-[800px] border border-gray-300 text-center">
-          <thead className="bg-gray-100">
+
+        <table className="w-full min-w-[800px] border border-gray-300 dark:border-gray-700 text-center">
+          <thead className="bg-gray-100 dark:bg-gray-800">
             <tr>
-              <th className="border px-3 py-2">등록일시</th>
-              <th className="border px-3 py-2">아이디</th>
-              <th className="border px-3 py-2">수당원천</th>
-              <th className="border px-3 py-2">포인트</th>
-              <th className="border px-3 py-2">상세내역</th>
+              <th className="border border-gray-300 dark:border-gray-700 px-3 py-2 text-gray-800 dark:text-gray-200">
+                등록일시
+              </th>
+              <th className="border border-gray-300 dark:border-gray-700 px-3 py-2 text-gray-800 dark:text-gray-200">
+                아이디
+              </th>
+              <th className="border border-gray-300 dark:border-gray-700 px-3 py-2 text-gray-800 dark:text-gray-200">
+                수당원천
+              </th>
+              <th className="border border-gray-300 dark:border-gray-700 px-3 py-2 text-gray-800 dark:text-gray-200">
+                포인트
+              </th>
+              <th className="border border-gray-300 dark:border-gray-700 px-3 py-2 text-gray-800 dark:text-gray-200">
+                상세내역
+              </th>
             </tr>
           </thead>
+
           <tbody>
             {visibleData.length > 0 ? (
               visibleData.map((item) => (
-                <tr key={item.id}>
-                  <td className="border px-3 py-2">{formatKST(item.created_at)}</td>
-                  <td className="border px-3 py-2">{item.member_username}</td>
-                  <td className="border px-3 py-2">
+                <tr key={item.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                  <td className="border border-gray-300 dark:border-gray-700 px-3 py-2 text-gray-900 dark:text-gray-100">
+                    {formatKST(item.created_at)}
+                  </td>
+                  <td className="border border-gray-300 dark:border-gray-700 px-3 py-2 text-gray-900 dark:text-gray-100">
+                    {item.member_username}
+                  </td>
+                  <td className="border border-gray-300 dark:border-gray-700 px-3 py-2 text-gray-900 dark:text-gray-100">
                     {isAdjust
                       ? "관리자"
-                      : (item.member_username === item.source_username
-                          ? item.member_username
-                          : (item.source_username || "-"))}
+                      : item.member_username === item.source_username
+                      ? item.member_username
+                      : item.source_username || "-"}
                   </td>
-                  <td className="border px-3 py-2">
+                  <td className="border border-gray-300 dark:border-gray-700 px-3 py-2 text-gray-900 dark:text-gray-100">
                     {Number(item.amount).toLocaleString()}
                   </td>
-                  <td className="border px-3 py-2">
-                    {isAdjust ? (item.memo || "포인트가감") : (item.memo || typeLabel)}
+                  <td className="border border-gray-300 dark:border-gray-700 px-3 py-2 text-gray-900 dark:text-gray-100">
+                    {isAdjust ? item.memo || "포인트가감" : item.memo || typeLabel}
                   </td>
                 </tr>
               ))
             ) : (
               <tr>
-                <td colSpan="5" className="text-center py-3 text-gray-500">
+                <td
+                  colSpan="5"
+                  className="text-center py-3 text-gray-500 dark:text-gray-400"
+                >
                   내역이 없습니다.
                 </td>
               </tr>
@@ -83,10 +101,10 @@ export default function PointPage() {
         </table>
 
         <div className="flex items-center justify-between mt-2">
-          <span className="text-sm text-gray-600">
+          <span className="text-sm text-gray-600 dark:text-gray-400">
             Items per page:
             <select
-              className="ml-2 border px-2 py-1 rounded"
+              className="ml-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 px-2 py-1 rounded"
               value={perPage}
               onChange={(e) => {
                 const newVal = e.target.value;
@@ -100,7 +118,7 @@ export default function PointPage() {
               ))}
             </select>
           </span>
-          <span className="text-sm text-gray-600">
+          <span className="text-sm text-gray-600 dark:text-gray-400">
             {data.length === 0
               ? "0-0 of 0"
               : perPage === "ALL"
@@ -119,7 +137,7 @@ export default function PointPage() {
         <p>불러오는 중...</p>
       ) : (
         <>
-          {/* ✅ 추천: referral + recommend 둘 다 표시 */}
+          {/* ✅ 추천: referral + recommend */}
           {renderTable("추천", ["referral", "recommend"])}
           {renderTable("데일리", "daily")}
           {renderTable("매칭", "daily_matching")}

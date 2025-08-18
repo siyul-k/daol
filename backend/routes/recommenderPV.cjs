@@ -1,3 +1,4 @@
+// ✅ 파일 경로: backend/routes/recommenderPV.cjs
 const express = require('express');
 const router = express.Router();
 const pool = require('../db.cjs');
@@ -14,24 +15,23 @@ router.post('/', async (req, res) => {
       recommenders.map(async (username) => {
         // 1. 추천인 id/이름 구하기
         const [[info]] = await pool.query(
-          'SELECT id, username, name FROM members WHERE username = ?', [username]
+          'SELECT id, username, name FROM members WHERE username = ?', 
+          [username]
         );
         if (!info) return { username, name: '', pv: 0 };
 
-        // 2. 하위 트리 + 자기 포함 조회 (재귀 CTE)
+        // 2. 본인 PV만 합산
         const [pvRows] = await pool.query(
           `
-          WITH RECURSIVE tree AS (
-            SELECT id FROM members WHERE id = ?
-            UNION ALL
-            SELECT m.id FROM members m JOIN tree t ON m.recommender_id = t.id
-          )
-          SELECT SUM(p.pv) AS total_pv
-          FROM tree t
-          JOIN purchases p ON t.id = p.member_id
-          WHERE p.type = 'normal' AND p.status = 'approved'
-          `, [info.id]
+          SELECT IFNULL(SUM(p.pv),0) AS total_pv
+          FROM purchases p
+          WHERE p.member_id = ?
+            AND p.type = 'normal'
+            AND p.status = 'approved'
+          `,
+          [info.id]
         );
+
         const pv = pvRows[0]?.total_pv || 0;
         return {
           username: info.username,
@@ -40,6 +40,7 @@ router.post('/', async (req, res) => {
         };
       })
     );
+
     res.json(results);
   } catch (err) {
     console.error('❌ 추천인 PV 조회 오류:', err);

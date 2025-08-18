@@ -3,10 +3,10 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import axios from "../axiosConfig";
-import logo from "../assets/logo.png";  // 로고 이미지 임포트
+import cityBg from "../assets/city-bg.jpg"; // ← 도시 배경 이미지 추가
 
 export default function LoginPage() {
-  console.log("📌 일반 LoginPage 렌더링됨");
+  console.log("📌 다크테마 LoginPage 렌더링됨");
 
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -16,10 +16,7 @@ export default function LoginPage() {
   const handleLogin = async (e) => {
     e.preventDefault();
     try {
-      const res = await axios.post(`/api/login`, {
-        username,
-        password,
-      });
+      const res = await axios.post(`/api/login`, { username, password });
 
       if (res.data.success) {
         localStorage.setItem("user", JSON.stringify(res.data.user));
@@ -41,46 +38,76 @@ export default function LoginPage() {
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        backgroundColor: "#f3f4f6",
+        backgroundImage: `url(${cityBg})`,   // 🔥 도시 배경 이미지 적용
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+        backgroundRepeat: "no-repeat",
+        position: "relative",
       }}
     >
+      {/* 배경 어둡게 오버레이 */}
+      <div
+        style={{
+          position: "absolute",
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: "rgba(0,0,0,0.3)", // 살짝 어둡게
+          zIndex: 0,
+        }}
+      />
+
+      {/* 로그인 카드 */}
       <div
         style={{
           width: "100%",
-          maxWidth: "400px",
-          padding: "2rem",
-          backgroundColor: "#ffffff",
-          borderRadius: "12px",
-          boxShadow: "0 4px 12px rgba(0, 0, 0, 0.05)",
+          maxWidth: "420px",
+          padding: "2.5rem",
+          background: "rgba(30,33,57,0.6)",
+          border: "1px solid rgba(255,255,255,0.1)",
+          borderRadius: "16px",
+          boxShadow: "0 8px 32px rgba(0,0,0,0.6)",
+          backdropFilter: "blur(12px)",
           textAlign: "center",
+          zIndex: 1,
         }}
       >
-        {/* 로그인 박스 내 상단에 로고 넣기, 최대 너비 200px, 여백 설정 */}
-        <img
-          src={logo}
-          alt="로고"
+        {/* DAOL 타이틀 */}
+        <h1
           style={{
-            maxWidth: "200px",
-            width: "100%",
-            height: "auto",
-            margin: "0 auto 1.5rem",
-            display: "block",
+            fontSize: "32px",
+            fontWeight: "bold",
+            background: "linear-gradient(to right, #00c6ff, #0072ff)",
+            WebkitBackgroundClip: "text",
+            WebkitTextFillColor: "transparent",
+            marginBottom: "1rem",
           }}
-        />
+        >
+          DAOL
+        </h1>
+        <p style={{ color: "#d1d5db", marginBottom: "2rem", fontSize: "14px" }}>
+          
+        </p>
 
-        <h1 style={{ fontSize: "20px", marginBottom: "1.5rem", fontWeight: "bold" }}></h1>
-
-        <form onSubmit={handleLogin} style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+        {/* 로그인 폼 */}
+        <form
+          onSubmit={handleLogin}
+          style={{ display: "flex", flexDirection: "column", gap: "1rem" }}
+        >
           <input
             type="text"
             placeholder="아이디"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
             style={{
-              padding: "0.75rem",
+              padding: "0.85rem",
               fontSize: "16px",
-              border: "1px solid #d1d5db",
-              borderRadius: "6px",
+              borderRadius: "8px",
+              border: "1px solid rgba(255,255,255,0.2)",
+              background: "rgba(255,255,255,0.05)",
+              color: "white",
+              outline: "none",
             }}
           />
           <input
@@ -89,35 +116,63 @@ export default function LoginPage() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             style={{
-              padding: "0.75rem",
+              padding: "0.85rem",
               fontSize: "16px",
-              border: "1px solid #d1d5db",
-              borderRadius: "6px",
+              borderRadius: "8px",
+              border: "1px solid rgba(255,255,255,0.2)",
+              background: "rgba(255,255,255,0.05)",
+              color: "white",
+              outline: "none",
             }}
           />
           <button
             type="submit"
             style={{
-              padding: "0.75rem",
-              backgroundColor: "#3b82f6",
-              color: "white",
+              padding: "0.85rem",
+              fontSize: "16px",
               fontWeight: "bold",
+              borderRadius: "8px",
               border: "none",
-              borderRadius: "6px",
+              background:
+                "linear-gradient(90deg, #3b82f6 0%, #9333ea 100%)",
+              color: "white",
               cursor: "pointer",
+              transition: "0.3s",
             }}
           >
             로그인
           </button>
-          {error && <p style={{ color: "red", fontWeight: "bold" }}>{error}</p>}
+          {error && <p style={{ color: "#f87171", fontWeight: "bold" }}>{error}</p>}
         </form>
 
-        <div style={{ marginTop: "1.5rem", fontSize: "14px", color: "#6b7280" }}>
-          <Link to="/signup" style={{ marginRight: "1rem", color: "#374151", textDecoration: "underline" }}>
+        {/* 하단 링크 */}
+        <div
+          style={{
+            marginTop: "1.5rem",
+            fontSize: "14px",
+            display: "flex",
+            justifyContent: "space-between",
+            color: "#9ca3af",
+          }}
+        >
+          <Link
+            to="/signup"
+            style={{
+              color: "#00c6ff",
+              textDecoration: "none",
+              fontWeight: "bold",
+            }}
+          >
             회원가입
           </Link>
-          <span style={{ color: "#9ca3af" }}>|</span>
-          <a href="#" style={{ marginLeft: "1rem", color: "#374151", textDecoration: "underline" }}>
+          <a
+            href="#"
+            style={{
+              color: "#00c6ff",
+              textDecoration: "none",
+              fontWeight: "bold",
+            }}
+          >
             비밀번호 찾기
           </a>
         </div>
