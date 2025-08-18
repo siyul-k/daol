@@ -38,14 +38,14 @@ export default function LoginPage() {
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        backgroundImage: `url(${cityBg})`,   // 🔥 도시 배경 이미지 적용
+        backgroundImage: `url(${cityBg})`,
         backgroundSize: "cover",
         backgroundPosition: "center",
         backgroundRepeat: "no-repeat",
         position: "relative",
       }}
     >
-      {/* 배경 어둡게 오버레이 */}
+      {/* 배경 오버레이 */}
       <div
         style={{
           position: "absolute",
@@ -53,7 +53,7 @@ export default function LoginPage() {
           left: 0,
           right: 0,
           bottom: 0,
-          background: "rgba(0,0,0,0.3)", // 살짝 어둡게
+          background: "rgba(0,0,0,0.35)",
           zIndex: 0,
         }}
       />
@@ -61,22 +61,22 @@ export default function LoginPage() {
       {/* 로그인 카드 */}
       <div
         style={{
-          width: "100%",
-          maxWidth: "420px",
-          padding: "2.5rem",
-          background: "rgba(30,33,57,0.6)",
+          width: "90%",                 // ✅ 모바일에서는 가로폭 줄임
+          maxWidth: "360px",            // ✅ PC에서도 너무 넓지 않게
+          padding: "1.5rem",            // ✅ 모바일 padding 축소
+          background: "rgba(30,33,57,0.65)",
           border: "1px solid rgba(255,255,255,0.1)",
-          borderRadius: "16px",
+          borderRadius: "14px",
           boxShadow: "0 8px 32px rgba(0,0,0,0.6)",
           backdropFilter: "blur(12px)",
           textAlign: "center",
           zIndex: 1,
         }}
       >
-        {/* DAOL 타이틀 */}
+        {/* 타이틀 */}
         <h1
           style={{
-            fontSize: "32px",
+            fontSize: "28px",  // ✅ 모바일에서 살짝 줄임
             fontWeight: "bold",
             background: "linear-gradient(to right, #00c6ff, #0072ff)",
             WebkitBackgroundClip: "text",
@@ -86,14 +86,11 @@ export default function LoginPage() {
         >
           DAOL
         </h1>
-        <p style={{ color: "#d1d5db", marginBottom: "2rem", fontSize: "14px" }}>
-          
-        </p>
 
         {/* 로그인 폼 */}
         <form
           onSubmit={handleLogin}
-          style={{ display: "flex", flexDirection: "column", gap: "1rem" }}
+          style={{ display: "flex", flexDirection: "column", gap: "0.8rem" }}
         >
           <input
             type="text"
@@ -101,8 +98,8 @@ export default function LoginPage() {
             value={username}
             onChange={(e) => setUsername(e.target.value)}
             style={{
-              padding: "0.85rem",
-              fontSize: "16px",
+              padding: "0.75rem",
+              fontSize: "15px",
               borderRadius: "8px",
               border: "1px solid rgba(255,255,255,0.2)",
               background: "rgba(255,255,255,0.05)",
@@ -116,8 +113,8 @@ export default function LoginPage() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             style={{
-              padding: "0.85rem",
-              fontSize: "16px",
+              padding: "0.75rem",
+              fontSize: "15px",
               borderRadius: "8px",
               border: "1px solid rgba(255,255,255,0.2)",
               background: "rgba(255,255,255,0.05)",
@@ -128,13 +125,12 @@ export default function LoginPage() {
           <button
             type="submit"
             style={{
-              padding: "0.85rem",
-              fontSize: "16px",
+              padding: "0.8rem",
+              fontSize: "15px",
               fontWeight: "bold",
               borderRadius: "8px",
               border: "none",
-              background:
-                "linear-gradient(90deg, #3b82f6 0%, #9333ea 100%)",
+              background: "linear-gradient(90deg, #3b82f6 0%, #9333ea 100%)",
               color: "white",
               cursor: "pointer",
               transition: "0.3s",
@@ -142,14 +138,18 @@ export default function LoginPage() {
           >
             로그인
           </button>
-          {error && <p style={{ color: "#f87171", fontWeight: "bold" }}>{error}</p>}
+          {error && (
+            <p style={{ color: "#f87171", fontWeight: "bold", fontSize: "13px" }}>
+              {error}
+            </p>
+          )}
         </form>
 
         {/* 하단 링크 */}
         <div
           style={{
-            marginTop: "1.5rem",
-            fontSize: "14px",
+            marginTop: "1rem",
+            fontSize: "13px",
             display: "flex",
             justifyContent: "space-between",
             color: "#9ca3af",
