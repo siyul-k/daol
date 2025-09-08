@@ -42,7 +42,7 @@ export default function DepositPage() {
                        px-3 py-2 rounded"
           >
             <option value="">금액 선택</option>
-            {[600000, 1200000, 2400000, 3600000, 7200000, 12000000].map((v) => (
+            {[550000, 1100000, 2200000, 3300000, 5500000, 11000000].map((v) => (
               <option key={v} value={v}>
                 {v.toLocaleString()} 원
               </option>
