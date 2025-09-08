@@ -4,7 +4,7 @@ const { getPurchasesWithRemaining } = require('../utils/rewardLimit.cjs');
 
 const toKRW = (n) => Math.max(0, Math.floor(Number(n) || 0));
 
-// 구매건별 FIFO 한도 분배 (매번 fresh 호출)
+// 구매건별 FIFO 한도 분배 (현재는 추천수당 폐지 상태, 추후 필요 시 사용 가능)
 async function allocateRecommendFIFOOnce(memberId, amount) {
   const slots = await getPurchasesWithRemaining(memberId); 
   const alloc = [];
@@ -38,14 +38,13 @@ async function processReferralRewards() {
     const [bonusRows] = await connection.query(`
       SELECT reward_type, level, rate
       FROM bonus_config
-      WHERE reward_type IN ('center', 'center_recommend', 'referral') AND level = 0
+      WHERE reward_type IN ('center', 'center_recommend') AND level = 0
     `);
     const centerRate    = Number(bonusRows.find(r => r.reward_type === 'center')?.rate ?? 0.04);
     const centerRecRate = Number(bonusRows.find(r => r.reward_type === 'center_recommend')?.rate ?? 0.01);
-    const recommendRate = Number(bonusRows.find(r => r.reward_type === 'referral')?.rate ?? 0.03);
 
     const [rows] = await connection.query(`
-      SELECT p.id AS purchase_id, p.member_id, p.pv, m.center_id, m.recommender_id
+      SELECT p.id AS purchase_id, p.member_id, p.pv, m.center_id
       FROM purchases p
       JOIN members m ON p.member_id = m.id
       WHERE p.status = 'approved'
@@ -61,19 +60,17 @@ async function processReferralRewards() {
     const purchaseIds = rows.map(r => r.purchase_id);
     const doneCenter = new Set();
     const doneCenterRecommend = new Set();
-    const doneRecommend = new Set();
     if (purchaseIds.length) {
       const [doneRows] = await connection.query(
         `SELECT DISTINCT source, type
          FROM rewards_log
          WHERE source IN (${purchaseIds.map(()=>'?').join(',')})
-           AND type IN ('center','center_recommend','recommend')`,
+           AND type IN ('center','center_recommend')`,
         purchaseIds
       );
       for (const r of doneRows) {
         if (r.type === 'center') doneCenter.add(r.source);
         if (r.type === 'center_recommend') doneCenterRecommend.add(r.source);
-        if (r.type === 'recommend') doneRecommend.add(r.source);
       }
     }
 
@@ -91,8 +88,7 @@ async function processReferralRewards() {
 
     const blockIds = [
       ...new Set(
-        rows.map(r => r.recommender_id).filter(Boolean)
-          .concat(centerIds.length ? Object.values(centerCache).flatMap(c => [c.center_owner_id, c.center_recommender_id]) : [])
+        centerIds.length ? Object.values(centerCache).flatMap(c => [c.center_owner_id, c.center_recommender_id]) : []
       )
     ];
     const blockMap = {};
@@ -106,11 +102,8 @@ async function processReferralRewards() {
       for (const b of br) blockMap[b.id] = !!b.is_reward_blocked;
     }
 
-    const addWithdrawMap = {};
-    const payLog = [];
-
     for (const row of rows) {
-      const { purchase_id, member_id: buyerId, pv, center_id, recommender_id } = row;
+      const { purchase_id, pv, center_id } = row;
 
       // 센터피
       if (!doneCenter.has(purchase_id) && center_id && centerCache[center_id]) {
@@ -125,8 +118,8 @@ async function processReferralRewards() {
               VALUES (?, 'center', ?, ?, ?, 1, '센터피', NOW())
             `, [
               centerOwnerId,
-              purchase_id, // 구매자 상품ID
-              purchase_id, // 센터피는 ref_id=source 동일
+              purchase_id,
+              purchase_id,
               canPay ? amount : 0
             ]);
           }
@@ -154,49 +147,12 @@ async function processReferralRewards() {
         }
       }
 
-      // 추천수당 (건별 한도 계산)
-      if (!doneRecommend.has(purchase_id) && recommender_id && !blockMap[recommender_id]) {
-        const target = toKRW(pv * recommendRate);
-        if (target > 0) {
-          const { alloc, paid, lack } = await allocateRecommendFIFOOnce(recommender_id, target);
-          if (paid > 0) {
-            for (const a of alloc) {
-              await connection.query(`
-                INSERT IGNORE INTO rewards_log
-                  (member_id, type, source, ref_id, amount, memo, created_at)
-                VALUES (?, 'recommend', ?, ?, ?, '추천', NOW())
-              `, [recommender_id, purchase_id, a.ref_id, a.amount]);
-            }
-            addWithdrawMap[recommender_id] = (addWithdrawMap[recommender_id] || 0) + paid;
-          } else {
-            await connection.query(`
-              INSERT IGNORE INTO rewards_log
-                (member_id, type, source, ref_id, amount, memo, created_at)
-              VALUES (?, 'recommend', ?, ?, 0, '한도초과(추천수당)', NOW())
-            `, [recommender_id, purchase_id, purchase_id]);
-          }
-          payLog.push(`[추천수당] 추천인:${recommender_id} src:${purchase_id} pv:${pv} target:${target} paid:${paid} lack:${lack}`);
-        }
-      }
+      // 추천수당 제거됨 (추후 필요 시 복원)
     }
 
-    for (const id of Object.keys(addWithdrawMap)) {
-      const sum = toKRW(addWithdrawMap[id]);
-      if (sum > 0) {
-        await connection.query(
-          `UPDATE members SET withdrawable_point = withdrawable_point + ? WHERE id = ?`,
-          [sum, id]
-        );
-      }
-    }
-
-    if (payLog.length) {
-      console.log('\n[지급/적립 내역]');
-      payLog.forEach(m => console.log(' ', m));
-    }
-    console.log(`✅ 건별 센터피/센터추천피 + 추천수당 정산 완료 (구매 ${rows.length}건)\n`);
+    console.log(`✅ 건별 센터피/센터추천피 정산 완료 (구매 ${rows.length}건)\n`);
   } catch (err) {
-    console.error('❌ 센터피/추천수당 정산 실패:', err);
+    console.error('❌ 센터피/센터추천피 정산 실패:', err);
   }
 }
 
