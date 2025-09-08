@@ -32,9 +32,12 @@ export default function UserLayout({ children }) {
       ],
     },
     {
-      label: "조직도", icon: <Share2 size={16} />,
-      children: [{ label: "조직도", path: "/tree/recommend" }],
-    },
+    label: "조직도", icon: <Share2 size={16} />,
+    children: [
+      { label: "추천조직도", path: "/tree/recommend" },
+      { label: "후원조직도", path: "/tree/sponsor" },
+    ],
+  },
     {
       label: "입금", icon: <LogIn size={16} />,
       children: [

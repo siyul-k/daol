@@ -13,6 +13,7 @@ export default function DashboardPage() {
   const [limit, setLimit] = useState(0);
   const [rewards, setRewards] = useState([]);
   const [recommenderPV, setRecommenderPV] = useState([]);
+  const [sponsorPV, setSponsorPV] = useState([]); // ✅ 후원인 목록 PV (원본 유지 + 삽입)
   const [user, setUser] = useState(null);
   const [latestNotice, setLatestNotice] = useState(null);
 
@@ -44,12 +45,20 @@ export default function DashboardPage() {
 
   // 추천인별 하위 PV
   useEffect(() => {
-  if (!data?.recommenderList?.length) return setRecommenderPV([]);
-  // 기존에는 하위 전체 PV를 계산했는데 → 이제는 개별 회원 PV만 조회
-  axios.post('/api/recommender-pv', { recommenders: data.recommenderList, selfOnly: true })
-    .then(res => setRecommenderPV(res.data))
-    .catch(() => setRecommenderPV([]));
-}, [data?.recommenderList]);
+    if (!data?.recommenderList?.length) return setRecommenderPV([]);
+    // 기존에는 하위 전체 PV를 계산했는데 → 이제는 개별 회원 PV만 조회
+    axios.post('/api/recommender-pv', { recommenders: data.recommenderList, selfOnly: true })
+      .then(res => setRecommenderPV(res.data))
+      .catch(() => setRecommenderPV([]));
+  }, [data?.recommenderList]);
+
+  // ✅ 후원인별 하위 PV (원본 유지 컨벤션에 맞춰 추가)
+  useEffect(() => {
+    if (!data?.sponsorList?.length) return setSponsorPV([]);
+    axios.post('/api/sponsor-pv/list', { sponsors: data.sponsorList })
+      .then(res => setSponsorPV(res.data))
+      .catch(() => setSponsorPV([]));
+  }, [data?.sponsorList]);
 
   // ✅ 진행률 계산
   useEffect(() => {
@@ -128,28 +137,27 @@ export default function DashboardPage() {
           gradient="from-sky-400 to-blue-500"
         />
         
-  <Card
-  icon={
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 24 24"
-      fill="currentColor"
-      className="w-6 h-6 text-yellow-400"   // 바깥 원 크기 그대로 유지
-    >
-      {/* 바깥 원 */}
-      <circle cx="12" cy="12" r="10" fill="#facc15" />
-      {/* 안쪽 원 */}
-      <circle cx="12" cy="12" r="7" fill="#eab308" />
-      {/* 중앙 다이아몬드 (크기 키움) */}
-      <path d="M12 5 L19 12 L12 19 L5 12 Z" fill="#fef08a" />
-    </svg>
-  }
-  title="출금가능 포인트"
-  value={formatNumber(data.withdrawableAmount)}
-  link="/withdraw"
-  gradient="from-yellow-400 to-yellow-600"
-/>
-
+        <Card
+          icon={
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="currentColor"
+              className="w-6 h-6 text-yellow-400"   // 바깥 원 크기 그대로 유지
+            >
+              {/* 바깥 원 */}
+              <circle cx="12" cy="12" r="10" fill="#facc15" />
+              {/* 안쪽 원 */}
+              <circle cx="12" cy="12" r="7" fill="#eab308" />
+              {/* 중앙 다이아몬드 (크기 키움) */}
+              <path d="M12 5 L19 12 L12 19 L5 12 Z" fill="#fef08a" />
+            </svg>
+          }
+          title="출금가능 포인트"
+          value={formatNumber(data.withdrawableAmount)}
+          link="/withdraw"
+          gradient="from-yellow-400 to-yellow-600"
+        />
 
         <Card
           icon={<Coins className="size-6" />}
@@ -160,44 +168,82 @@ export default function DashboardPage() {
       </div>
 
       {/* 추천인 목록 */}
-<div
-  className="
-    relative rounded-2xl p-4 
-    bg-gray-100 shadow-[6px_6px_12px_#cfd4dc,-6px_-6px_12px_#ffffff] 
-    dark:bg-white/5 dark:border dark:border-white/10 dark:shadow-none
-  "
->
-  <h2 className="text-lg font-semibold mb-3">추천인 목록</h2>
-  <ul className="space-y-3">
-    {recommenderPV.length > 0 ? (
-      recommenderPV.map((r, idx) => (
-        <li key={idx} className="flex items-center gap-3">
-          {/* ✅ 원형 배경 안의 User 아이콘 */}
-          <div className="w-8 h-8 flex items-center justify-center rounded-full bg-blue-500 dark:bg-blue-400">
-            <User className="w-4 h-4 text-white" />
-          </div>
-          {/* ✅ 추천인 아이디/이름 글씨 키움 */}
-          <span className="text-lg">
-            <b>{r.username}</b> {r.name && <>({r.name})</>} :{" "}
-            <span className="text-blue-600 font-bold">
-              {formatNumber(r.pv)}
-            </span> PV
-          </span>
-        </li>
-      ))
-    ) : (
-      <li>추천인이 없습니다.</li>
-    )}
-  </ul>
+      <div
+        className="
+          relative rounded-2xl p-4 
+          bg-gray-100 shadow-[6px_6px_12px_#cfd4dc,-6px_-6px_12px_#ffffff] 
+          dark:bg-white/5 dark:border dark:border-white/10 dark:shadow-none
+        "
+      >
+        <h2 className="text-lg font-semibold mb-3">추천인 목록</h2>
+        <ul className="space-y-3">
+          {recommenderPV.length > 0 ? (
+            recommenderPV.map((r, idx) => (
+              <li key={idx} className="flex items-center gap-3">
+                {/* ✅ 원형 배경 안의 User 아이콘 */}
+                <div className="w-8 h-8 flex items-center justify-center rounded-full bg-blue-500 dark:bg-blue-400">
+                  <User className="w-4 h-4 text-white" />
+                </div>
+                {/* ✅ 추천인 아이디/이름 글씨 키움 */}
+                <span className="text-lg">
+                  <b>{r.username}</b> {r.name && <>({r.name})</>} :{" "}
+                  <span className="text-blue-600 font-bold">
+                    {formatNumber(r.pv)}
+                  </span> PV
+                </span>
+              </li>
+            ))
+          ) : (
+            <li>추천인이 없습니다.</li>
+          )}
+        </ul>
 
-  {/* 조직도 이동 아이콘 */}
-  <Link
-    to="/tree/recommend"
-    className="absolute bottom-3 right-3 text-blue-500 hover:text-blue-400"
-  >
-    <ArrowRight className="size-5" />
-  </Link>
-</div>
+        {/* 조직도 이동 아이콘 */}
+        <Link
+          to="/tree/recommend"
+          className="absolute bottom-3 right-3 text-blue-500 hover:text-blue-400"
+        >
+          <ArrowRight className="size-5" />
+        </Link>
+      </div>
+
+      {/* ✅ 후원인 목록 (원본 기능 유지 + 삽입) */}
+      <div
+        className="
+          relative rounded-2xl p-4 
+          bg-gray-100 shadow-[6px_6px_12px_#cfd4dc,-6px_-6px_12px_#ffffff] 
+          dark:bg-white/5 dark:border dark:border-white/10 dark:shadow-none
+        "
+      >
+        <h2 className="text-lg font-semibold mb-3">후원인 목록</h2>
+        <ul className="space-y-3">
+          {sponsorPV.length > 0 ? (
+            sponsorPV.map((r, idx) => (
+              <li key={idx} className="flex items-center gap-3">
+                <div className="w-8 h-8 flex items-center justify-center rounded-full bg-blue-500 dark:bg-blue-400">
+                  <User className="w-4 h-4 text-white" />
+                </div>
+                <span className="text-lg">
+                  <b>{r.username}</b> {r.name && <>({r.name})</>} :{" "}
+                  <span className="text-blue-600 font-bold">
+                    {formatNumber(r.pv)}
+                  </span> PV
+                </span>
+              </li>
+            ))
+          ) : (
+            <li>후원인이 없습니다.</li>
+          )}
+        </ul>
+
+        {/* 후원 조직도 이동 아이콘 */}
+        <Link
+          to="/tree/sponsor"
+          className="absolute bottom-3 right-3 text-blue-500 hover:text-blue-400"
+        >
+          <ArrowRight className="size-5" />
+        </Link>
+      </div>
 
       {/* 최신 공지 */}
       {latestNotice && (

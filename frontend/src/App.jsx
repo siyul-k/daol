@@ -1,3 +1,4 @@
+// ✅ 파일 경로: src/App.jsx
 import React from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 
@@ -39,6 +40,7 @@ import NoticePage from "./pages/NoticePage";
 import ProductPage from "./pages/ProductPage";
 import ProductHistoryPage from "./pages/ProductHistoryPage";
 import RecommendTreePage from "./pages/RecommendTreePage";
+import SponsorTreePage from "./pages/SponsorTreePage"; // ✅ 추가
 
 // ─ 로그인 훅 ─
 import { useAuth } from "./hooks/useAuth";
@@ -53,10 +55,7 @@ export default function App() {
     <Router>
       <Routes>
         {/* ─────────────── 회원 라우팅 (ThemeProvider 적용) ─────────────── */}
-        <Route
-          path="/"
-          element={<Navigate to="/login" replace />}
-        />
+        <Route path="/" element={<Navigate to="/login" replace />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/signup" element={<SignupPage />} />
 
@@ -107,6 +106,16 @@ export default function App() {
             <ThemeProvider>
               <UserLayout>
                 <RecommendTreePage />
+              </UserLayout>
+            </ThemeProvider>
+          }
+        />
+        <Route
+          path="/tree/sponsor" // ✅ 추가
+          element={
+            <ThemeProvider>
+              <UserLayout>
+                <SponsorTreePage />
               </UserLayout>
             </ThemeProvider>
           }
@@ -212,10 +221,7 @@ export default function App() {
         </Route>
 
         {/* ─────────────── Not Found ─────────────── */}
-        <Route
-          path="*"
-          element={<div className="p-10">❌ 페이지를 찾을 수 없습니다.</div>}
-        />
+        <Route path="*" element={<div className="p-10">❌ 페이지를 찾을 수 없습니다.</div>} />
       </Routes>
     </Router>
   );

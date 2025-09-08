@@ -4,7 +4,7 @@ const router = express.Router();
 const pool = require('../db.cjs');
 const ExcelJS = require('exceljs');
 
-// 수당 목록 조회 (후원, 직급 내역 제외, created_at 시간 KST 변환 적용, 기간검색/페이지네이션)
+// 수당 목록 조회 (추천, 직급 내역 제외, created_at 시간 KST 변환 적용, 기간검색/페이지네이션)
 router.get('/', async (req, res) => {
   const page = parseInt(req.query.page) || 1;
   const limit = parseInt(req.query.limit) || 10;
@@ -34,8 +34,8 @@ router.get('/', async (req, res) => {
     params.push(endDate);
   }
 
-  // 후원/직급 내역 제외
-  where += ` AND r.type NOT IN ('sponsor', 'rank')`;
+  // ✅ 추천, 직급 내역 제외 (후원은 포함)
+  where += ` AND r.type NOT IN ('recommend', 'rank')`;
 
   const countSql = `
     SELECT COUNT(*) AS total
@@ -96,8 +96,8 @@ router.get('/export', async (req, res) => {
     params.push(endDate);
   }
 
-  // 후원/직급 내역 제외
-  where += ` AND r.type NOT IN ('sponsor', 'rank')`;
+  // ✅ 추천, 직급 내역 제외 (후원은 포함)
+  where += ` AND r.type NOT IN ('recommend', 'rank')`;
 
   const query = `
     SELECT r.*, 

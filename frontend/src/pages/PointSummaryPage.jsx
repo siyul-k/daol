@@ -45,14 +45,14 @@ export default function PointSummaryPage() {
       .filter((r) => r.type !== "center" && r.type !== "center_recommend")
       .reduce((sum, r) => sum + Number(r.amount || 0), 0);
 
-  // ✅ 요약카드 카테고리
+  // ✅ 요약카테고리: 추천→후원 (sponsor)
   const categories = [
-    { label: "추천", types: ["referral", "recommend"] },
+    { label: "후원", types: ["sponsor"] },
     { label: "데일리", types: ["daily"] },
     { label: "매칭", types: ["daily_matching"] },
   ];
 
-  // ✅ 일자별 breakdown
+  // ✅ 일자별 breakdown: recommend→sponsor
   const sumByDate = () => {
     const grouped = {};
     rewards.forEach((r) => {
@@ -63,7 +63,7 @@ export default function PointSummaryPage() {
       if (!grouped[date]) {
         grouped[date] = {
           total: 0,
-          recommend: 0,
+          sponsor: 0,
           daily: 0,
           matching: 0,
           center: 0,
@@ -74,9 +74,8 @@ export default function PointSummaryPage() {
       grouped[date].total += amount;
 
       switch (r.type) {
-        case "referral":
-        case "recommend":
-          grouped[date].recommend += amount;
+        case "sponsor":
+          grouped[date].sponsor += amount;
           break;
         case "daily":
           grouped[date].daily += amount;
@@ -140,7 +139,7 @@ export default function PointSummaryPage() {
               </div>
             </div>
 
-            {/* ✅ 항목별 요약카드 (추천 / 데일리 / 매칭) */}
+            {/* ✅ 항목별 요약카드 (후원 / 데일리 / 매칭) */}
             {categories.map((cat) => (
               <div
                 key={cat.label}
@@ -176,7 +175,7 @@ export default function PointSummaryPage() {
                   {/* ✅ 줄바꿈 방지 */}
                   <th className="border px-3 py-2 whitespace-nowrap">날짜</th>
                   <th className="border px-3 py-2 whitespace-nowrap">합계</th>
-                  <th className="border px-3 py-2 whitespace-nowrap">추천</th>
+                  <th className="border px-3 py-2 whitespace-nowrap">후원</th>
                   <th className="border px-3 py-2 whitespace-nowrap">데일리</th>
                   <th className="border px-3 py-2 whitespace-nowrap">매칭</th>
                   <th className="border px-3 py-2 whitespace-nowrap">센터</th>
@@ -198,7 +197,7 @@ export default function PointSummaryPage() {
                         {sums.total.toLocaleString()}
                       </td>
                       <td className="border px-3 py-2 text-gray-900 dark:text-gray-100 whitespace-nowrap">
-                        {sums.recommend.toLocaleString()}
+                        {sums.sponsor.toLocaleString()}
                       </td>
                       <td className="border px-3 py-2 text-gray-900 dark:text-gray-100 whitespace-nowrap">
                         {sums.daily.toLocaleString()}

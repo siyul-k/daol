@@ -137,8 +137,7 @@ export default function PointPage() {
         <p>불러오는 중...</p>
       ) : (
         <>
-          {/* ✅ 추천: referral + recommend */}
-          {renderTable("추천", ["referral", "recommend"])}
+          {renderTable("후원", "sponsor")}
           {renderTable("데일리", "daily")}
           {renderTable("매칭", "daily_matching")}
           {renderTable("센터", ["center", "center_recommend"])}

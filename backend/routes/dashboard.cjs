@@ -36,8 +36,9 @@ router.get('/:username', async (req, res) => {
       [withdrawReqAndDone],    // 출금: 요청+완료
       [withdrawable],          // ✅ 출금가능: members.withdrawable_point
       [shoppingPoint],
-      recommenders,
-      [packageTotalPV]          // ✅ 보유 패키지: PV 합산
+      recommenders,            // 추천인 목록 (직접 하위)
+      sponsors,                // 후원인 목록 (직접 하위, L/R 무관)
+      [packageTotalPV]         // ✅ 보유 패키지: PV 합산
     ] = await Promise.all([
       pool.query('SELECT username, name FROM members WHERE id = ?', [member_id]).then(r => r[0]),
       pool.query('SELECT point_balance AS available_point FROM members WHERE id = ?', [member_id]).then(r => r[0]),
@@ -65,7 +66,8 @@ router.get('/:username', async (req, res) => {
         'SELECT IFNULL(shopping_point,0) AS shopping_point FROM members WHERE id = ?',
         [member_id]
       ).then(r => r[0]),
-      pool.query('SELECT username FROM members WHERE recommender_id = ?', [member_id]).then(r => r[0]),
+      pool.query('SELECT username, name FROM members WHERE recommender_id = ?', [member_id]).then(r => r[0]),
+      pool.query('SELECT username, name FROM members WHERE sponsor_id = ?', [member_id]).then(r => r[0]),
       pool.query(
         `SELECT IFNULL(SUM(pv),0) AS package_total_pv
            FROM purchases
@@ -86,7 +88,8 @@ router.get('/:username', async (req, res) => {
       withdrawableAmount: Number(withdrawable?.withdrawable_point || 0), // members 컬럼 값 그대로
       shoppingPoint: Number(shoppingPoint?.shopping_point || 0),
       recommenderList: recommenders.map(r => r.username),
-      packageTotal: Number(packageTotalPV?.package_total_pv || 0)      // PV 합산
+      sponsorList: sponsors.map(r => r.username),                       // ✅ 추가
+      packageTotal: Number(packageTotalPV?.package_total_pv || 0)       // PV 합산
     };
 
     dashboardCache.set(cacheKey, result);

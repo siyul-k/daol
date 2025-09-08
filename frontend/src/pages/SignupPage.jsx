@@ -1,5 +1,4 @@
 // ✅ 파일 경로: frontend/src/pages/SignupPage.jsx
-
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import axios from "../axiosConfig";
@@ -17,21 +16,33 @@ export default function SignupPage() {
     centerName: "",
     recommender: "",
     recommenderName: "",
+    sponsor: "",
+    sponsorName: "",
+    sponsorDirection: "L", // 기본 좌
     phone: "",
   });
 
   const [errors, setErrors] = useState({});
   const [centerChecked, setCenterChecked] = useState(false);
   const [recommenderChecked, setRecommenderChecked] = useState(false);
+  const [sponsorChecked, setSponsorChecked] = useState(false);
+  const [sponsorSidesUsed, setSponsorSidesUsed] = useState({ L: false, R: false }); // 사용중 방향
 
   const usernameRegex = /^[a-zA-Z0-9]*$/;
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     setForm((prev) => ({ ...prev, [name]: value }));
-    setErrors((prev) => ({ ...prev, [name]: "" }));
+    setErrors((prev) => ({ ...prev, [name]: "", [`${name}Check`]: "" }));
+
     if (name === "center") setCenterChecked(false);
     if (name === "recommender") setRecommenderChecked(false);
+    if (name === "sponsor") {
+      setSponsorChecked(false);
+      setSponsorSidesUsed({ L: false, R: false });
+      // 기본 좌로 되돌림
+      setForm((prev) => ({ ...prev, sponsorDirection: "L" }));
+    }
   };
 
   const checkUser = async (type) => {
@@ -45,12 +56,28 @@ export default function SignupPage() {
       let res;
       if (type === "center") {
         res = await axios.get(`/api/lookup/center`, { params: { center: value } });
-        setForm((prev) => ({ ...prev, centerName: res.data.owner_name }));
+        setForm((prev) => ({ ...prev, centerName: res.data.owner_name || res.data.name || "" }));
         setCenterChecked(true);
       } else if (type === "recommender") {
         res = await axios.get(`/api/lookup/recommender`, { params: { username: value } });
         setForm((prev) => ({ ...prev, recommenderName: res.data.name }));
         setRecommenderChecked(true);
+      } else if (type === "sponsor") {
+        res = await axios.get(`/api/lookup/sponsor`, { params: { username: value } });
+        setForm((prev) => ({ ...prev, sponsorName: res.data.name }));
+        setSponsorChecked(true);
+
+        const used = res.data.used || { L: false, R: false };
+        setSponsorSidesUsed(used);
+
+        // 선택한 방향이 이미 사용 중이면 가능한 쪽으로 자동 변경
+        if (used[form.sponsorDirection]) {
+          if (!used.L) setForm((prev) => ({ ...prev, sponsorDirection: "L" }));
+          else if (!used.R) setForm((prev) => ({ ...prev, sponsorDirection: "R" }));
+          else {
+            setErrors((prev) => ({ ...prev, sponsorCheck: "해당 후원인의 좌/우가 모두 사용 중입니다." }));
+          }
+        }
       }
     } catch (err) {
       if (type === "center") {
@@ -61,6 +88,11 @@ export default function SignupPage() {
         setForm((prev) => ({ ...prev, recommenderName: "" }));
         setRecommenderChecked(false);
         setErrors((prev) => ({ ...prev, recommender: "존재하지 않는 추천인입니다." }));
+      } else if (type === "sponsor") {
+        setForm((prev) => ({ ...prev, sponsorName: "" }));
+        setSponsorChecked(false);
+        setSponsorSidesUsed({ L: false, R: false });
+        setErrors((prev) => ({ ...prev, sponsor: "존재하지 않는 후원인입니다." }));
       }
     }
   };
@@ -74,21 +106,30 @@ export default function SignupPage() {
     if (!form.password) newErrors.password = "이 항목을 입력해주세요.";
     if (!form.center) newErrors.center = "이 항목을 입력해주세요.";
     if (!form.recommender) newErrors.recommender = "이 항목을 입력해주세요.";
+    if (!form.sponsor) newErrors.sponsor = "이 항목을 입력해주세요.";
     if (!form.phone) newErrors.phone = "이 항목을 입력해주세요.";
-
     if (!centerChecked) newErrors.centerCheck = "센터장 확인 버튼을 눌러주세요.";
     if (!recommenderChecked) newErrors.recommenderCheck = "추천인 확인 버튼을 눌러주세요.";
+    if (!sponsorChecked) newErrors.sponsorCheck = "후원인 확인 버튼을 눌러주세요.";
+    if (!form.sponsorDirection) newErrors.sponsorDirection = "후원 방향을 선택해주세요.";
+
+    // 확인 결과 좌/우 모두 사용 중일 때 차단
+    if (sponsorChecked && sponsorSidesUsed.L && sponsorSidesUsed.R) {
+      newErrors.sponsorCheck = "해당 후원인의 좌/우가 모두 사용 중입니다.";
+    }
 
     setErrors(newErrors);
     if (Object.keys(newErrors).length > 0) return;
 
     try {
-      const [centerRes, recommenderRes] = await Promise.all([
+      const [centerRes, recommenderRes, sponsorRes] = await Promise.all([
         axios.get(`/api/lookup/center`, { params: { center: form.center } }),
         axios.get(`/api/lookup/recommender`, { params: { username: form.recommender } }),
+        axios.get(`/api/lookup/sponsor`, { params: { username: form.sponsor } }),
       ]);
       const center_id = centerRes.data.id;
       const recommender_id = recommenderRes.data.id;
+      const sponsor_id = sponsorRes.data.id;
 
       const payload = {
         username: form.username,
@@ -98,6 +139,8 @@ export default function SignupPage() {
         phone: form.phone,
         center_id,
         recommender_id,
+        sponsor_id,
+        sponsor_direction: form.sponsorDirection,
       };
 
       await axios.post(`/api/signup`, payload);
@@ -133,6 +176,18 @@ export default function SignupPage() {
     border: "none",
     cursor: "pointer",
   };
+
+  const radioLabel = (disabled) => ({
+    padding: "10px 12px",
+    borderRadius: "8px",
+    border: `1px solid ${disabled ? "rgba(255,255,255,0.15)" : "rgba(255,255,255,0.35)"}`,
+    background: "rgba(255,255,255,0.05)",
+    color: disabled ? "#9ca3af" : "#fff",
+    display: "flex",
+    gap: "6px",
+    alignItems: "center",
+    cursor: disabled ? "not-allowed" : "pointer",
+  });
 
   return (
     <div
@@ -271,6 +326,51 @@ export default function SignupPage() {
           <input value={form.recommenderName || ""} placeholder="추천인 이름" disabled style={inputStyle(false)} />
           {errors.recommender && <span style={{ color: "#f87171", fontSize: "13px" }}>{errors.recommender}</span>}
           {errors.recommenderCheck && <span style={{ color: "#f87171", fontSize: "13px" }}>{errors.recommenderCheck}</span>}
+
+          {/* 후원인 + 확인 */}
+          <div style={{ display: "flex", gap: "0.5rem" }}>
+            <input
+              name="sponsor"
+              placeholder="후원인"
+              value={form.sponsor}
+              onChange={handleChange}
+              style={{ ...inputStyle(errors.sponsor), flex: 1 }}
+              autoComplete="off"
+            />
+            <button type="button" style={blueBtnStyle} onClick={() => checkUser("sponsor")}>
+              후원인 확인
+            </button>
+          </div>
+          <input value={form.sponsorName || ""} placeholder="후원인 이름" disabled style={inputStyle(false)} />
+          {errors.sponsor && <span style={{ color: "#f87171", fontSize: "13px" }}>{errors.sponsor}</span>}
+          {errors.sponsorCheck && <span style={{ color: "#f87171", fontSize: "13px" }}>{errors.sponsorCheck}</span>}
+
+          {/* 후원 방향 선택 (기본 좌) */}
+          <div style={{ display: "flex", gap: "0.75rem" }}>
+            <label style={radioLabel(sponsorSidesUsed.L)}>
+              <input
+                type="radio"
+                name="sponsorDirection"
+                value="L"
+                checked={form.sponsorDirection === "L"}
+                onChange={(e) => !sponsorSidesUsed.L && setForm((p) => ({ ...p, sponsorDirection: e.target.value }))}
+                disabled={sponsorSidesUsed.L}
+              />
+              좌(L)
+            </label>
+            <label style={radioLabel(sponsorSidesUsed.R)}>
+              <input
+                type="radio"
+                name="sponsorDirection"
+                value="R"
+                checked={form.sponsorDirection === "R"}
+                onChange={(e) => !sponsorSidesUsed.R && setForm((p) => ({ ...p, sponsorDirection: e.target.value }))}
+                disabled={sponsorSidesUsed.R}
+              />
+              우(R)
+            </label>
+          </div>
+          {errors.sponsorDirection && <span style={{ color: "#f87171", fontSize: "13px" }}>{errors.sponsorDirection}</span>}
 
           {/* 핸드폰 */}
           <input

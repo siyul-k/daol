@@ -33,8 +33,12 @@ router.get('/', async (req, res) => {
       ORDER BY r.created_at DESC
     `;
     const [results] = await pool.query(sql, [member.id]);
-    // 후원(sponsor), 직급(rank) 타입 제외
-    const filtered = results.filter(r => r.type !== 'sponsor' && r.type !== 'rank');
+
+    // ✅ 추천(recommend), 직급(rank) 타입 제외
+    const filtered = results.filter(
+      r => r.type !== 'recommend' && r.type !== 'rank'
+    );
+
     res.json(filtered);
   } catch (err) {
     console.error('❌ rewards_log 조회 오류:', err);

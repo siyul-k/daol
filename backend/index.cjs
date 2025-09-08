@@ -73,6 +73,7 @@ app.use('/api/withdraw/available',     require('./routes/withdrawAvailable.cjs')
 // ✅ 사용자 대시보드용 통계
 // ✅ 대시보드 통계 API (한 번에 통계 집계)
 app.use('/api/dashboard', require('./routes/dashboard.cjs'));
+app.use('/api/sponsor-pv', require('./routes/sponsorPv.cjs'));
 app.use('/api/recommender-pv', require('./routes/recommenderPV.cjs'));
 app.use('/api/shopping-point', require('./routes/shoppingPoint.cjs'));
 app.use('/api/withdraw-total',         require('./routes/withdrawStats.cjs'));
