@@ -1,9 +1,8 @@
 // ✅ 파일 경로: backend/routes/signup.cjs
-
 const express = require('express');
-const router = express.Router();
-const bcrypt = require('bcrypt');
-const pool = require('../db.cjs');
+const router  = express.Router();
+const bcrypt  = require('bcrypt');
+const pool    = require('../db.cjs');
 
 /* 추천인 15대 계보 (rec_1_id ~ rec_15_id) */
 async function getRecommenderLineageIds(startId) {
@@ -22,6 +21,43 @@ async function getRecommenderLineageIds(startId) {
 }
 
 const isValidDir = (d) => d === 'L' || d === 'R';
+
+/** 부모 sponsor_path가 비었을 때도 안전하게 경로를 만들어주는 함수 */
+async function buildSponsorPathIncludingSelf(sponsorId, newId) {
+  // 1) 부모의 sponsor_path 조회
+  const [[parent]] = await pool.query(
+    'SELECT sponsor_path, sponsor_id FROM members WHERE id = ? LIMIT 1',
+    [sponsorId]
+  );
+
+  let basePath = parent?.sponsor_path || null;
+  const isValid =
+    basePath &&
+    basePath.startsWith('|') &&
+    basePath.endsWith('|') &&
+    basePath.length > 1 &&
+    basePath !== '|';
+
+  // 2) 유효한 sponsor_path가 없으면, 스폰서 체인을 위로 타고 올라가서 직접 구성
+  if (!isValid) {
+    const chain = [];
+    let cur = sponsorId;
+    const seen = new Set();
+    while (cur && !seen.has(cur)) {
+      seen.add(cur);
+      chain.unshift(cur); // 루트부터 앞으로 쌓기
+      const [[row]] = await pool.query(
+        'SELECT sponsor_id FROM members WHERE id = ? LIMIT 1',
+        [cur]
+      );
+      cur = row?.sponsor_id || null;
+    }
+    basePath = '|' + chain.join('|') + '|'; // 예: |루트|...|스폰서|
+  }
+
+  // 3) 내 id를 붙여 최종 경로 완성
+  return (basePath.endsWith('|') ? basePath : basePath + '|') + newId + '|';
+}
 
 router.post('/', async (req, res) => {
   try {
@@ -73,7 +109,7 @@ router.post('/', async (req, res) => {
       rec_11_id, rec_12_id, rec_13_id, rec_14_id, rec_15_id
     ] = await getRecommenderLineageIds(recommender_id);
 
-    // 🔐 INSERT (members 테이블 구조에 맞춰 필수 + sponsor + withdrawable_point 포함)
+    // 🔐 INSERT (sponsor_path는 아래에서 업데이트)
     const sql = `
       INSERT INTO members (
         username, password, name, email, phone,
@@ -96,8 +132,14 @@ router.post('/', async (req, res) => {
       0 // NOT NULL 컬럼: 기본 0
     ];
 
-    await pool.query(sql, values);
-    return res.json({ success: true, message: '가입 완료' });
+    const [result] = await pool.query(sql, values);
+    const newId = result.insertId;
+
+    // ✅ sponsor_path 즉시 생성 (부모 path가 없더라도 스폰서 체인으로 보완)
+    const myPath = await buildSponsorPathIncludingSelf(sponsor_id, newId);
+    await pool.query('UPDATE members SET sponsor_path = ? WHERE id = ?', [myPath, newId]);
+
+    return res.json({ success: true, message: '가입 완료', member_id: newId, sponsor_path: myPath });
   } catch (err) {
     console.error('❌ 회원가입 오류:', err.sqlMessage || err.message);
     return res.status(500).json({ success: false, message: '서버 오류' });
