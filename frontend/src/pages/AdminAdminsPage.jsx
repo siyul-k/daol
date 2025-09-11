@@ -9,7 +9,7 @@ export default function AdminAdminsPage() {
   const [form, setForm] = useState({ username: "", name: "", password: "" });
 
   const fetchAdmins = async () => {
-    const res = await axios.get("/api/admin/settings/admins");
+    const res = await axios.get("/api/ad-da/settings/admins");
     setAdmins(res.data);
   };
 
@@ -19,7 +19,7 @@ export default function AdminAdminsPage() {
 
   const handleDelete = async (id) => {
     if (!window.confirm("정말 삭제하시겠습니까?")) return;
-    await axios.delete(`/api/admin/settings/admins/${id}`);
+    await axios.delete(`/api/ad-da/settings/admins/${id}`);
     fetchAdmins();
   };
 
@@ -28,7 +28,7 @@ export default function AdminAdminsPage() {
       return alert("아이디, 이름, 비밀번호를 모두 입력해주세요.");
     }
     try {
-      await axios.post("/api/admin/settings/admins", form);
+      await axios.post("/api/ad-da/settings/admins", form);
       setForm({ username: "", name: "", password: "" });
       setShowModal(false);
       fetchAdmins();

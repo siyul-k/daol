@@ -1,3 +1,4 @@
+// ✅ 파일 경로: src/pages/AdminTreeSponsorPage.jsx
 import React, { useState, useEffect } from "react";
 import axios from "../axiosConfig";
 import { Tree, TreeNode } from "react-organizational-chart";
@@ -6,7 +7,7 @@ import "./OrgChart.css";
 /** ─── 1) 박스 렌더링 컴포넌트 ─── */
 const OrgBox = ({ node }) => (
   <div className="org-box">
-    <div className="org-id">{node.username}</div>
+    <div className="org-id">{node.username?.toLowerCase()}</div>
     <div className="org-name">{node.name || "-"}</div>
     <div className="org-date">{node.created_at?.slice(2, 10)}</div>
     <div className="org-sales">({node.sales.toLocaleString()})</div>
@@ -15,7 +16,7 @@ const OrgBox = ({ node }) => (
 
 /** ─── 2) 재귀 탐색: username 에 해당하는 노드만 리턴 ─── */
 const findSubtree = (node, username) => {
-  if (node.username === username) return node;
+  if (node.username?.toLowerCase() === username.toLowerCase()) return node;
   for (const child of node.children || []) {
     const found = findSubtree(child, username);
     if (found) return found;
@@ -25,7 +26,7 @@ const findSubtree = (node, username) => {
 
 /** ─── 3) 재귀 렌더러 ─── */
 const renderNode = (node) => (
-  <TreeNode key={node.username} label={<OrgBox node={node} />}>
+  <TreeNode key={node.username?.toLowerCase()} label={<OrgBox node={node} />}>
     {node.children?.map(renderNode)}
   </TreeNode>
 );

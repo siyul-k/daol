@@ -86,20 +86,22 @@ router.get('/', async (req, res) => {
     const total = countRes[0].total;
 
     const dataSql = `
-      SELECT
-        m.id, m.username, m.name, m.phone, m.center_id, m.recommender_id,
-        m.bank_name, m.account_holder, m.account_number, m.created_at,
-        rec.username AS recommender_username, rec.name AS recommender_name,
-        c.center_name,
-        m.is_withdraw_blocked,
-        m.is_reward_blocked
-      FROM members m
-      LEFT JOIN members rec ON m.recommender_id = rec.id
-      LEFT JOIN centers c ON m.center_id = c.id
-      ${whereClause}
-      ORDER BY ${orderField} ${orderDir}
-      LIMIT ? OFFSET ?
-    `;
+  SELECT
+    m.id, m.username, m.name, m.phone, m.center_id, m.recommender_id, m.sponsor_id,
+    m.bank_name, m.account_holder, m.account_number, m.created_at,
+    rec.username AS recommender_username, rec.name AS recommender_name,
+    spon.username AS sponsor_username, spon.name AS sponsor_name,
+    c.center_name,
+    m.is_withdraw_blocked,
+    m.is_reward_blocked
+  FROM members m
+  LEFT JOIN members rec  ON m.recommender_id = rec.id
+  LEFT JOIN members spon ON m.sponsor_id     = spon.id
+  LEFT JOIN centers c    ON m.center_id      = c.id
+  ${whereClause}
+  ORDER BY ${orderField} ${orderDir}
+  LIMIT ? OFFSET ?
+`;
     const [rows] = await pool.query(
       dataSql,
       [...values, parseInt(limit), parseInt(offset)]

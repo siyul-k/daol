@@ -34,7 +34,7 @@ export default function AdminProductsPage() {
       if (!filters.startDate) delete params.startDate;
       if (!filters.endDate) delete params.endDate;
 
-      const res = await axios.get('/api/admin/products', { params });
+      const res = await axios.get('/api/ad-da/products', { params });
       setProducts(res.data.data || []);
       setTotal(res.data.total || 0);
     } catch (err) {
@@ -56,7 +56,7 @@ export default function AdminProductsPage() {
   const handleDelete = async (id) => {
     if (!window.confirm('정말 삭제하시겠습니까?')) return;
     try {
-      await axios.delete(`/api/admin/products/${id}`);
+      await axios.delete(`/api/ad-da/products/${id}`);
       fetchProducts();
       alert('삭제되었습니다');
     } catch (err) {
@@ -68,7 +68,7 @@ export default function AdminProductsPage() {
   // 상태 토글(bcode 상품)
   const handleToggle = async (id) => {
     try {
-      await axios.put(`/api/admin/products/${id}/toggle`);
+      await axios.put(`/api/ad-da/products/${id}/toggle`);
       fetchProducts();
       alert('상태가 변경되었습니다');
     } catch (err) {
@@ -85,7 +85,7 @@ export default function AdminProductsPage() {
         startDate: filters.startDate || '',
         endDate: filters.endDate || ''
       }).toString();
-      const res = await axios.get(`/api/admin/products/export?${params}`, {
+      const res = await axios.get(`/api/ad-da/products/export?${params}`, {
         responseType: 'blob',
       });
       const url = window.URL.createObjectURL(new Blob([res.data]));

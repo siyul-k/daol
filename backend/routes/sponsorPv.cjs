@@ -92,10 +92,10 @@ router.get('/:username', async (req, res) => {
 });
 
 /* ────────────────────────────────────────────────────────────────
- * ② 대시보드: 후원인 목록 PV (직접 하위만)
+ * ② 대시보드: 후원인 목록 PV (직접 하위만 → 본인+하위 전체 PV 합산)
  *    POST /api/sponsor-pv/list
  *    body: { sponsors: string[] }  // 후원인 username 배열 (직접 하위)
- *    - 각 회원 "본인" PV만 합산
+ *    - 각 회원 "본인+하위 전체" PV 합산
  *    - PV: approved + type='normal' 만
  * ──────────────────────────────────────────────────────────────── */
 router.post('/list', async (req, res) => {
@@ -106,14 +106,16 @@ router.post('/list', async (req, res) => {
     const placeholders = sponsors.map(() => '?').join(',');
     const sql = `
       SELECT m.username, m.name,
-             IFNULL(SUM(CASE
-               WHEN p.status='approved' AND p.type='normal' THEN p.pv
-               ELSE 0 END), 0) AS pv
+             IFNULL((
+               SELECT SUM(p.pv)
+                 FROM purchases p
+                 JOIN members mm ON mm.id = p.member_id
+                WHERE p.status='approved'
+                  AND p.type='normal'
+                  AND (mm.id = m.id OR mm.sponsor_path LIKE CONCAT('%|', m.id, '|%'))
+             ), 0) AS pv
         FROM members m
-        LEFT JOIN purchases p
-               ON p.member_id = m.id
        WHERE m.username IN (${placeholders})
-       GROUP BY m.id, m.username, m.name
     `;
     const [rows] = await pool.query(sql, sponsors);
 

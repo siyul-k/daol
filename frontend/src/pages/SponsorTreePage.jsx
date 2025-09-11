@@ -10,8 +10,8 @@ const OrgBox = ({ node }) => {
     ? moment(node.created_at).tz("Asia/Seoul").format("YY-MM-DD")
     : "-";
   return (
-    <div className="org-box" data-id={node.id} data-username={node.username}>
-      <div className="org-id">{node.username}</div>
+    <div className="org-box" data-id={node.id} data-username={node.username?.toLowerCase()}>
+      <div className="org-id">{node.username?.toLowerCase()}</div>
       <div className="org-name">{node.name || "-"}</div>
       <div className="org-date">{date}</div>
       <div className="org-sales">({Number(node.sales).toLocaleString()})</div>
@@ -53,11 +53,10 @@ export default function SponsorTreePage() {
 
   const handleSearch = () => {
     if (!searchId.trim()) return;
-    let nodeEl = document.querySelector(
-      `.org-box[data-username="${searchId.trim()}"]`
-    );
+    const normalized = searchId.trim().toLowerCase();
+    let nodeEl = document.querySelector(`.org-box[data-username="${normalized}"]`);
     if (!nodeEl) {
-      nodeEl = document.querySelector(`.org-box[data-id="${searchId.trim()}"]`);
+      nodeEl = document.querySelector(`.org-box[data-id="${normalized}"]`);
     }
     if (nodeEl) {
       nodeEl.scrollIntoView({

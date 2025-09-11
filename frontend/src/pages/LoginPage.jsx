@@ -15,6 +15,7 @@ export default function LoginPage() {
 
   const handleLogin = async (e) => {
     e.preventDefault();
+    setError(""); // 이전 에러 초기화
     try {
       const res = await axios.post(`/api/login`, { username, password });
 
@@ -27,7 +28,12 @@ export default function LoginPage() {
       }
     } catch (err) {
       console.error("❌ 로그인 오류:", err);
-      setError("ID 또는 비밀번호를 확인하세요.");
+      const code = err.response?.data?.code;
+      if (code === "LOGIN_BLOCKED") {
+        setError("⛔ 접속불가 시간대 입니다.");
+      } else {
+        setError("ID 또는 비밀번호를 확인하세요.");
+      }
     }
   };
 
@@ -61,9 +67,9 @@ export default function LoginPage() {
       {/* 로그인 카드 */}
       <div
         style={{
-          width: "90%",                 // ✅ 모바일에서는 가로폭 줄임
-          maxWidth: "360px",            // ✅ PC에서도 너무 넓지 않게
-          padding: "1.5rem",            // ✅ 모바일 padding 축소
+          width: "90%",
+          maxWidth: "360px",
+          padding: "1.5rem",
           background: "rgba(30,33,57,0.65)",
           border: "1px solid rgba(255,255,255,0.1)",
           borderRadius: "14px",
@@ -76,7 +82,7 @@ export default function LoginPage() {
         {/* 타이틀 */}
         <h1
           style={{
-            fontSize: "28px",  // ✅ 모바일에서 살짝 줄임
+            fontSize: "28px",
             fontWeight: "bold",
             background: "linear-gradient(to right, #00c6ff, #0072ff)",
             WebkitBackgroundClip: "text",

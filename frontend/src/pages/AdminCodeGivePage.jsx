@@ -19,7 +19,7 @@ export default function AdminCodeGivePage() {
   const fetchCodes = async () => {
     try {
       const query = new URLSearchParams({ ...filters, page, limit }).toString();
-      const res = await axios.get(`/api/admin/code-give?${query}`);
+      const res = await axios.get(`/api/ad-da/code-give?${query}`);
       setCodes(res.data.rows);
       setTotal(res.data.total);
     } catch (err) {
@@ -29,7 +29,7 @@ export default function AdminCodeGivePage() {
 
   const fetchProducts = async () => {
     try {
-      const res = await axios.get('/api/admin/code-give/products');
+      const res = await axios.get('/api/ad-da/code-give/products');
       setProducts(res.data);
     } catch (err) {
       console.error('상품 목록 조회 실패:', err);
@@ -38,7 +38,7 @@ export default function AdminCodeGivePage() {
 
   const handleCheckUsername = async () => {
     try {
-      const res = await axios.get(`/api/admin/code-give/check-username/${newCode.username}`);
+      const res = await axios.get(`/api/ad-da/code-give/check-username/${newCode.username}`);
       setUsernameCheck({ name: res.data.name, valid: true });
     } catch {
       alert('존재하지 않는 아이디입니다.');
@@ -51,7 +51,7 @@ export default function AdminCodeGivePage() {
     if (!newCode.product_id) return alert('상품을 선택해주세요');
 
     try {
-      await axios.post('/api/admin/code-give', newCode);
+      await axios.post('/api/ad-da/code-give', newCode);
       alert('지급 완료');
       setShowModal(false);
       setNewCode({ username: '', product_id: '' });
@@ -66,7 +66,7 @@ export default function AdminCodeGivePage() {
   const handleDelete = async (id) => {
     if (!window.confirm('정말 삭제하시겠습니까?')) return;
     try {
-      await axios.delete(`/api/admin/code-give/${id}`);
+      await axios.delete(`/api/ad-da/code-give/${id}`);
       alert('삭제되었습니다!');
       fetchCodes();
     } catch (err) {
@@ -77,7 +77,7 @@ export default function AdminCodeGivePage() {
 
   const handleToggleActive = async (id, current) => {
     try {
-      await axios.put(`/api/admin/code-give/${id}`, { active: current ? 0 : 1 });
+      await axios.put(`/api/ad-da/code-give/${id}`, { active: current ? 0 : 1 });
     } catch (err) {
       alert('상태 변경 실패');
       console.error(err);

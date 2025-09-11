@@ -28,7 +28,7 @@ export default function PointAdjustPage() {
   const handleCheckUsername = async () => {
     if (!inputUsername) return;
     try {
-      const res = await axios.get(`/api/admin/code-give/check-username/${inputUsername}`);
+      const res = await axios.get(`/api/ad-da/code-give/check-username/${inputUsername}`);
       setUserInfo({ id: res.data.member_id, name: res.data.name, valid: true });
     } catch {
       alert('존재하지 않는 아이디입니다.');

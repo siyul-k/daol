@@ -30,7 +30,7 @@ export default function AdminRewardsPage() {
       if (startDate) params.startDate = startDate;
       if (endDate) params.endDate = endDate;
 
-      const res = await axios.get('/api/admin/rewards', { params });
+      const res = await axios.get('/api/ad-da/rewards', { params });
       if (res.data && Array.isArray(res.data.data)) {
         setRewards(res.data.data);
         setTotal(res.data.total);
@@ -54,7 +54,7 @@ export default function AdminRewardsPage() {
       if (startDate) params.startDate = startDate;
       if (endDate) params.endDate = endDate;
       const query = new URLSearchParams(params).toString();
-      const res = await axios.get('/api/admin/rewards/export?' + query, { responseType: 'blob' });
+      const res = await axios.get('/api/ad-da/rewards/export?' + query, { responseType: 'blob' });
       const url = URL.createObjectURL(new Blob([res.data]));
       const link = document.createElement('a');
       link.href = url;

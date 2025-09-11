@@ -85,7 +85,7 @@ export default function AdminWithdrawPage() {
       const params = buildParams();
       if (isScroll && lastCursor) params.cursor = lastCursor;
 
-      const res = await axios.get('/api/admin/withdraws', { params });
+      const res = await axios.get('/api/ad-da/withdraws', { params });
       const newItems = res.data;
 
       setRequests((prev) => {
@@ -122,7 +122,7 @@ export default function AdminWithdrawPage() {
   const changeStatus = async (action) => {
     if (selected.length === 0) return alert('선택된 항목이 없습니다.');
     try {
-      await axios.post(`/api/admin/withdraws/${action}`, { ids: selected });
+      await axios.post(`/api/ad-da/withdraws/${action}`, { ids: selected });
       setResultMessage(action === 'complete' ? '완료 처리되었습니다.' : '취소 처리되었습니다.');
       setShowResultModal(true);
       resetAndFetch();
@@ -133,7 +133,7 @@ export default function AdminWithdrawPage() {
   };
 
   const saveMemo = async (id, memo) => {
-    await axios.post('/api/admin/withdraws/update-memo', { id, memo });
+    await axios.post('/api/ad-da/withdraws/update-memo', { id, memo });
     setStatusMsg('비고가 변경되었습니다.');
     resetAndFetch();
   };
@@ -144,7 +144,7 @@ export default function AdminWithdrawPage() {
 
   const deleteRequest = async (id) => {
     if (!window.confirm('정말 삭제하시겠습니까?')) return;
-    await axios.delete(`/api/admin/withdraws/${id}`);
+    await axios.delete(`/api/ad-da/withdraws/${id}`);
     resetAndFetch();
   };
 

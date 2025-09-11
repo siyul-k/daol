@@ -14,8 +14,10 @@ const labelMap = {
   withdraw_fee_percent: '출금수수료(%)',
   withdraw_shopping_point_percent: '쇼핑포인트 적립(%)',
   withdraw_min_amount: '최소 출금금액(원)',
-  site_block_start_hour: '접속불가 시작시간',
-  site_block_end_hour:   '접속불가 종료시간',
+  // ⬇️ 접속 가능 시간 키로 교체
+  access_start_hour: '접속가능 시작시간',
+  access_end_hour:   '접속가능 종료시간',
+  // access_days는 UI에서 숨김 (전 요일 허용)
 };
 
 export default function AdminSettingsPage() {
@@ -23,7 +25,7 @@ export default function AdminSettingsPage() {
   const [activeTab, setActiveTab] = useState('percent');
 
   useEffect(() => {
-    axios.get('/api/admin/settings')
+    axios.get('/api/ad-da/settings')
       .then(res => setSettings(res.data))
       .catch(() => alert('설정 불러오기 실패'));
   }, []);
@@ -33,7 +35,7 @@ export default function AdminSettingsPage() {
     Object.keys(settings).forEach(key => {
       payload[key] = { value: settings[key].value };
     });
-    axios.post('/api/admin/settings', payload)
+    axios.post('/api/ad-da/settings', payload)
       .then(() => alert('저장 완료'))
       .catch(() => alert('저장 실패'));
   };
@@ -129,6 +131,9 @@ export default function AdminSettingsPage() {
       {activeTab === 'schedule' && (
         <div className="space-y-6">
           {Object.entries(settings).map(([key, item]) => {
+            // ⛔ access_days는 UI 숨김 (전 요일 허용)
+            if (key === 'access_days') return null;
+
             if (item.type === 'days') {
               const selected = (item.value || '').split(',');
               return (

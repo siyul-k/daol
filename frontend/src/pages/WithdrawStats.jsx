@@ -11,7 +11,7 @@ export default function WithdrawStats() {
   });
 
   useEffect(() => {
-    axios.get('/api/admin/withdraws/stats')
+    axios.get('/api/ad-da/withdraws/stats')
       .then(res => setStats(res.data))
       .catch(err => console.error('출금 통계 조회 실패:', err));
   }, []);

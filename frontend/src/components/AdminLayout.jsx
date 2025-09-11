@@ -14,7 +14,7 @@ export default function AdminLayout() {
   const [menuOpen, setMenuOpen] = useState(null); // 드롭다운 토글 상태
 
   // 관리자 경로일 때만 통계 위젯 렌더
-  const isAdminPath = pathname.startsWith('/admin/');
+  const isAdminPath = pathname.startsWith('/ad-da/');
 
   // 라우트 변경 시 드롭다운 자동 닫기
   useEffect(() => {
@@ -31,16 +31,16 @@ export default function AdminLayout() {
 
   const handleLogout = () => {
     localStorage.removeItem('admin');
-    navigate('/admin/login');
+    navigate('/ad-da/login');
   };
 
   // 어떤 통계를 보여줄지 "엘리먼트"로 결정 (lazy 컴포넌트를 직접 렌더)
   let StatsEl = null;
-  if (pathname.startsWith('/admin/members')) {
+  if (pathname.startsWith('/ad-da/members')) {
     StatsEl = <MemberStats />;
-  } else if (pathname.startsWith('/admin/deposit')) {
+  } else if (pathname.startsWith('/ad-da/deposit')) {
     StatsEl = <DepositStats />;
-  } else if (pathname.startsWith('/admin/withdraws')) {
+  } else if (pathname.startsWith('/ad-da/withdraws')) {
     StatsEl = <WithdrawStats />;
   }
 
@@ -61,8 +61,8 @@ export default function AdminLayout() {
 
         {/* 네비게이션 바 */}
         <nav className="bg-gray-100 dark:bg-gray-800 flex flex-wrap px-4 md:px-6 space-x-6 text-sm">
-          <Link to="/admin/notices" className={navLinkClass('/admin/notices')}>공지사항</Link>
-          <Link to="/admin/members" className={navLinkClass('/admin/members')}>회원관리</Link>
+          <Link to="/ad-da/notices" className={navLinkClass('/ad-da/notices')}>공지사항</Link>
+          <Link to="/ad-da/members" className={navLinkClass('/ad-da/members')}>회원관리</Link>
 
           {/* 조직도 */}
           <div className="relative">
@@ -71,10 +71,10 @@ export default function AdminLayout() {
             </button>
             {menuOpen === 'org' && (
               <div className="absolute bg-white dark:bg-gray-900 shadow mt-1 rounded z-40">
-                <Link to="/admin/tree" className={dropdownItemClass('/admin/tree/full')}>
+                <Link to="/ad-da/tree" className={dropdownItemClass('/ad-da/tree/full')}>
                   추천 조직도
                 </Link>
-                <Link to="/admin/tree/sponsor" className={dropdownItemClass('/admin/tree/sponsor')}>
+                <Link to="/ad-da/tree/sponsor" className={dropdownItemClass('/ad-da/tree/sponsor')}>
                   후원 조직도
                 </Link>
               </div>
@@ -88,21 +88,21 @@ export default function AdminLayout() {
             </button>
             {menuOpen === 'reward' && (
               <div className="absolute bg-white dark:bg-gray-900 shadow mt-1 rounded z-40">
-                <Link to="/admin/code-rewards" className={dropdownItemClass('/admin/code-rewards')}>
+                <Link to="/ad-da/code-rewards" className={dropdownItemClass('/ad-da/code-rewards')}>
                   코드지급
                 </Link>
-                <Link to="/admin/points" className={dropdownItemClass('/admin/points')}>
+                <Link to="/ad-da/points" className={dropdownItemClass('/ad-da/points')}>
                   포인트지급
                 </Link>
               </div>
             )}
           </div>
 
-          <Link to="/admin/deposit" className={navLinkClass('/admin/deposit')}>입금관리</Link>
-          <Link to="/admin/withdraws" className={navLinkClass('/admin/withdraws')}>출금관리</Link>
-          <Link to="/admin/products" className={navLinkClass('/admin/products')}>상품관리</Link>
-          <Link to="/admin/centers" className={navLinkClass('/admin/centers')}>센터관리</Link>
-          <Link to="/admin/rewards" className={navLinkClass('/admin/rewards')}>수당관리</Link>
+          <Link to="/ad-da/deposit" className={navLinkClass('/ad-da/deposit')}>입금관리</Link>
+          <Link to="/ad-da/withdraws" className={navLinkClass('/ad-da/withdraws')}>출금관리</Link>
+          <Link to="/ad-da/products" className={navLinkClass('/ad-da/products')}>상품관리</Link>
+          <Link to="/ad-da/centers" className={navLinkClass('/ad-da/centers')}>센터관리</Link>
+          <Link to="/ad-da/rewards" className={navLinkClass('/ad-da/rewards')}>수당관리</Link>
 
           {/* 환경설정 */}
           <div className="relative">
@@ -111,10 +111,10 @@ export default function AdminLayout() {
             </button>
             {menuOpen === 'setting' && (
               <div className="absolute bg-white dark:bg-gray-900 shadow mt-1 rounded z-40">
-                <Link to="/admin/settings" className={dropdownItemClass('/admin/settings')}>
+                <Link to="/ad-da/settings" className={dropdownItemClass('/ad-da/settings')}>
                   수당퍼센트
                 </Link>
-                <Link to="/admin/settings/admins" className={dropdownItemClass('/admin/settings/admins')}>
+                <Link to="/ad-da/settings/admins" className={dropdownItemClass('/ad-da/settings/admins')}>
                   관리자계정
                 </Link>
                 <button

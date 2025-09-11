@@ -11,7 +11,7 @@ export default function MemberStats() {
   });
 
   useEffect(() => {
-    axios.get('/api/admin/members/stats')
+    axios.get('/api/ad-da/members/stats')
       .then(res => setStats(res.data))
       .catch(err => console.error('회원 통계 조회 실패:', err));
   }, []);

@@ -15,11 +15,11 @@ export default function AdminLogin() {
     e.preventDefault();
     setError("");  // 이전 에러 지우기
     try {
-      const res = await axios.post("/api/admin-login", { username, password });
+      const res = await axios.post("/api/ad-da", { username, password });
       // 로그인 성공
       if (res.data.success) {
         localStorage.setItem("admin", JSON.stringify(res.data.admin));
-        navigate("/admin/notices", { replace: true });
+        navigate("/ad-da/notices", { replace: true });
       } else {
         // 응답은 왔지만 success=false
         setError(res.data.message || "⚠️ 로그인에 실패했습니다.");

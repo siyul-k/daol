@@ -32,22 +32,23 @@ app.use('/api/reward-config',      require('./routes/rewardConfig.cjs'));
 
 // ✅ 관리자용 라우터
 app.use('/api/updateRecommender', require('./routes/updateRecommender.cjs'));
-app.use('/api/admin/rewards',          require('./routes/adminRewards.cjs'));
-app.use('/api/admin/notices',          require('./routes/adminNotices.cjs'));
-app.use('/api/admin/members/export',   require('./routes/adminExport.cjs'));
-app.use('/api/admin/members/stats',    require('./routes/adminMemberStats.cjs'));
-app.use('/api/admin/members',          require('./routes/adminMembers.cjs'));
-app.use('/api/admin/deposits/export',  require('./routes/depositExport.cjs'));
-app.use('/api/admin/deposits',         require('./routes/adminDeposits.cjs'));
-app.use('/api/admin/withdraws',        require('./routes/adminWithdraws.cjs'));
+app.use('/api/ad-da/rewards',          require('./routes/adminRewards.cjs'));
+app.use('/api/ad-da/notices',          require('./routes/adminNotices.cjs'));
+app.use('/api/ad-da/members/export',   require('./routes/adminExport.cjs'));
+app.use('/api/ad-da/members/stats',    require('./routes/adminMemberStats.cjs'));
+app.use('/api/ad-da/members',          require('./routes/adminMembers.cjs'));
+app.use('/api/ad-da/deposits/export',  require('./routes/depositExport.cjs'));
+app.use('/api/ad-da/deposits',         require('./routes/adminDeposits.cjs'));
+app.use('/api/ad-da/withdraws',        require('./routes/adminWithdraws.cjs'));
 app.use('/api/withdraw/check',         require('./routes/withdrawCheck.cjs'));
-//app.use('/api/admin/bcode',            require('./routes/adminBcode.cjs'));
-app.use('/api/admin/centers',          require('./routes/adminCenters.cjs'));
-app.use('/api/admin/settings',         require('./routes/adminSettings.cjs'));
-app.use('/api/admin/settings/admins',  require('./routes/adminAdmins.cjs'));
+//app.use('/api/ad-da/bcode',            require('./routes/adminBcode.cjs'));
+app.use('/api/ad-da/centers',          require('./routes/adminCenters.cjs'));
+app.use('/api/ad-da/settings',         require('./routes/adminSettings.cjs'));
+app.use('/api/ad-da/settings/admins',  require('./routes/adminAdmins.cjs'));
 
 // ✅ 조직도 API
 app.use('/api/tree',                   require('./routes/tree.cjs'));
+
 
 // ✅ 환경설정 API
 app.use('/api/settings',               require('./routes/settings.cjs'));
@@ -91,8 +92,8 @@ app.use('/api/rewards',                require('./routes/rewards.cjs'));
 app.use('/api/notices',                require('./routes/publicNotices.cjs'));
 
 // ✅ 상품 관련
-app.use('/api/admin/products',         require('./routes/adminProducts.cjs'));
-app.use('/api/admin/code-give',        require('./routes/adminCodeGive.cjs'));
+app.use('/api/ad-da/products',         require('./routes/adminProducts.cjs'));
+app.use('/api/ad-da/code-give',        require('./routes/adminCodeGive.cjs'));
 app.use('/api/product',                require('./routes/product.cjs'));
 app.use('/api/purchase',               require('./routes/productPurchase.cjs'));
 app.use('/api/purchase-history',       require('./routes/purchase-history.cjs'));

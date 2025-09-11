@@ -7,7 +7,7 @@ export default function AdminProtectedRoute({ children }) {
   useEffect(() => {
     const admin = JSON.parse(localStorage.getItem("admin"));
     if (!admin || !admin.id) {
-      navigate("/admin/login", { replace: true });
+      navigate("/ad-da/login", { replace: true });
     }
   }, [navigate]);
   return children;

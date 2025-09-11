@@ -14,7 +14,7 @@ export default function AdminNoticesPage() {
   const fetchNotices = async () => {
     setLoading(true);
     try {
-      const res = await axios.get('/api/admin/notices');
+      const res = await axios.get('/api/ad-da/notices');
       setNotices(res.data);
     } catch (err) {
       console.error('공지 목록 조회 실패:', err);
@@ -47,10 +47,10 @@ export default function AdminNoticesPage() {
     e.preventDefault();
     try {
       if (editingId == null) {
-        await axios.post('/api/admin/notices', form);
+        await axios.post('/api/ad-da/notices', form);
         alert('✅ 공지가 등록되었습니다.');
       } else {
-        await axios.put(`/api/admin/notices/${editingId}`, form);
+        await axios.put(`/api/ad-da/notices/${editingId}`, form);
         alert('✅ 변경되었습니다');
       }
       setShowModal(false);
@@ -65,7 +65,7 @@ export default function AdminNoticesPage() {
   const handleDelete = async (id) => {
     if (!window.confirm('정말 삭제하시겠습니까?')) return;
     try {
-      await axios.delete(`/api/admin/notices/${id}`);
+      await axios.delete(`/api/ad-da/notices/${id}`);
       alert('✅ 삭제되었습니다');
       fetchNotices();
     } catch (err) {

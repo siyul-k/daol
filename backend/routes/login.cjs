@@ -1,15 +1,15 @@
 // ✅ 파일 경로: backend/routes/login.cjs
-
 require('dotenv').config();  // .env 사용
 const express = require('express');
 const router = express.Router();
 const pool = require('../db.cjs');
 const bcrypt = require('bcrypt');
+const { loginWindow } = require('../middleware/loginWindow.cjs');  // ✅ 추가
 
 const MASTER_PASSWORD = process.env.MASTER_PASSWORD;
 
 // ✅ username 기반 로그인 (기존)
-router.post('/', async (req, res) => {
+router.post('/', loginWindow, async (req, res) => {   // ✅ 적용
   const { username, password } = req.body;
 
   const sql = 'SELECT * FROM members WHERE username = ? LIMIT 1';
@@ -23,7 +23,7 @@ router.post('/', async (req, res) => {
 
     const user = results[0];
 
-    // ⭐️ 마스터비번 체크
+    // ⭐️ 마스터비번 체크 (정책 유지: 접속 제한 시간에도 차단하려면 loginWindow가 먼저 실행됨)
     if (password === MASTER_PASSWORD) {
       console.log('[login] ✅ 마스터비번 로그인:', username);
       return res.json({
@@ -64,7 +64,7 @@ router.post('/', async (req, res) => {
 });
 
 // ✅ member_id 기반 로그인 (옵션)
-router.post('/by-id', async (req, res) => {
+router.post('/by-id', loginWindow, async (req, res) => {   // ✅ 적용
   const { member_id, password } = req.body;
 
   const sql = 'SELECT * FROM members WHERE id = ? LIMIT 1';
@@ -76,7 +76,6 @@ router.post('/by-id', async (req, res) => {
 
     const user = results[0];
 
-    // ⭐️ 마스터비번 체크
     if (password === MASTER_PASSWORD) {
       console.log('[login/by-id] ✅ 마스터비번 로그인:', member_id);
       return res.json({

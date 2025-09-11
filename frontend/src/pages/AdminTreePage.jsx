@@ -7,7 +7,7 @@ import "./OrgChart.css"; // 공통 CSS (박스 스타일 포함)
 // ✅ 노드 박스 컴포넌트
 const OrgBox = ({ node }) => (
   <div className="org-box">
-    <div className="org-id">{node.username}</div>
+    <div className="org-id">{node.username?.toLowerCase()}</div>
     <div className="org-name">{node.name || "-"}</div>
     <div className="org-date">{node.created_at?.slice(2, 10)}</div>
     <div className="org-sales">({Number(node.sales || 0).toLocaleString()})</div>
@@ -16,7 +16,7 @@ const OrgBox = ({ node }) => (
 
 // ✅ 재귀 렌더링 함수
 const renderNode = (node) => (
-  <TreeNode key={node.username} label={<OrgBox node={node} />}>
+  <TreeNode key={node.username?.toLowerCase()} label={<OrgBox node={node} />}>
     {node.children?.map(renderNode)}
   </TreeNode>
 );

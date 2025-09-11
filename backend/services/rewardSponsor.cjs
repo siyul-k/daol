@@ -130,7 +130,6 @@ async function allocateFIFO(memberId, amountKRW) {
 /** 멱등 보장을 위한 rewards_log INSERT (슬롯별) */
 async function insertSponsorRewardLogs(conn, memberId, rewardDate, allocations) {
   if (!allocations.length) return 0;
-  // source는 일괄 집계형이므로 0 고정(UNIQUE 키에 포함되더라도 날짜+ref_id로 멱등 보장)
   const sql = `
     INSERT INTO rewards_log
       (member_id, type, source, ref_id, amount, memo, reward_date, created_at)
@@ -139,10 +138,10 @@ async function insertSponsorRewardLogs(conn, memberId, rewardDate, allocations) 
   const values = allocations.map(a => [
     memberId,
     'sponsor',
-    0,
+    memberId, // ✅ 본인 아이디를 source로 기록
     a.ref_id,
     toKRW(a.amount),
-    '후원수당',
+    '후원',
     rewardDate,
     moment().tz('Asia/Seoul').format('YYYY-MM-DD HH:mm:ss'),
   ]);
@@ -217,11 +216,39 @@ async function runSponsorReward(jobDate /* optional YYYY-MM-DD */) {
 
       // 5) 한도 확인 + 부분지급(FIFO)
       const available = toKRW(await getAvailableRewardAmount(memberId));
-      if (available <= 0) continue;
+      if (available <= 0) {
+        // ✅ 한도초과 로그 기록
+        await db.query(
+          `INSERT IGNORE INTO rewards_log
+            (member_id, type, source, ref_id, amount, memo, reward_date, created_at)
+           VALUES (?, 'sponsor', ?, 0, 0, '한도초과(후원수당)', ?, ?)`,
+          [
+            memberId,
+            memberId,
+            rewardDate,
+            moment().tz('Asia/Seoul').format('YYYY-MM-DD HH:mm:ss')
+          ]
+        );
+        continue;
+      }
 
       const payAmount = Math.min(grossAmount, available);
       const { alloc, leftover } = await allocateFIFO(memberId, payAmount);
-      if (!alloc.length) continue; // 슬롯 없음/한도 0
+      if (!alloc.length) {
+        // ✅ 슬롯 없음 → 한도초과 로그 기록
+        await db.query(
+          `INSERT IGNORE INTO rewards_log
+            (member_id, type, source, ref_id, amount, memo, reward_date, created_at)
+           VALUES (?, 'sponsor', ?, 0, 0, '한도초과(후원수당)', ?, ?)`,
+          [
+            memberId,
+            memberId,
+            rewardDate,
+            moment().tz('Asia/Seoul').format('YYYY-MM-DD HH:mm:ss')
+          ]
+        );
+        continue;
+      }
 
       // 6) 트랜잭션: 보상 기록 + 회원 포인트 + 커미션 기준선
       await db.beginTransaction();

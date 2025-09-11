@@ -35,8 +35,8 @@ export default function AdminMembersPage() {
   const [sortOrder, setSortOrder] = useState('desc');
 
   useEffect(() => {
-    axios.get(`/admin/centers`).then(r => setCenters(r.data)).catch(() => {});
-    axios.get('/admin/members', { params: { page: 1, limit: 9999 } })
+    axios.get(`/ad-da/centers`).then(r => setCenters(r.data)).catch(() => {});
+    axios.get('/ad-da/members', { params: { page: 1, limit: 9999 } })
       .then(r => setAllMembers(r.data.data || []))
       .catch(() => {});
   }, []);
@@ -54,7 +54,7 @@ export default function AdminMembersPage() {
         const value = filters[key]?.trim();
         if (enabled[key] && value !== '') params[key] = value;
       });
-      const { data } = await axios.get(`/admin/members`, { params });
+      const { data } = await axios.get(`/ad-da/members`, { params });
       setMembers(data.data);
       setTotal(data.total);
     } catch (err) {
@@ -84,7 +84,7 @@ export default function AdminMembersPage() {
       const value = filters[k]?.trim();
       if (enabled[k] && value !== '') params[k] = value;
     });
-    axios.get(`/admin/members/export`, { params, responseType: 'blob' })
+    axios.get(`/ad-da/members/export`, { params, responseType: 'blob' })
       .then(res => {
         const url = window.URL.createObjectURL(new Blob([res.data]));
         const link = document.createElement('a');
@@ -98,7 +98,7 @@ export default function AdminMembersPage() {
   const handleDelete = async (id) => {
     if (!window.confirm('삭제하시겠습니까?')) return;
     try {
-      const res = await axios.delete(`/admin/members/${id}`);
+      const res = await axios.delete(`/ad-da/members/${id}`);
       if (res.data.success) {
         window.alert('삭제되었습니다');
         fetchMembers();
@@ -144,7 +144,7 @@ export default function AdminMembersPage() {
         is_reward_blocked: editMember.is_reward_blocked ? 1 : 0,
         recommender: editMember.recommender?.trim() || "",
       };
-      await axios.put(`/admin/members/${editMember.id}`, body);
+      await axios.put(`/ad-da/members/${editMember.id}`, body);
       if (editMember.recommender?.trim()) {
         await axios.post('/api/updateRecommender', {
           username: editMember.username,
@@ -286,6 +286,7 @@ export default function AdminMembersPage() {
                   센터<span className="text-blue-500">{renderSortSymbol('center_name')}</span>
                 </th>
                 <th className="border dark:border-gray-700 p-1 text-center whitespace-nowrap">추천인</th>
+                <th className="border dark:border-gray-700 p-1 text-center whitespace-nowrap">후원인</th>
                 <th
                   className="border dark:border-gray-700 p-1 text-center whitespace-nowrap cursor-pointer select-none"
                   onClick={() => handleSort('is_withdraw_blocked')}
@@ -320,6 +321,7 @@ export default function AdminMembersPage() {
                   <td className="border dark:border-gray-700 p-1 text-center whitespace-nowrap">{m.phone}</td>
                   <td className="border dark:border-gray-700 p-1 text-center whitespace-nowrap">{m.center_name || ''}</td>
                   <td className="border dark:border-gray-700 p-1 text-center whitespace-nowrap">{getUsernameById(m.recommender_id) || ''}</td>
+                  <td className="border dark:border-gray-700 p-1 text-center whitespace-nowrap">{m.sponsor_username || ''}</td>
                   <td className="border dark:border-gray-700 p-1 text-center whitespace-nowrap">{m.is_withdraw_blocked ? '✅' : ''}</td>
                   <td className="border dark:border-gray-700 p-1 text-center whitespace-nowrap">{m.is_reward_blocked ? '✅' : ''}</td>
                   <td className="border dark:border-gray-700 p-1 text-center whitespace-nowrap">{m.bank_name}</td>

@@ -1,3 +1,4 @@
+// ✅ 파일 경로: src/pages/PointPage.jsx
 import React, { useEffect, useState } from "react";
 import axios from "../axiosConfig";
 import { formatKST } from "../utils/time";
@@ -70,14 +71,14 @@ export default function PointPage() {
                     {formatKST(item.created_at)}
                   </td>
                   <td className="border border-gray-300 dark:border-gray-700 px-3 py-2 text-gray-900 dark:text-gray-100">
-                    {item.member_username}
+                    {item.member_username?.toLowerCase()}
                   </td>
                   <td className="border border-gray-300 dark:border-gray-700 px-3 py-2 text-gray-900 dark:text-gray-100">
                     {isAdjust
                       ? "관리자"
                       : item.member_username === item.source_username
-                      ? item.member_username
-                      : item.source_username || "-"}
+                      ? item.member_username?.toLowerCase()
+                      : item.source_username?.toLowerCase() || "-"}
                   </td>
                   <td className="border border-gray-300 dark:border-gray-700 px-3 py-2 text-gray-900 dark:text-gray-100">
                     {Number(item.amount).toLocaleString()}

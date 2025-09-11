@@ -46,7 +46,7 @@ async function getUsedRewardPoint(member_id) {
     `SELECT IFNULL(SUM(amount), 0) AS total
      FROM rewards_log
      WHERE member_id = ?
-       AND type IN ('daily', 'daily_matching', 'referral', 'adjust')`,
+       AND type IN ('daily', 'daily_matching', 'sponsor', 'adjust')`,
     [member_id]
   );
   return Number(rows[0].total || 0);

@@ -20,12 +20,12 @@ const AdminCentersPage = () => {
   const [editRecommenderName, setEditRecommenderName] = useState('');
 
   const fetchCenters = async () => {
-    const res = await axios.get('/api/admin/centers');
+    const res = await axios.get('/api/ad-da/centers');
     setCenters(res.data);
   };
 
   const checkDuplicate = async () => {
-    const res = await axios.post('/api/admin/centers/check-duplicate-name', {
+    const res = await axios.post('/api/ad-da/centers/check-duplicate-name', {
       name: form.center_name,
     });
     return res.data.exists;
@@ -35,7 +35,7 @@ const AdminCentersPage = () => {
     if (!input) return '';
     if (/^\d+$/.test(input)) return input; // 숫자면 이미 member_id
     try {
-      const res = await axios.get(`/api/admin/centers/member-id-by-username/${input}`);
+      const res = await axios.get(`/api/ad-da/centers/member-id-by-username/${input}`);
       return res.data.id || '';
     } catch {
       return '';
@@ -52,7 +52,7 @@ const AdminCentersPage = () => {
       return;
     }
     try {
-      const res = await axios.get(`/api/admin/centers/member-name/${member_id}`);
+      const res = await axios.get(`/api/ad-da/centers/member-name/${member_id}`);
       setName(res.data.name);
     } catch {
       setName('회원 없음');
@@ -74,7 +74,7 @@ const AdminCentersPage = () => {
       return;
     }
 
-    await axios.post('/api/admin/centers', {
+    await axios.post('/api/ad-da/centers', {
       ...form,
       center_owner: owner_id,
       center_recommender: recommender_id,
@@ -89,7 +89,7 @@ const AdminCentersPage = () => {
   const handleDelete = async (id) => {
     if (!window.confirm('정말 삭제하시겠습니까?')) return;
     try {
-      await axios.delete(`/api/admin/centers/${id}`);
+      await axios.delete(`/api/ad-da/centers/${id}`);
       fetchCenters();
       alert('삭제되었습니다');
     } catch (err) {
@@ -116,7 +116,7 @@ const AdminCentersPage = () => {
       alert('센터명과 센터장 ID는 필수입니다');
       return;
     }
-    await axios.put(`/api/admin/centers/${id}`, {
+    await axios.put(`/api/ad-da/centers/${id}`, {
       ...editForm,
       center_owner: owner_id,
       center_recommender: recommender_id,

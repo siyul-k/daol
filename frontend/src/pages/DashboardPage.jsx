@@ -85,7 +85,7 @@ export default function DashboardPage() {
     <div className="px-4 py-6 space-y-6">
       {/* 제목 */}
       <h2 className="text-2xl font-bold text-center mb-2">
-        {user?.username}님의 대시보드
+        {user?.username?.toLowerCase()}님의 대시보드
       </h2>
 
       {/* 수당 한도 그래프 */}
@@ -186,7 +186,7 @@ export default function DashboardPage() {
                 </div>
                 {/* ✅ 추천인 아이디/이름 글씨 키움 */}
                 <span className="text-lg">
-                  <b>{r.username}</b> {r.name && <>({r.name})</>} :{" "}
+                  <b>{r.username?.toLowerCase()}</b> {r.name && <>({r.name})</>} :{" "}
                   <span className="text-blue-600 font-bold">
                     {formatNumber(r.pv)}
                   </span> PV
@@ -224,7 +224,7 @@ export default function DashboardPage() {
                   <User className="w-4 h-4 text-white" />
                 </div>
                 <span className="text-lg">
-                  <b>{r.username}</b> {r.name && <>({r.name})</>} :{" "}
+                  <b>{r.username?.toLowerCase()}</b> {r.name && <>({r.name})</>} :{" "}
                   <span className="text-blue-600 font-bold">
                     {formatNumber(r.pv)}
                   </span> PV

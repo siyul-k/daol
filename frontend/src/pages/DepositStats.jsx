@@ -6,7 +6,7 @@ export default function DepositStats() {
   const [stats, setStats] = useState({ total: 0, today: 0, month: 0, prevMonth: 0 });
 
   useEffect(() => {
-    axios.get('/api/admin/deposits/stats')
+    axios.get('/api/ad-da/deposits/stats')
       .then(res => setStats(res.data))
       .catch(err => console.error('입금 통계 조회 실패:', err));
   }, []);
