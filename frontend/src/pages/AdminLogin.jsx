@@ -8,33 +8,30 @@ export default function AdminLogin() {
 
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError]       = useState("");
-  const navigate                 = useNavigate();
+  const [error, setError] = useState("");
+  const navigate = useNavigate();
 
   const handleLogin = async (e) => {
     e.preventDefault();
-    setError("");  // 이전 에러 지우기
+    setError("");
     try {
-      const res = await axios.post("/api/ad-da", { username, password });
-      // 로그인 성공
-      if (res.data.success) {
+      // 🔧 핵심 수정: '/api/ad-da' -> '/api/ad-da/login'
+      const res = await axios.post("/api/ad-da/login", { username, password });
+
+      if (res.data?.success) {
         localStorage.setItem("admin", JSON.stringify(res.data.admin));
         navigate("/ad-da/notices", { replace: true });
       } else {
-        // 응답은 왔지만 success=false
-        setError(res.data.message || "⚠️ 로그인에 실패했습니다.");
+        setError(res.data?.message || "⚠️ 로그인에 실패했습니다.");
       }
     } catch (err) {
       console.error("로그인 오류:", err);
       if (err.response) {
-        // 서버가 응답했을 때
-        if (err.response.status === 401) {
-          setError("⚠️ 아이디 또는 비밀번호가 틀렸습니다.");
-        } else {
-          setError("❌ 서버 오류가 발생했습니다.");
-        }
+        const { status } = err.response;
+        if (status === 401) setError("⚠️ 아이디 또는 비밀번호가 틀렸습니다.");
+        else if (status === 404) setError("❌ 로그인 API 경로가 없습니다 (404).");
+        else setError("❌ 서버 오류가 발생했습니다.");
       } else {
-        // 네트워크 등
         setError("❌ 네트워크 오류가 발생했습니다.");
       }
     }
@@ -53,48 +50,26 @@ export default function AdminLogin() {
         textAlign: "center",
       }}
     >
-      <h1
-        style={{
-          fontSize: "24px",
-          marginBottom: "1.5rem",
-          color: "#1f2937",
-        }}
-      >
+      <h1 style={{ fontSize: "24px", marginBottom: "1.5rem", color: "#1f2937" }}>
         Admin Login
       </h1>
 
-      <form
-        onSubmit={handleLogin}
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          gap: "1rem",
-        }}
-      >
+      <form onSubmit={handleLogin} style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
         <input
           type="text"
           placeholder="관리자 아이디"
           value={username}
-          onChange={(e) => setUsername(e.target.value)}
-          style={{
-            padding: "0.75rem",
-            fontSize: "16px",
-            border: "1px solid #ccc",
-            borderRadius: "6px",
-          }}
+          onChange={(e) => { setUsername(e.target.value); if (error) setError(""); }}
+          style={{ padding: "0.75rem", fontSize: "16px", border: "1px solid #ccc", borderRadius: "6px", color: "#111" }}
           required
+          autoFocus
         />
         <input
           type="password"
           placeholder="비밀번호"
           value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          style={{
-            padding: "0.75rem",
-            fontSize: "16px",
-            border: "1px solid #ccc",
-            borderRadius: "6px",
-          }}
+          onChange={(e) => { setPassword(e.target.value); if (error) setError(""); }}
+          style={{ padding: "0.75rem", fontSize: "16px", border: "1px solid #ccc", borderRadius: "6px", color: "#111" }}
           required
         />
 
@@ -114,13 +89,7 @@ export default function AdminLogin() {
         </button>
 
         {error && (
-          <p
-            style={{
-              marginTop: "0.5rem",
-              color: "red",
-              fontWeight: "bold",
-            }}
-          >
+          <p style={{ marginTop: "0.5rem", color: "red", fontWeight: "bold" }}>
             {error}
           </p>
         )}
