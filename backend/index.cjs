@@ -10,8 +10,7 @@ const port = process.env.PORT || 3001;
 const corsOptions = {
   origin: [
     "https://daol-xi.vercel.app",
-    "https://daol-git-main-siyul-ks-projects.vercel.app",
-    "https://daol-8pnooti3a-siyul-ks-projects.app",
+    "https://daol-sg-api.onrender.com",
     "http://localhost:3000",     // 개발용
     "http://localhost:5173",     // Vite 개발용
     "https://daol.world",        // 추가
