@@ -2,22 +2,18 @@
 
 import { useState, useEffect } from "react";
 
-/**
- * 아주 간단한 예제 훅입니다.
- * - 로그인할 때 localStorage.setItem("username", `${member_id}:${username}`) 형태로 저장했다고 가정합니다.
- * - 이 훅은 member_id만 꺼내 반환합니다.
- */
 export function useAuth() {
-  const [member_id, setMemberId] = useState(null);
+  const [user, setUser] = useState(null);
+  const [admin, setAdmin] = useState(null);
 
   useEffect(() => {
-    const saved = localStorage.getItem("username");
-    if (saved) {
-      // "member_id:username" 형태이므로 앞부분만
-      const [id] = saved.split(":");
-      setMemberId(id);
-    }
+    const savedUser = localStorage.getItem("user");
+    const savedAdmin = localStorage.getItem("admin");
+
+    if (savedUser) setUser(JSON.parse(savedUser));
+    if (savedAdmin) setAdmin(JSON.parse(savedAdmin));
   }, []);
 
-  return { member_id };
+  return { user, admin };
 }
+

@@ -50,19 +50,19 @@ import { useAuth } from "./hooks/useAuth";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 
 export default function App() {
-  const { user } = useAuth();
-  const is_admin = user?.is_admin;
+  const { user, admin } = useAuth();
+  const is_admin = !!admin;
 
   // ✅ Idle 상태일 때 자동 로그아웃 처리
   const handleIdle = () => {
     if (is_admin) {
       localStorage.removeItem("admin");
       alert("6시간 동안 활동이 없어 로그아웃되었습니다.");
-      window.location.replace("/ad-da/login");
+      window.location.replace("/ad-da/login");   // 🔥 관리자 로그인 페이지로 이동
     } else {
       localStorage.removeItem("user");
       alert("15분 동안 활동이 없어 로그아웃되었습니다.");
-      window.location.replace("/login");
+      window.location.replace("/login");         // 🔥 회원 로그인 페이지로 이동
     }
   };
 
@@ -74,11 +74,11 @@ export default function App() {
   return (
     <Router>
       <IdleTimerProvider
-        key={timeout}     // 사용자 전환 시 재마운트 보장
+        key={is_admin ? "admin-session" : "user-session"}  // 🔥 세션 분리
         timeout={timeout}
         onIdle={handleIdle}
         debounce={500}
-        crossTab           // 여러 탭 동기화
+        crossTab
       >
         <Routes>
           {/* ─────────────── 회원 라우팅 (ThemeProvider 적용) ─────────────── */}
