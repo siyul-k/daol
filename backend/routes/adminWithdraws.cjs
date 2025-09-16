@@ -53,7 +53,7 @@ router.get('/', async (req, res) => {
 
   const sql = `
     SELECT w.*, m.name,
-           CONVERT_TZ(w.created_at, '+00:00', '+09:00') AS created_at
+           DATE_FORMAT(CONVERT_TZ(w.created_at, '+00:00', '+09:00'), '%Y-%m-%d %H:%i:%s') AS created_at
     FROM withdraw_requests w
     LEFT JOIN members m ON w.username = m.username
     ${whereClause}

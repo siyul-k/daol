@@ -17,7 +17,7 @@ router.get('/', async (req, res) => {
     let sql = `
       SELECT p.id, m.username, m.name, pk.name AS product_name, p.amount, p.pv,
              p.active, p.type,
-             CONVERT_TZ(p.created_at, '+00:00', '+09:00') AS created_at
+             DATE_FORMAT(CONVERT_TZ(p.created_at, '+00:00', '+09:00'), '%Y-%m-%d %H:%i:%s') AS created_at
       FROM purchases p
       JOIN members m ON p.member_id = m.id
       JOIN packages pk ON p.package_id = pk.id
@@ -151,7 +151,7 @@ router.get('/export', async (req, res) => {
     let sql = `
       SELECT p.id, m.username, m.name, pk.name AS product_name, p.amount, p.pv,
              p.active, p.type,
-             CONVERT_TZ(p.created_at, '+00:00', '+09:00') AS created_at
+             DATE_FORMAT(CONVERT_TZ(p.created_at, '+00:00', '+09:00'), '%Y-%m-%d %H:%i:%s') AS created_at
       FROM purchases p
       JOIN members m ON p.member_id = m.id
       JOIN packages pk ON p.package_id = pk.id
@@ -185,7 +185,7 @@ router.get('/export', async (req, res) => {
     rows.forEach((row, idx) => {
       sheet.addRow({
         no: idx + 1,
-        created_at: new Date(row.created_at).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' }),
+        created_at: row.created_at, // ✅ 이미 포맷된 문자열 그대로 사용
         username: row.username,
         name: row.name,
         product_name: row.product_name,

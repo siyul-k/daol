@@ -47,7 +47,7 @@ router.get('/', async (req, res) => {
     SELECT r.*, 
       m.username AS member_username,
       COALESCE(m_user.username, m_purchase.username) AS source_username,
-      CONVERT_TZ(r.created_at, '+00:00', '+09:00') AS created_at_kst
+      DATE_FORMAT(CONVERT_TZ(r.created_at, '+00:00', '+09:00'), '%Y-%m-%d %H:%i:%s') AS created_at_kst
     FROM rewards_log r
     LEFT JOIN members m ON r.member_id = m.id
     LEFT JOIN purchases p ON r.source = p.id
@@ -103,7 +103,7 @@ router.get('/export', async (req, res) => {
     SELECT r.*, 
       m.username AS member_username,
       COALESCE(m_user.username, m_purchase.username) AS source_username,
-      CONVERT_TZ(r.created_at, '+00:00', '+09:00') AS created_at_kst
+      DATE_FORMAT(CONVERT_TZ(r.created_at, '+00:00', '+09:00'), '%Y-%m-%d %H:%i:%s') AS created_at_kst
     FROM rewards_log r
     LEFT JOIN members m ON r.member_id = m.id
     LEFT JOIN purchases p ON r.source = p.id
@@ -130,7 +130,7 @@ router.get('/export', async (req, res) => {
 
     results.forEach((row) => {
       sheet.addRow({
-        created_at_kst: new Date(row.created_at_kst).toLocaleString('ko-KR'),
+        created_at_kst: row.created_at_kst, // ✅ 이미 포맷된 문자열 그대로 사용
         type: row.type,
         member_username: row.member_username,
         amount: row.amount,

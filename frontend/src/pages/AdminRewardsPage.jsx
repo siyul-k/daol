@@ -1,8 +1,6 @@
 // ✅ 파일 경로: frontend/src/pages/AdminRewardsPage.jsx
-
 import React, { useEffect, useState } from 'react';
 import axios from '../axiosConfig';
-import { formatKST } from '../utils/time';
 
 const PAGE_SIZE_OPTIONS = [25, 50, 100, 150, 9999];
 const PAGE_LABELS = ['25개씩', '50개씩', '100개씩', '150개씩', '전체'];
@@ -155,7 +153,7 @@ export default function AdminRewardsPage() {
               {rewards.length > 0 ? (
                 rewards.map((item, idx) => (
                   <tr key={idx} className="border-t border-gray-200 dark:border-white/10 hover:bg-gray-50 dark:hover:bg-gray-700/60">
-                    <td className="border px-2 py-1 text-center whitespace-nowrap dark:border-white/10">{formatKST(item.created_at)}</td>
+                    <td className="border px-2 py-1 text-center whitespace-nowrap dark:border-white/10">{item.created_at_kst}</td>
                     <td className="border px-2 py-1 text-center whitespace-nowrap dark:border-white/10">{item.type}</td>
                     <td className="border px-2 py-1 text-center whitespace-nowrap dark:border-white/10">{item.member_username}</td>
                     <td className="border px-2 py-1 text-right whitespace-nowrap dark:border-white/10">{item.amount.toLocaleString()}</td>

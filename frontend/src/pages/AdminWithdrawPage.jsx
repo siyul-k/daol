@@ -344,7 +344,7 @@ export default function AdminWithdrawPage() {
                     />
                   </td>
                   <td className="border border-gray-200 dark:border-white/10 px-2 py-1 whitespace-nowrap">
-                    {new Date(r.created_at).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' })}
+                    {r.created_at}
                   </td>
                   <td className="border border-gray-200 dark:border-white/10 px-2 py-1 whitespace-nowrap">{r.username}</td>
                   <td className="border border-gray-200 dark:border-white/10 px-2 py-1 whitespace-nowrap">{r.name}</td>

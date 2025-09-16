@@ -75,10 +75,10 @@ router.get('/', async (req, res) => {
   `;
   const dataSql = `
     SELECT d.id,
-           CONVERT_TZ(d.created_at ,'+00:00','+09:00') AS created_at,
+           DATE_FORMAT(CONVERT_TZ(d.created_at ,'+00:00','+09:00'), '%Y-%m-%d %H:%i:%s') AS created_at,
            m.username, m.name,
            d.status, d.account_holder, d.amount, d.memo,
-           CONVERT_TZ(d.completed_at,'+00:00','+09:00') AS completed_at
+           DATE_FORMAT(CONVERT_TZ(d.completed_at,'+00:00','+09:00'), '%Y-%m-%d %H:%i:%s') AS completed_at
     FROM deposit_requests d
     LEFT JOIN members m ON d.member_id = m.id
     ${where}
@@ -303,8 +303,8 @@ router.get('/export', async (req, res) => {
            d.status,
            d.account_holder,
            d.amount,
-           CONVERT_TZ(d.created_at ,'+00:00','+09:00') AS created_at,
-           CONVERT_TZ(d.completed_at,'+00:00','+09:00') AS completed_at,
+           DATE_FORMAT(CONVERT_TZ(d.created_at ,'+00:00','+09:00'), '%Y-%m-%d %H:%i:%s') AS created_at,
+           DATE_FORMAT(CONVERT_TZ(d.completed_at,'+00:00','+09:00'), '%Y-%m-%d %H:%i:%s') AS completed_at,
            d.memo
     FROM deposit_requests d
     LEFT JOIN members m ON d.member_id = m.id
