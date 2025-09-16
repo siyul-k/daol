@@ -3,8 +3,7 @@ import React, { useEffect, useState } from 'react';
 import axios from '../axiosConfig';
 import { Trash2, RotateCcw } from 'lucide-react';
 
-// 아이템 개수 옵션
-const PAGE_SIZE_OPTIONS = [25, 50, 100, 150, 9999]; // 9999=전체
+const PAGE_SIZE_OPTIONS = [25, 50, 100, 150, 9999];
 const PAGE_LABELS = ['25개씩', '50개씩', '100개씩', '150개씩', '전체'];
 
 export default function AdminProductsPage() {
@@ -22,7 +21,6 @@ export default function AdminProductsPage() {
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
 
-  // 상품 목록 조회
   const fetchProducts = async (_page = page, _limit = limit) => {
     setLoading(true);
     try {
@@ -46,13 +44,11 @@ export default function AdminProductsPage() {
 
   useEffect(() => { fetchProducts(); }, [page, limit]);
 
-  // 검색 버튼 처리
   const handleSearch = () => {
     setPage(1);
     fetchProducts(1, limit);
   };
 
-  // 삭제
   const handleDelete = async (id) => {
     if (!window.confirm('정말 삭제하시겠습니까?')) return;
     try {
@@ -65,7 +61,6 @@ export default function AdminProductsPage() {
     }
   };
 
-  // 상태 토글(bcode 상품)
   const handleToggle = async (id) => {
     try {
       await axios.put(`/api/ad-da/products/${id}/toggle`);
@@ -77,7 +72,6 @@ export default function AdminProductsPage() {
     }
   };
 
-  // 엑셀 다운로드
   const handleExport = async () => {
     try {
       const params = new URLSearchParams({
@@ -98,21 +92,6 @@ export default function AdminProductsPage() {
     } catch (err) {
       console.error('❌ 엑셀 다운로드 실패:', err);
     }
-  };
-
-  // 등록일 포맷
-  const formatDate = (dateStr) => {
-    if (!dateStr) return '-';
-    const date = new Date(dateStr);
-    const year = date.getFullYear();
-    const month = date.getMonth() + 1;
-    const day = date.getDate();
-    let hour = date.getHours();
-    const minute = String(date.getMinutes()).padStart(2, '0');
-    const ampm = hour >= 12 ? '오후' : '오전';
-    if (hour > 12) hour -= 12;
-    if (hour === 0) hour = 12;
-    return `${year}.${month}.${day} ${ampm} ${hour}:${minute}`;
   };
 
   const totalPages = Math.ceil(total / limit);
@@ -221,7 +200,8 @@ export default function AdminProductsPage() {
             ) : (
               products.map((row) => (
                 <tr key={row.id} className="border-t border-gray-200 dark:border-white/10 hover:bg-gray-50 dark:hover:bg-gray-700/60">
-                  <td className="w-40 border dark:border-white/10">{formatDate(row.created_at)}</td>
+                  {/* ✅ 시간 그대로 출력 */}
+                  <td className="w-40 border dark:border-white/10">{row.created_at || '-'}</td>
                   <td className="w-14 border dark:border-white/10">
                     {row.type === 'bcode' && (
                       <button onClick={() => handleToggle(row.id)}>

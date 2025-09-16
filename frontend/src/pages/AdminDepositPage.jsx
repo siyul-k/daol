@@ -209,11 +209,8 @@ export default function AdminDepositPage() {
                         onChange={() => toggleSelect(r.id, r.status)}
                       />
                     </td>
-                    <td className="border px-2 py-1">
-                      {r.created_at
-                        ? new Date(r.created_at).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' })
-                        : '-'}
-                    </td>
+                    {/* ✅ 시간 그대로 출력 */}
+                    <td className="border px-2 py-1">{r.created_at || '-'}</td>
                     <td className="border px-2 py-1">
                       <button onClick={() => handleDelete(r.id)}>
                         <Trash2
@@ -227,11 +224,7 @@ export default function AdminDepositPage() {
                     <td className="border px-2 py-1">{r.username}</td>
                     <td className="border px-2 py-1">{r.name}</td>
                     <td className="border px-2 py-1">{r.account_holder}</td>
-                    <td className="border px-2 py-1">
-                      {r.completed_at
-                        ? new Date(r.completed_at).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' })
-                        : '-'}
-                    </td>
+                    <td className="border px-2 py-1">{r.completed_at || '-'}</td>
                     <td className="border px-2 py-1">{r.memo}</td>
                   </tr>
                 ))
