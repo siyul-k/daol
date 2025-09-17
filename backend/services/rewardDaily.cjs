@@ -1,4 +1,6 @@
 // ✅ 파일 경로: backend/services/rewardDaily.cjs
+console.log('[DEBUG] rewardDaily.cjs loaded from', __filename);
+
 const connection = require('../db.cjs');
 const { getAllPurchasesRemaining } = require('../utils/rewardLimit.cjs');
 
@@ -41,10 +43,11 @@ function nowStr() {
 
 function kstDateStr(date = new Date()) {
   const t = new Date(date.getTime() + 9 * 3600 * 1000);
-  return t.toISOString().slice(0, 10);
+  return t.toISOString().slice(0, 10); // YYYY-MM-DD
 }
 function todayKST() { return kstDateStr(new Date()); }
 function yesterdayKST() { return kstDateStr(new Date(Date.now() - 24 * 3600 * 1000)); }
+
 function chunk(arr, n = 1000) {
   const out = [];
   for (let i = 0; i < arr.length; i += n) out.push(arr.slice(i, i + n));
@@ -56,6 +59,9 @@ function chunk(arr, n = 1000) {
  * ──────────────────────────────────────────────────────────────── */
 async function processDailyRewards() {
   try {
+    const rewardDate = todayKST();      // ← 하루 단위 중복 기준
+    const createdAt  = nowStr();
+
     // 1) 승인 구매 + 상위 1~5대
     const [products] = await connection.query(`
       SELECT 
@@ -95,13 +101,12 @@ async function processDailyRewards() {
       matchRateMap[row.level] = r;
     }
 
-    // 4) 오늘 이미 지급된 조합(중복방지)
+    // 4) 오늘 이미 지급된 조합(중복방지) - ★ reward_date 기준
     const [todayLogs] = await connection.query(`
       SELECT member_id, type, source, ref_id
       FROM rewards_log
-      WHERE created_at >= CURDATE()
-        AND created_at < DATE_ADD(CURDATE(), INTERVAL 1 DAY)
-    `);
+      WHERE reward_date = ?
+    `, [rewardDate]);
     const existsSet = new Set(todayLogs.map(r => `${r.member_id}_${r.type}_${r.source}_${r.ref_id}`));
 
     // 5) 관여 회원(본인 + 상위1~5대)
@@ -126,9 +131,7 @@ async function processDailyRewards() {
          WHERE id IN (${memberIds.map(() => '?').join(',')})`,
         memberIds
       );
-      for (const r of mrows) {
-        blockMap[r.id] = !!r.is_reward_blocked;
-      }
+      for (const r of mrows) blockMap[r.id] = !!r.is_reward_blocked;
     }
 
     // 8) INSERT 버퍼 & 출금가능포인트 누적
@@ -145,19 +148,20 @@ async function processDailyRewards() {
       const isDailyTarget = type === 'normal' || (type === 'bcode' && active === 1);
       if (isDailyTarget && !blockMap[member_id]) {
         const need = Math.floor(pv * dailyRate);
-        const key = `${member_id}_daily_${member_id}_${purchase_id}`; // source=member_id, ref_id=purchase_id
+        const key  = `${member_id}_daily_${member_id}_${purchase_id}`; // source=member_id, ref_id=purchase_id (slot)
         if (!existsSet.has(key)) {
-          const { alloc, paid } = allocateFromSlots(slotMap, member_id, need);
+          const { paid } = allocateFromSlots(slotMap, member_id, need);
           if (paid > 0) {
-            inserts.push([member_id, 'daily', member_id, purchase_id, paid, '데일리', nowStr()]);
+            inserts.push([member_id, 'daily', member_id, purchase_id, paid, '데일리', rewardDate, createdAt, 0]); // need_guard=0
             addWithdrawMap[member_id] = (addWithdrawMap[member_id] || 0) + paid;
           } else {
-            inserts.push([member_id, 'daily', member_id, purchase_id, 0, '한도초과(데일리)', nowStr()]);
+            inserts.push([member_id, 'daily', member_id, purchase_id, 0, '한도초과(데일리)', rewardDate, createdAt, 0]);
           }
+          existsSet.add(key);
         }
       }
 
-      // 매칭 지급 (레벨 고정, 구매일 조건 없음)
+      // 매칭 지급 (레벨 고정, 구매일 조건 없음 / normal만)
       if (type === 'normal') {
         const baseDaily = Math.floor(pv * dailyRate);
         const recs = [rec_1_id, rec_2_id, rec_3_id, rec_4_id, rec_5_id];
@@ -172,7 +176,7 @@ async function processDailyRewards() {
           if (existsSet.has(key)) continue;
 
           if (blockMap[recId]) {
-            inserts.push([recId, 'daily_matching', member_id, purchase_id, 0, `수당금지(매칭-${level}대)`, nowStr()]);
+            inserts.push([recId, 'daily_matching', member_id, purchase_id, 0, `수당금지(매칭-${level}대)`, rewardDate, createdAt, 0]);
             existsSet.add(key);
             continue;
           }
@@ -180,10 +184,10 @@ async function processDailyRewards() {
           const need = Math.floor(baseDaily * rate);
           const { paid } = allocateFromSlots(slotMap, recId, need);
           if (paid > 0) {
-            inserts.push([recId, 'daily_matching', member_id, purchase_id, paid, `데일리매칭-${level}대`, nowStr()]);
+            inserts.push([recId, 'daily_matching', member_id, purchase_id, paid, `데일리매칭-${level}대`, rewardDate, createdAt, 0]);
             addWithdrawMap[recId] = (addWithdrawMap[recId] || 0) + paid;
           } else {
-            inserts.push([recId, 'daily_matching', member_id, purchase_id, 0, `한도초과(매칭-${level}대)`, nowStr()]);
+            inserts.push([recId, 'daily_matching', member_id, purchase_id, 0, `한도초과(매칭-${level}대)`, rewardDate, createdAt, 0]);
           }
           existsSet.add(key);
         }
@@ -192,11 +196,15 @@ async function processDailyRewards() {
 
     // 9) 일괄 INSERT + 출금가능포인트 업데이트
     if (inserts.length > 0) {
+      // VALUES: member_id, type, source, ref_id, amount, memo, reward_date, created_at, need_guard
       await connection.query(
-        `INSERT IGNORE INTO rewards_log (member_id, type, source, ref_id, amount, memo, created_at)
+        `INSERT IGNORE INTO rewards_log
+         (member_id, type, source, ref_id, amount, memo, reward_date, created_at, need_guard)
          VALUES ?`,
         [inserts]
       );
+      console.log(`📝 rewards_log insert: ${inserts.length} rows (reward_date=${rewardDate})`);
+
       for (const id of Object.keys(addWithdrawMap)) {
         const sum = addWithdrawMap[id];
         if (sum > 0) {
@@ -206,11 +214,13 @@ async function processDailyRewards() {
           );
         }
       }
+    } else {
+      console.log(`ℹ️ 오늘(${rewardDate}) 신규 지급 없음 (모두 중복 또는 한도초과)`);
     }
 
     // 10) 요약/대시보드 갱신
     const y = yesterdayKST();
-    const t = todayKST();
+    const t = rewardDate;
 
     const [sumRows] = await connection.query(
       `
@@ -240,7 +250,7 @@ async function processDailyRewards() {
       );
     }
 
-    console.log(`✅ 데일리 + 매칭(레벨고정, 구매일 조건 제거, source/ref_id 구조 수정) 정산 완료`);
+    console.log('✅ 데일리 + 매칭 정산 완료');
   } catch (err) {
     console.error('❌ 데일리 정산 실패:', err);
   }
