@@ -57,10 +57,25 @@ function chunk(arr, n = 1000) {
 /* ────────────────────────────────────────────────────────────────
  * 메인 정산
  * ──────────────────────────────────────────────────────────────── */
-async function processDailyRewards() {
+async function processDailyRewards(forcedDate) {
   try {
-    const rewardDate = todayKST();      // ← 하루 단위 중복 기준
+    const rewardDate = forcedDate || todayKST();   // 날짜 지정 가능
     const createdAt  = nowStr();
+
+    // ─── 0) 요일 체크 ───
+    const [rows] = await connection.query(`
+      SELECT value FROM settings WHERE key_name = 'reward_days' LIMIT 1
+    `);
+    if (rows.length) {
+      const allowedDays = rows[0].value.split(',').map(s => s.trim().toLowerCase());
+      const dayNames = ['sun','mon','tue','wed','thu','fri','sat'];
+      const todayName = dayNames[new Date(rewardDate).getDay()];
+
+      if (!allowedDays.includes(todayName)) {
+        console.log(`ℹ️ ${rewardDate} (${todayName}) → 설정된 요일 아님, 데일리 정산 스킵`);
+        return;
+      }
+    }
 
     // 1) 승인 구매 + 상위 1~5대
     const [products] = await connection.query(`
@@ -101,7 +116,7 @@ async function processDailyRewards() {
       matchRateMap[row.level] = r;
     }
 
-    // 4) 오늘 이미 지급된 조합(중복방지) - ★ reward_date 기준
+    // 4) 오늘 이미 지급된 조합(중복방지) - reward_date 기준
     const [todayLogs] = await connection.query(`
       SELECT member_id, type, source, ref_id
       FROM rewards_log
@@ -148,11 +163,11 @@ async function processDailyRewards() {
       const isDailyTarget = type === 'normal' || (type === 'bcode' && active === 1);
       if (isDailyTarget && !blockMap[member_id]) {
         const need = Math.floor(pv * dailyRate);
-        const key  = `${member_id}_daily_${member_id}_${purchase_id}`; // source=member_id, ref_id=purchase_id (slot)
+        const key  = `${member_id}_daily_${member_id}_${purchase_id}`;
         if (!existsSet.has(key)) {
           const { paid } = allocateFromSlots(slotMap, member_id, need);
           if (paid > 0) {
-            inserts.push([member_id, 'daily', member_id, purchase_id, paid, '데일리', rewardDate, createdAt, 0]); // need_guard=0
+            inserts.push([member_id, 'daily', member_id, purchase_id, paid, '데일리', rewardDate, createdAt, 0]);
             addWithdrawMap[member_id] = (addWithdrawMap[member_id] || 0) + paid;
           } else {
             inserts.push([member_id, 'daily', member_id, purchase_id, 0, '한도초과(데일리)', rewardDate, createdAt, 0]);
@@ -161,7 +176,7 @@ async function processDailyRewards() {
         }
       }
 
-      // 매칭 지급 (레벨 고정, 구매일 조건 없음 / normal만)
+      // 매칭 지급 (레벨 고정 / normal만)
       if (type === 'normal') {
         const baseDaily = Math.floor(pv * dailyRate);
         const recs = [rec_1_id, rec_2_id, rec_3_id, rec_4_id, rec_5_id];
@@ -172,7 +187,7 @@ async function processDailyRewards() {
           const rate = matchRateMap[level];
           if (!rate || !recId) continue;
 
-          const key = `${recId}_daily_matching_${member_id}_${purchase_id}`; // source=member_id, ref_id=purchase_id
+          const key = `${recId}_daily_matching_${member_id}_${purchase_id}`;
           if (existsSet.has(key)) continue;
 
           if (blockMap[recId]) {
@@ -196,7 +211,6 @@ async function processDailyRewards() {
 
     // 9) 일괄 INSERT + 출금가능포인트 업데이트
     if (inserts.length > 0) {
-      // VALUES: member_id, type, source, ref_id, amount, memo, reward_date, created_at, need_guard
       await connection.query(
         `INSERT IGNORE INTO rewards_log
          (member_id, type, source, ref_id, amount, memo, reward_date, created_at, need_guard)
@@ -215,7 +229,7 @@ async function processDailyRewards() {
         }
       }
     } else {
-      console.log(`ℹ️ 오늘(${rewardDate}) 신규 지급 없음 (모두 중복 또는 한도초과)`);
+      console.log(`ℹ️ ${rewardDate} 신규 지급 없음 (모두 중복 또는 한도초과)`);
     }
 
     // 10) 요약/대시보드 갱신
@@ -250,7 +264,7 @@ async function processDailyRewards() {
       );
     }
 
-    console.log('✅ 데일리 + 매칭 정산 완료');
+    console.log(`✅ 데일리 + 매칭 정산 완료 (reward_date=${rewardDate})`);
   } catch (err) {
     console.error('❌ 데일리 정산 실패:', err);
   }
