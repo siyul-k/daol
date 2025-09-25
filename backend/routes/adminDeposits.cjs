@@ -32,13 +32,24 @@ router.get('/stats', async (req, res) => {
       IFNULL(SUM(amount), 0) AS totalAmount,
       IFNULL(SUM(
         CASE WHEN DATE(CONVERT_TZ(created_at,'+00:00','+09:00')) = CURDATE()
-          THEN amount ELSE 0 END), 0) AS todayAmount
+             THEN amount ELSE 0 END), 0) AS todayAmount,
+      IFNULL(SUM(
+        CASE WHEN DATE_FORMAT(CONVERT_TZ(created_at,'+00:00','+09:00'), '%Y-%m') = DATE_FORMAT(CURDATE(), '%Y-%m')
+             THEN amount ELSE 0 END), 0) AS monthAmount,
+      IFNULL(SUM(
+        CASE WHEN DATE_FORMAT(CONVERT_TZ(created_at,'+00:00','+09:00'), '%Y-%m') = DATE_FORMAT(CURDATE() - INTERVAL 1 MONTH, '%Y-%m')
+             THEN amount ELSE 0 END), 0) AS prevMonthAmount
     FROM deposit_requests
     WHERE status = '완료'
   `;
   try {
     const [rows] = await pool.query(sql);
-    res.json({ total: rows[0].totalAmount, today: rows[0].todayAmount });
+    res.json({
+      total: rows[0].totalAmount,
+      today: rows[0].todayAmount,
+      month: rows[0].monthAmount,
+      prevMonth: rows[0].prevMonthAmount,
+    });
   } catch (err) {
     console.error('❌ 통계 조회 실패:', err);
     res.status(500).json({ message: '통계 조회 실패' });

@@ -6,6 +6,9 @@ import { Trash2 } from 'lucide-react';
 const PAGE_SIZE_OPTIONS = [25, 50, 100, 150, 9999]; // 9999=all
 const PAGE_LABELS = ['25개씩', '50개씩', '100개씩', '150개씩', '전체'];
 
+// ✅ 공통 포맷터: 문자열/숫자 모두 안전하게 1,000단위 콤마
+const formatKRW = (v) => new Intl.NumberFormat('ko-KR').format(Number(v || 0));
+
 export default function AdminDepositPage() {
   const [deposits, setDeposits] = useState([]);
   const [filters, setFilters] = useState({ username: '', status: '', startDate: '', endDate: '' });
@@ -219,7 +222,8 @@ export default function AdminDepositPage() {
                         />
                       </button>
                     </td>
-                    <td className="border px-2 py-1 text-right">{r.amount?.toLocaleString()}</td>
+                    {/* ✅ 금액: 문자열/숫자 모두 1,000단위 콤마 */}
+                    <td className="border px-2 py-1 text-right">{formatKRW(r.amount)}</td>
                     <td className="border px-2 py-1">{mapStatus(r.status)}</td>
                     <td className="border px-2 py-1">{r.username}</td>
                     <td className="border px-2 py-1">{r.name}</td>
