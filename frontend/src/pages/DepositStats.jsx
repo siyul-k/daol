@@ -2,7 +2,8 @@
 import React, { useEffect, useState } from 'react';
 import axios from '../axiosConfig';
 
-const formatKRW = (v) => new Intl.NumberFormat('ko-KR').format(Number(v || 0));
+// 🔹 안전하게 숫자 포맷 (0, 1,100,000 같은 형식)
+const formatNumber = (v) => Number(v || 0).toLocaleString('ko-KR');
 
 export default function DepositStats() {
   const [stats, setStats] = useState({ total: 0, today: 0, month: 0, prevMonth: 0 });
@@ -20,8 +21,8 @@ export default function DepositStats() {
                  dark:bg-gray-800 dark:text-gray-100 dark:border-gray-700"
     >
       <div className="text-gray-500 text-sm dark:text-gray-400">{label}</div>
-      {/* ✅ 숫자 강제 변환 후 1,000단위 콤마 */}
-      <div className="text-xl font-bold">{formatKRW(value)} 원</div>
+      {/* ✅ 천단위 콤마 적용 */}
+      <div className="text-xl font-bold">{formatNumber(value)} 원</div>
     </div>
   );
 
