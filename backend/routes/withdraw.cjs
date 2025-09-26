@@ -2,6 +2,7 @@
 const express = require('express');
 const router = express.Router();
 const pool = require('../db.cjs');
+const moment = require('moment-timezone');   // ✅ 추가
 
 const VALID_TYPES = new Set(['normal', 'center']);
 
@@ -14,11 +15,10 @@ async function getSetting(key, fallback = '0') {
 }
 
 function getWeekStart() {
-  const now = new Date();
-  const day = now.getDay() || 7;
-  now.setHours(0, 0, 0, 0);
-  now.setDate(now.getDate() - day + 1);
-  return now.toISOString().slice(0, 19).replace('T', ' ');
+  const now = moment().tz('Asia/Seoul'); // ✅ 한국시간
+  const day = now.isoWeekday();          // 1=월 ~ 7=일
+  const start = now.clone().startOf('day').subtract(day - 1, 'days');
+  return start.format('YYYY-MM-DD HH:mm:ss');
 }
 
 function parseDaysCsv(csv) {
@@ -43,9 +43,10 @@ async function checkNormalWindow() {
   if (endHour === 0) endHour = 24;
 
   const allowedDays = parseDaysCsv(daysCsv);
-  const now = new Date();
-  const today = dayStr[now.getDay()];
-  const currentHour = now.getHours();
+
+  const now = moment().tz('Asia/Seoul'); // ✅ 한국시간
+  const today = dayStr[now.day()];       // 0=일~6=토
+  const currentHour = now.hour();
 
   const isDayAllowed = !allowedDays.length || allowedDays.includes(today);
   const isHourAllowed = isHourAllowedWithOvernight(startHour, endHour, currentHour);
@@ -60,9 +61,10 @@ async function checkCenterWindow() {
   if (endHour === 0) endHour = 24;
 
   const allowedDays = parseDaysCsv(daysCsv);
-  const now = new Date();
-  const today = dayStr[now.getDay()];
-  const currentHour = now.getHours();
+
+  const now = moment().tz('Asia/Seoul'); // ✅ 한국시간
+  const today = dayStr[now.day()];
+  const currentHour = now.hour();
 
   const isDayAllowed = !allowedDays.length || allowedDays.includes(today);
   const isHourAllowed = isHourAllowedWithOvernight(startHour, endHour, currentHour);
