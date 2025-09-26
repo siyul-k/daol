@@ -222,9 +222,9 @@ router.post('/', async (req, res) => {
 
     const feePercent  = parseFloat(await getSetting('withdraw_fee_percent', '0')) || 0;
     const shopPercent = parseFloat(await getSetting('withdraw_shopping_point_percent', '0')) || 0;
-    const fee      = Math.floor(reqAmount * feePercent / 100);
+    const fee      = Math.floor(reqAmount * feePercent);
     const afterFee = reqAmount - fee;
-    const shopping_point = Math.floor(afterFee * shopPercent / 100);
+    const shopping_point = Math.floor(afterFee * shopPercent);
     const payout   = afterFee - shopping_point;
 
     // 출금 신청 저장

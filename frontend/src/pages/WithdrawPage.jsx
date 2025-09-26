@@ -82,7 +82,7 @@ export default function WithdrawPage() {
   const handleInputChange = async (typeLabel, value) => {
     const amt = parseInt(value, 10) || 0;
     const feeRate = Number(settings.withdraw_fee_percent || 0);
-    const fee = Math.floor(amt * feeRate / 100);
+    const fee = Math.floor(amt * feeRate);
     const payout = Math.max(0, amt - fee);
 
     const update = { request_amount: value, fee, payout };
