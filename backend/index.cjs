@@ -35,7 +35,6 @@ app.use('/api/ad-da/notices',      require('./routes/adminNotices.cjs'));
 app.use('/api/ad-da/members/export', require('./routes/adminExport.cjs'));
 app.use('/api/ad-da/members/stats',  require('./routes/adminMemberStats.cjs'));
 app.use('/api/ad-da/members',        require('./routes/adminMembers.cjs'));
-app.use('/api/ad-da/deposits/export',require('./routes/depositExport.cjs'));
 app.use('/api/ad-da/deposits',       require('./routes/adminDeposits.cjs'));
 app.use('/api/ad-da/withdraws',      require('./routes/adminWithdraws.cjs'));
 app.use('/api/withdraw/check',       require('./routes/withdrawCheck.cjs'));
