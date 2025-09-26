@@ -76,7 +76,8 @@ export default function AdminDepositPage() {
       if (filters.startDate) params.append('startDate', filters.startDate);
       if (filters.endDate) params.append('endDate', filters.endDate);
     }
-    window.open(`/api/ad-da/deposits/export?${params.toString()}`, '_blank');
+    const baseURL = axios.defaults.baseURL || '';
+    window.open(`${baseURL}/api/ad-da/deposits/export?${params.toString()}`, '_blank');
   };
 
   const handleSearch = () => { setPage(1); fetchDeposits(1, limit); };
