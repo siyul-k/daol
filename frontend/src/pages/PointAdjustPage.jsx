@@ -12,9 +12,10 @@ export default function PointAdjustPage() {
   const [adjustList, setAdjustList] = useState([]);
   const [message, setMessage] = useState('');
 
+  // ✅ 보정 목록 조회
   const fetchAdjustments = async () => {
     try {
-      const res = await axios.get('/api/points');
+      const res = await axios.get('/api/point-adjust');
       setAdjustList(res.data);
     } catch (err) {
       console.error('보정 목록 조회 실패:', err);
@@ -25,6 +26,7 @@ export default function PointAdjustPage() {
     fetchAdjustments();
   }, []);
 
+  // ✅ 아이디 확인
   const handleCheckUsername = async () => {
     if (!inputUsername) return;
     try {
@@ -36,6 +38,7 @@ export default function PointAdjustPage() {
     }
   };
 
+  // ✅ 지급 등록
   const handleCreate = async () => {
     if (!userInfo.valid) return alert('아이디 확인을 먼저 해주세요');
     if (!amount || isNaN(amount)) return alert('금액을 입력해주세요');
@@ -47,7 +50,7 @@ export default function PointAdjustPage() {
         type: 'adjustment',
         description: memo || '관리자 보정',
       };
-      await axios.post('/api/points/adjust', payload);
+      await axios.post('/api/point-adjust', payload);
       alert('포인트 지급 완료');
       setShowModal(false);
       setInputUsername('');
@@ -60,18 +63,20 @@ export default function PointAdjustPage() {
     }
   };
 
+  // ✅ 삭제
   const handleDelete = async (id) => {
     if (!window.confirm('정말 삭제하시겠습니까?')) return;
     try {
-      await axios.delete(`/api/points/delete/${id}`);
+      await axios.delete(`/api/point-adjust/${id}`);
       fetchAdjustments();
     } catch (err) {
       alert('삭제 실패');
     }
   };
 
+  // ✅ 엑셀 내보내기
   const handleExport = () => {
-    window.open('/api/points/export', '_blank');
+    window.open('/api/point-adjust/export', '_blank');
   };
 
   return (
@@ -96,6 +101,7 @@ export default function PointAdjustPage() {
         </button>
       </div>
 
+      {/* 테이블 */}
       <div className="w-full overflow-x-auto">
         <table
           className="min-w-[720px] w-full border-collapse text-xs sm:text-sm text-center
