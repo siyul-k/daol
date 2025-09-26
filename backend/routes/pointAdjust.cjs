@@ -47,14 +47,15 @@ router.post('/', async (req, res) => {
       [point, member_id]
     );
 
-    // 3. 수당로그도 기록
+    // 3. 수당로그도 기록 (reward_date 포함)
     const [[userRow]] = await conn.query(
       `SELECT username FROM members WHERE id = ?`, [member_id]
     );
     if (userRow) {
       await conn.query(
-        `INSERT INTO rewards_log (member_id, type, source, amount, memo, created_at)
-         VALUES (?, 'adjust', ?, ?, ?, NOW())`,
+        `INSERT INTO rewards_log 
+         (member_id, type, source, amount, memo, reward_date, created_at, need_guard)
+         VALUES (?, 'adjust', ?, ?, ?, CURDATE(), NOW(), 0)`,
         [
           member_id,
           result.insertId,
