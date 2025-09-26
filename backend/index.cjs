@@ -23,7 +23,6 @@ app.use(cors(corsOptions));
 app.use(express.json());
 
 // ✅ 관리자 포인트 보정 라우터
-app.use('/api/points', require('./routes/pointAdjust.cjs'));
 app.use('/api/point-adjust', require('./routes/pointAdjust.cjs'));
 
 // ✅ 관리자용 설정
