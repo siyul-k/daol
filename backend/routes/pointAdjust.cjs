@@ -1,5 +1,4 @@
 // ✅ 파일 위치: backend/routes/pointAdjust.cjs
-
 const express = require('express');
 const router = express.Router();
 const pool = require('../db.cjs');
@@ -24,7 +23,7 @@ router.get('/', async (req, res) => {
 });
 
 // ✅ 포인트 지급(보정) + 출금가능포인트 누적
-router.post('/adjust', async (req, res) => {
+router.post('/', async (req, res) => {
   const { member_id, point, type, description } = req.body;
   console.log('📥 포인트 지급 요청:', { member_id, point, type, description });
 
@@ -78,7 +77,7 @@ router.post('/adjust', async (req, res) => {
 });
 
 // ✅ 지급(보정) 내역 삭제 + 출금가능포인트 복구
-router.delete('/delete/:id', async (req, res) => {
+router.delete('/:id', async (req, res) => {
   const id = req.params.id;
   const conn = await pool.getConnection();
   try {
@@ -115,7 +114,7 @@ router.delete('/delete/:id', async (req, res) => {
   }
 });
 
-// ✅ 엑셀 다운로드 (동일)
+// ✅ 엑셀 다운로드
 router.get('/export', async (req, res) => {
   const sql = `
     SELECT mp.id, mp.point, mp.description, mp.created_at,
