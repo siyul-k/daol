@@ -77,11 +77,13 @@ async function processDailyRewards(forcedDate) {
       }
     }
 
-    // 1) 승인 구매 + 상위 1~5대
+    // 1) 승인 구매 + 상위 1~15대
     const [products] = await connection.query(`
       SELECT 
         p.id AS purchase_id, p.member_id, p.pv, p.type, p.active, p.created_at,
         m.rec_1_id, m.rec_2_id, m.rec_3_id, m.rec_4_id, m.rec_5_id,
+        m.rec_6_id, m.rec_7_id, m.rec_8_id, m.rec_9_id, m.rec_10_id,
+        m.rec_11_id, m.rec_12_id, m.rec_13_id, m.rec_14_id, m.rec_15_id,
         m.is_reward_blocked
       FROM purchases p
       JOIN members m ON p.member_id = m.id
@@ -103,10 +105,10 @@ async function processDailyRewards(forcedDate) {
     let dailyRate = Number(rateRow?.rate ?? 0.01);
     if (dailyRate > 1) dailyRate /= 100;
 
-    // 3) 매칭 수당률 (1~5대만)
+    // 3) 매칭 수당률 (1~15대)
     const [matchingRows] = await connection.query(`
       SELECT level, rate FROM bonus_config
-      WHERE reward_type = 'daily_matching' AND level BETWEEN 1 AND 5
+      WHERE reward_type = 'daily_matching' AND level BETWEEN 1 AND 15
       ORDER BY level ASC
     `);
     const matchRateMap = {};
@@ -124,11 +126,16 @@ async function processDailyRewards(forcedDate) {
     `, [rewardDate]);
     const existsSet = new Set(todayLogs.map(r => `${r.member_id}_${r.type}_${r.source}_${r.ref_id}`));
 
-    // 5) 관여 회원(본인 + 상위1~5대)
+    // 5) 관여 회원(본인 + 상위1~15대)
     const memberIds = [
       ...new Set(
         products
-          .flatMap(p => [p.member_id, p.rec_1_id, p.rec_2_id, p.rec_3_id, p.rec_4_id, p.rec_5_id])
+          .flatMap(p => [
+            p.member_id,
+            p.rec_1_id, p.rec_2_id, p.rec_3_id, p.rec_4_id, p.rec_5_id,
+            p.rec_6_id, p.rec_7_id, p.rec_8_id, p.rec_9_id, p.rec_10_id,
+            p.rec_11_id, p.rec_12_id, p.rec_13_id, p.rec_14_id, p.rec_15_id
+          ])
           .filter(Boolean)
       )
     ];
@@ -156,7 +163,9 @@ async function processDailyRewards(forcedDate) {
     for (const p of products) {
       const {
         purchase_id, member_id, pv, type, active,
-        rec_1_id, rec_2_id, rec_3_id, rec_4_id, rec_5_id
+        rec_1_id, rec_2_id, rec_3_id, rec_4_id, rec_5_id,
+        rec_6_id, rec_7_id, rec_8_id, rec_9_id, rec_10_id,
+        rec_11_id, rec_12_id, rec_13_id, rec_14_id, rec_15_id
       } = p;
 
       // 데일리 지급
@@ -176,12 +185,16 @@ async function processDailyRewards(forcedDate) {
         }
       }
 
-      // 매칭 지급 (레벨 고정 / normal만)
+      // 매칭 지급 (레벨 확장 / normal만)
       if (type === 'normal') {
         const baseDaily = Math.floor(pv * dailyRate);
-        const recs = [rec_1_id, rec_2_id, rec_3_id, rec_4_id, rec_5_id];
+        const recs = [
+          rec_1_id, rec_2_id, rec_3_id, rec_4_id, rec_5_id,
+          rec_6_id, rec_7_id, rec_8_id, rec_9_id, rec_10_id,
+          rec_11_id, rec_12_id, rec_13_id, rec_14_id, rec_15_id
+        ];
 
-        for (let i = 0; i < 5; i++) {
+        for (let i = 0; i < 15; i++) {
           const recId = recs[i];
           const level = i + 1;
           const rate = matchRateMap[level];
@@ -271,3 +284,22 @@ async function processDailyRewards(forcedDate) {
 }
 
 module.exports = { processDailyRewards };
+
+/* ────────────────────────────────────────────────────────────────
+ * CLI 단발 실행 지원
+ * ──────────────────────────────────────────────────────────────── */
+if (require.main === module) {
+  (async () => {
+    const dateArg = process.argv[2] || null;
+    try {
+      console.log(`▶ 수동 실행: 데일리 정산 (date=${dateArg || '오늘'})`);
+      await processDailyRewards(dateArg);
+      console.log('✅ 수동 실행 완료 (데일리)');
+    } catch (err) {
+      console.error('❌ 단발 실행 에러:', err);
+      process.exit(1);
+    } finally {
+      process.exit(0);
+    }
+  })();
+}

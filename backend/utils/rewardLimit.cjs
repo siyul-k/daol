@@ -2,7 +2,7 @@
 const connection = require('../db.cjs');
 
 /** 한도 집계에 포함되는 리워드 타입 */
-const COUNTED_TYPES = ['daily', 'daily_matching', 'recommend'];
+const COUNTED_TYPES = ['daily', 'daily_matching', 'sponsor'];
 
 /** 한도 배율(정책) */
 const RATE_NORMAL_WITH_DOWNLINE = 2.5; // 직추천 normal 보유 시 250%

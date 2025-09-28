@@ -33,7 +33,7 @@ async function hasAnyAvailable(memberId) {
   return ok;
 }
 
-async function processReferralRewards() {
+async function processReferralRewards(dateArg = null) {
   try {
     const [bonusRows] = await connection.query(`
       SELECT reward_type, level, rate
@@ -43,17 +43,26 @@ async function processReferralRewards() {
     const centerRate    = Number(bonusRows.find(r => r.reward_type === 'center')?.rate ?? 0.04);
     const centerRecRate = Number(bonusRows.find(r => r.reward_type === 'center_recommend')?.rate ?? 0.01);
 
+    // 📌 날짜 조건 설정
+    let dateCondition = 'DATE(p.created_at) = CURDATE()';
+    let params = [];
+    if (dateArg) {
+      dateCondition = 'DATE(p.created_at) = ?';
+      params.push(dateArg);
+    }
+
     const [rows] = await connection.query(`
       SELECT p.id AS purchase_id, p.member_id, p.pv, m.center_id
       FROM purchases p
       JOIN members m ON p.member_id = m.id
       WHERE p.status = 'approved'
         AND p.type   = 'normal'
-        AND DATE(p.created_at) = CURDATE()
+        AND ${dateCondition}
       ORDER BY p.created_at ASC
-    `);
+    `, params);
+
     if (!rows.length) {
-      console.log('[정산대상 없음]');
+      console.log(`[정산대상 없음] date=${dateArg || '오늘'}`);
       return;
     }
 
@@ -150,7 +159,7 @@ async function processReferralRewards() {
       // 추천수당 제거됨 (추후 필요 시 복원)
     }
 
-    console.log(`✅ 건별 센터피/센터추천피 정산 완료 (구매 ${rows.length}건)\n`);
+    console.log(`✅ 센터피/센터추천피 정산 완료 (구매 ${rows.length}건, date=${dateArg || '오늘'})\n`);
   } catch (err) {
     console.error('❌ 센터피/센터추천피 정산 실패:', err);
   }

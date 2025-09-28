@@ -45,14 +45,13 @@ export default function PointSummaryPage() {
       .filter((r) => r.type !== "center" && r.type !== "center_recommend")
       .reduce((sum, r) => sum + Number(r.amount || 0), 0);
 
-  // ✅ 요약카테고리: 추천→후원 (sponsor)
+  // ✅ 요약카테고리: 후원 제거
   const categories = [
-    { label: "후원", types: ["sponsor"] },
     { label: "데일리", types: ["daily"] },
     { label: "매칭", types: ["daily_matching"] },
   ];
 
-  // ✅ 일자별 breakdown: recommend→sponsor
+  // ✅ 일자별 breakdown: 후원 제거
   const sumByDate = () => {
     const grouped = {};
     rewards.forEach((r) => {
@@ -63,7 +62,6 @@ export default function PointSummaryPage() {
       if (!grouped[date]) {
         grouped[date] = {
           total: 0,
-          sponsor: 0,
           daily: 0,
           matching: 0,
           center: 0,
@@ -74,9 +72,6 @@ export default function PointSummaryPage() {
       grouped[date].total += amount;
 
       switch (r.type) {
-        case "sponsor":
-          grouped[date].sponsor += amount;
-          break;
         case "daily":
           grouped[date].daily += amount;
           break;
@@ -133,13 +128,12 @@ export default function PointSummaryPage() {
               <div className="text-gray-500 dark:text-gray-400 mb-1">
                 총 수령 포인트
               </div>
-              {/* ✅ 밝은 초록 */}
               <div className="text-2xl font-bold text-green-400">
                 {total.toLocaleString()}
               </div>
             </div>
 
-            {/* ✅ 항목별 요약카드 (후원 / 데일리 / 매칭) */}
+            {/* ✅ 항목별 요약카드 (후원 제거) */}
             {categories.map((cat) => (
               <div
                 key={cat.label}
@@ -172,10 +166,8 @@ export default function PointSummaryPage() {
             <table className="w-full text-sm border text-center border-gray-300 dark:border-gray-600">
               <thead className="bg-gray-100 dark:bg-gray-700">
                 <tr>
-                  {/* ✅ 줄바꿈 방지 */}
                   <th className="border px-3 py-2 whitespace-nowrap">날짜</th>
                   <th className="border px-3 py-2 whitespace-nowrap">합계</th>
-                  <th className="border px-3 py-2 whitespace-nowrap">후원</th>
                   <th className="border px-3 py-2 whitespace-nowrap">데일리</th>
                   <th className="border px-3 py-2 whitespace-nowrap">매칭</th>
                   <th className="border px-3 py-2 whitespace-nowrap">센터</th>
@@ -192,12 +184,8 @@ export default function PointSummaryPage() {
                       <td className="border px-3 py-2 text-gray-900 dark:text-gray-100 whitespace-nowrap">
                         {date}
                       </td>
-                      {/* ✅ 합계 주황색 */}
                       <td className="border px-3 py-2 text-orange-500 font-bold whitespace-nowrap">
                         {sums.total.toLocaleString()}
-                      </td>
-                      <td className="border px-3 py-2 text-gray-900 dark:text-gray-100 whitespace-nowrap">
-                        {sums.sponsor.toLocaleString()}
                       </td>
                       <td className="border px-3 py-2 text-gray-900 dark:text-gray-100 whitespace-nowrap">
                         {sums.daily.toLocaleString()}
@@ -216,7 +204,7 @@ export default function PointSummaryPage() {
                 ) : (
                   <tr>
                     <td
-                      colSpan="7"
+                      colSpan="6"
                       className="text-center py-4 text-gray-500 dark:text-gray-400"
                     >
                       수당 내역이 없습니다.

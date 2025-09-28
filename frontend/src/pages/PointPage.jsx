@@ -138,7 +138,7 @@ export default function PointPage() {
         <p>불러오는 중...</p>
       ) : (
         <>
-          {renderTable("후원", "sponsor")}
+          {/* 후원 테이블 제거 */}
           {renderTable("데일리", "daily")}
           {renderTable("매칭", "daily_matching")}
           {renderTable("센터", ["center", "center_recommend"])}

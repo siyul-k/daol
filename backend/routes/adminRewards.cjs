@@ -54,7 +54,7 @@ router.get('/', async (req, res) => {
     LEFT JOIN members m_purchase ON p.member_id = m_purchase.id
     LEFT JOIN members m_user ON r.source = m_user.id
     ${where}
-    ORDER BY r.created_at DESC
+    ORDER BY r.created_at DESC   -- ✅ 프론트 목록은 최신순
     LIMIT ? OFFSET ?
   `;
 
@@ -110,7 +110,7 @@ router.get('/export', async (req, res) => {
     LEFT JOIN members m_purchase ON p.member_id = m_purchase.id
     LEFT JOIN members m_user ON r.source = m_user.id
     ${where}
-    ORDER BY r.created_at DESC
+    ORDER BY r.id ASC   -- ✅ 엑셀은 오래된 순 (id 오름차순)
   `;
 
   try {
@@ -120,6 +120,7 @@ router.get('/export', async (req, res) => {
     const sheet = workbook.addWorksheet('수당내역');
 
     sheet.columns = [
+      { header: '번호', key: 'id', width: 10 },              // ✅ 번호(id) 추가
       { header: '등록일', key: 'created_at_kst', width: 20 },
       { header: '종류', key: 'type', width: 15 },
       { header: '아이디', key: 'member_username', width: 15 },
@@ -130,7 +131,8 @@ router.get('/export', async (req, res) => {
 
     results.forEach((row) => {
       sheet.addRow({
-        created_at_kst: row.created_at_kst, // ✅ 이미 포맷된 문자열 그대로 사용
+        id: row.id,                              // ✅ id 값 출력
+        created_at_kst: row.created_at_kst,      // ✅ 이미 포맷된 문자열 그대로 사용
         type: row.type,
         member_username: row.member_username,
         amount: row.amount,
