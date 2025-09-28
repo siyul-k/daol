@@ -10,7 +10,7 @@ const pool = require('../db.cjs');
  * - 메모리 맵으로 추적하여 DB 왕복 최소화
  * - 사이클(순환추천/후원) 가드
  */
-async function updateAllRecommendLineage(limitDepth = 5, chunkSize = 1000) {
+async function updateAllRecommendLineage(limitDepth = 15, chunkSize = 1000) {
   const conn = await pool.getConnection();
   try {
     // 1) 전체 맵 로드
