@@ -44,11 +44,15 @@ async function processReferralRewards(dateArg = null) {
     const centerRecRate = Number(bonusRows.find(r => r.reward_type === 'center_recommend')?.rate ?? 0.01);
 
     // 📌 날짜 조건 설정
-    let dateCondition = 'DATE(p.created_at) = CURDATE()';
+    let dateCondition;
     let params = [];
     if (dateArg) {
+      // 수동 실행 시: 지정된 날짜 구매건
       dateCondition = 'DATE(p.created_at) = ?';
       params.push(dateArg);
+    } else {
+      // 스케줄 실행 시: 전날 구매건
+      dateCondition = 'DATE(p.created_at) = CURDATE() - INTERVAL 1 DAY';
     }
 
     const [rows] = await connection.query(`
@@ -62,7 +66,7 @@ async function processReferralRewards(dateArg = null) {
     `, params);
 
     if (!rows.length) {
-      console.log(`[정산대상 없음] date=${dateArg || '오늘'}`);
+      console.log(`[정산대상 없음] date=${dateArg || '전날'}`);
       return;
     }
 
@@ -159,7 +163,7 @@ async function processReferralRewards(dateArg = null) {
       // 추천수당 제거됨 (추후 필요 시 복원)
     }
 
-    console.log(`✅ 센터피/센터추천피 정산 완료 (구매 ${rows.length}건, date=${dateArg || '오늘'})\n`);
+    console.log(`✅ 센터피/센터추천피 정산 완료 (구매 ${rows.length}건, date=${dateArg || '전날'})\n`);
   } catch (err) {
     console.error('❌ 센터피/센터추천피 정산 실패:', err);
   }

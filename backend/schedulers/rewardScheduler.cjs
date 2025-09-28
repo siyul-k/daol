@@ -19,7 +19,7 @@ const { updateAllRecommendLineage } = require('../scripts/fixRecommendLineage.cj
 // =======================================================
 
 // ✅ 매일 23:30 (KST) = 14:30 (UTC) → 계보 갱신 + 추천/센터피 정산
-cron.schedule('30 14 * * *', async () => {
+cron.schedule('5 15 * * *', async () => {
   const now = new Date();
   console.log(`⏱️ [${format(now, 'yyyy-MM-dd HH:mm:ss')}] 추천계보 갱신 시작`);
   try {
