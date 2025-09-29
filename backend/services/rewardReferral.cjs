@@ -43,16 +43,16 @@ async function processReferralRewards(dateArg = null) {
     const centerRate    = Number(bonusRows.find(r => r.reward_type === 'center')?.rate ?? 0.04);
     const centerRecRate = Number(bonusRows.find(r => r.reward_type === 'center_recommend')?.rate ?? 0.01);
 
-    // 📌 날짜 조건 설정
+    // 📌 날짜 조건 설정 (UTC → KST 변환)
     let dateCondition;
     let params = [];
     if (dateArg) {
-      // 수동 실행 시: 지정된 날짜 구매건
-      dateCondition = 'DATE(p.created_at) = ?';
+      // 수동 실행 시: 지정된 날짜 구매건 (KST 기준)
+      dateCondition = "DATE(CONVERT_TZ(p.created_at, '+00:00', '+09:00')) = ?";
       params.push(dateArg);
     } else {
-      // 스케줄 실행 시: 전날 구매건
-      dateCondition = 'DATE(p.created_at) = CURDATE() - INTERVAL 1 DAY';
+      // 스케줄 실행 시: 전날 구매건 (KST 기준)
+      dateCondition = "DATE(CONVERT_TZ(p.created_at, '+00:00', '+09:00')) = CURDATE() - INTERVAL 1 DAY";
     }
 
     const [rows] = await connection.query(`
