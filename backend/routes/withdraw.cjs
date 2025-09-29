@@ -2,7 +2,7 @@
 const express = require('express');
 const router = express.Router();
 const pool = require('../db.cjs');
-const moment = require('moment-timezone');   // ✅ 추가
+const moment = require('moment-timezone');   // ✅ 한국시간 변환용
 
 const VALID_TYPES = new Set(['normal', 'center']);
 
@@ -192,13 +192,18 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ error: '출금 가능 요일/시간이 아닙니다.' });
     }
 
+    // ✅ 오늘 하루(KST) 범위 계산
+    const todayStart = moment().tz('Asia/Seoul').startOf('day').format('YYYY-MM-DD HH:mm:ss');
+    const todayEnd   = moment().tz('Asia/Seoul').endOf('day').format('YYYY-MM-DD HH:mm:ss');
+
     if (type === 'normal') {
       const [[daySum]] = await pool.query(
         `SELECT IFNULL(SUM(amount),0) AS total
-         FROM withdraw_requests
-         WHERE member_id = ? AND DATE(created_at) = CURDATE()
-           AND status IN ('요청','완료','requested','completed')`,
-        [member_id]
+           FROM withdraw_requests
+          WHERE member_id = ?
+            AND created_at BETWEEN ? AND ?
+            AND status IN ('요청','완료','requested','completed')`,
+        [member_id, todayStart, todayEnd]
       );
       if (Number(daySum?.total || 0) + reqAmount > dailyLimit) {
         return res.status(400).json({ error: '1일 출금 한도 초과' });
@@ -215,7 +220,7 @@ router.post('/', async (req, res) => {
     const [[existing]] = await pool.query(
       `SELECT id FROM withdraw_requests
        WHERE member_id = ? AND amount = ? AND status = '요청'
-         AND created_at >= NOW() - INTERVAL 10 SECOND`,
+         AND created_at >= CONVERT_TZ(NOW(), '+00:00', '+09:00') - INTERVAL 10 SECOND`,
       [member_id, reqAmount]
     );
     if (existing) {
