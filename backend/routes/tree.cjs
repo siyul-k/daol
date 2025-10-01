@@ -17,17 +17,11 @@ function buildRecommenderTree(members, parentId = null) {
     }));
 }
 
-// 후원 트리 빌드
+// 후원 트리 빌드 (유니레벨)
 function buildSponsorTree(members, parentId = null) {
-  const order = { L: 0, R: 1, null: 2 };
   const children = members
     .filter((m) => m.sponsor_id === parentId)
-    .sort((a, b) => {
-      const ao = order[a.sponsor_direction] ?? 2;
-      const bo = order[b.sponsor_direction] ?? 2;
-      if (ao !== bo) return ao - bo;
-      return a.id - b.id;
-    });
+    .sort((a, b) => a.id - b.id); // 단순 ID 순
 
   return children.map((m) => ({
     id: m.id,
@@ -35,7 +29,6 @@ function buildSponsorTree(members, parentId = null) {
     name: m.name,
     created_at: m.created_at,
     sales: m.sales,
-    direction: m.sponsor_direction,
     children: buildSponsorTree(members, m.id),
   }));
 }
@@ -45,7 +38,7 @@ router.get('/full', async (req, res) => {
   try {
     const [rows] = await pool.query(`
       SELECT m.id, m.username, m.name, m.recommender_id, m.created_at,
-             m.sponsor_id, m.sponsor_direction,
+             m.sponsor_id,
              IFNULL((SELECT SUM(pv) FROM purchases p WHERE p.member_id=m.id AND p.status='approved'),0) AS sales
       FROM members m
       WHERE m.is_admin=0
@@ -66,7 +59,7 @@ router.get('/recommend', async (req, res) => {
 
     const [rows] = await pool.query(`
       SELECT m.id, m.username, m.name, m.recommender_id, m.created_at,
-             m.sponsor_id, m.sponsor_direction,
+             m.sponsor_id,
              IFNULL((SELECT SUM(pv) FROM purchases p WHERE p.member_id=m.id AND p.status='approved'),0) AS sales
       FROM members m
       WHERE m.is_admin=0
@@ -97,7 +90,7 @@ router.get('/sponsor', async (req, res) => {
   try {
     const [rows] = await pool.query(`
       SELECT m.id, m.username, m.name, m.created_at,
-             m.recommender_id, m.sponsor_id, m.sponsor_direction,
+             m.recommender_id, m.sponsor_id,
              IFNULL((SELECT SUM(pv) FROM purchases p WHERE p.member_id=m.id AND p.status='approved'),0) AS sales
       FROM members m
       WHERE m.is_admin=0

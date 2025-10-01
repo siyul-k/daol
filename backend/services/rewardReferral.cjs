@@ -40,7 +40,7 @@ async function processReferralRewards(dateArg = null) {
       FROM bonus_config
       WHERE reward_type IN ('center', 'center_recommend') AND level = 0
     `);
-    const centerRate    = Number(bonusRows.find(r => r.reward_type === 'center')?.rate ?? 0.04);
+    const centerRate    = Number(bonusRows.find(r => r.reward_type === 'center')?.rate ?? 0.03);
     const centerRecRate = Number(bonusRows.find(r => r.reward_type === 'center_recommend')?.rate ?? 0.01);
 
     // 📌 날짜 조건 설정 (UTC → KST 변환)

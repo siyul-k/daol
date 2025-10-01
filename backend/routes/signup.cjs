@@ -20,8 +20,6 @@ async function getRecommenderLineageIds(startId) {
   return lineage;
 }
 
-const isValidDir = (d) => d === 'L' || d === 'R';
-
 /** 부모 sponsor_path가 비었을 때도 안전하게 경로를 만들어주는 함수 */
 async function buildSponsorPathIncludingSelf(sponsorId, newId) {
   // 1) 부모의 sponsor_path 조회
@@ -63,18 +61,13 @@ router.post('/', async (req, res) => {
   try {
     const {
       username, password, name, phone, email,
-      center_id, recommender_id,
-      sponsor_id, sponsor_direction
+      center_id, recommender_id
     } = req.body;
 
-    // 필수값 확인
+    // 필수값 확인 (sponsor_id 입력은 필요 없음)
     if (!username || !password || !name || !phone ||
-        !center_id || !recommender_id || !sponsor_id || !sponsor_direction) {
+        !center_id || !recommender_id) {
       return res.status(400).json({ success: false, message: '필수값 누락' });
-    }
-    const dir = String(sponsor_direction).toUpperCase();
-    if (!isValidDir(dir)) {
-      return res.status(400).json({ success: false, message: '후원 방향은 L/R 만 허용됩니다.' });
     }
 
     // 아이디 중복
@@ -86,19 +79,11 @@ router.post('/', async (req, res) => {
     // 존재 확인
     const [[rec]]    = await pool.query('SELECT id FROM members WHERE id = ? LIMIT 1',   [recommender_id]);
     const [[center]] = await pool.query('SELECT id FROM centers WHERE id = ? LIMIT 1',   [center_id]);
-    const [[spon]]   = await pool.query('SELECT id FROM members WHERE id = ? LIMIT 1',   [sponsor_id]);
     if (!rec)    return res.status(400).json({ success: false, message: '존재하지 않는 추천인입니다.' });
     if (!center) return res.status(400).json({ success: false, message: '존재하지 않는 센터입니다.' });
-    if (!spon)   return res.status(400).json({ success: false, message: '존재하지 않는 후원인입니다.' });
 
-    // 후원 좌/우 자리 점검 (바이너리)
-    const [[occupied]] = await pool.query(
-      'SELECT id FROM members WHERE sponsor_id = ? AND sponsor_direction = ? LIMIT 1',
-      [sponsor_id, dir]
-    );
-    if (occupied) {
-      return res.status(400).json({ success: false, message: `선택한 후원 방향(${dir})은 이미 사용 중입니다.` });
-    }
+    // ✅ sponsor_id = recommender_id 자동 대입
+    const sponsor_id = recommender_id;
 
     const hashed = await bcrypt.hash(password, 10);
 
@@ -109,7 +94,7 @@ router.post('/', async (req, res) => {
       rec_11_id, rec_12_id, rec_13_id, rec_14_id, rec_15_id
     ] = await getRecommenderLineageIds(recommender_id);
 
-    // 🔐 INSERT (sponsor_path는 아래에서 업데이트)
+    // 🔐 INSERT (sponsor_direction은 항상 NULL)
     const sql = `
       INSERT INTO members (
         username, password, name, email, phone,
@@ -125,7 +110,7 @@ router.post('/', async (req, res) => {
     const values = [
       username, hashed, name, email || null, phone,
       center_id, recommender_id,
-      sponsor_id, dir,
+      sponsor_id, null, // ✅ sponsor_id는 추천인과 동일, 방향은 null
       rec_1_id, rec_2_id, rec_3_id, rec_4_id, rec_5_id,
       rec_6_id, rec_7_id, rec_8_id, rec_9_id, rec_10_id,
       rec_11_id, rec_12_id, rec_13_id, rec_14_id, rec_15_id,
@@ -135,7 +120,7 @@ router.post('/', async (req, res) => {
     const [result] = await pool.query(sql, values);
     const newId = result.insertId;
 
-    // ✅ sponsor_path 즉시 생성 (부모 path가 없더라도 스폰서 체인으로 보완)
+    // ✅ sponsor_path 즉시 생성
     const myPath = await buildSponsorPathIncludingSelf(sponsor_id, newId);
     await pool.query('UPDATE members SET sponsor_path = ? WHERE id = ?', [myPath, newId]);
 
