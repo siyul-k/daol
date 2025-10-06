@@ -200,7 +200,6 @@ export default function AdminProductsPage() {
             ) : (
               products.map((row) => (
                 <tr key={row.id} className="border-t border-gray-200 dark:border-white/10 hover:bg-gray-50 dark:hover:bg-gray-700/60">
-                  {/* ✅ 시간 그대로 출력 */}
                   <td className="w-40 border dark:border-white/10">{row.created_at || '-'}</td>
                   <td className="w-14 border dark:border-white/10">
                     {row.type === 'bcode' && (
@@ -230,18 +229,45 @@ export default function AdminProductsPage() {
         </table>
       </div>
 
-      {/* 페이지네이션 */}
-      <div className="flex flex-wrap gap-2 my-4">
-        {total > limit && Array.from({ length: Math.ceil(total / limit) }, (_, i) => (
+      {/* ✅ 페이지네이션 (화살표형) */}
+      <div className="mt-4 flex items-center justify-between flex-wrap gap-3 text-sm text-gray-700 dark:text-gray-300">
+        <div className="flex items-center gap-2">
           <button
-            key={i}
-            className={`px-2 py-1 border rounded dark:border-white/10 dark:text-gray-100
-                        ${page === i + 1 ? 'bg-blue-600 text-white' : 'bg-white dark:bg-gray-800'}`}
-            onClick={() => setPage(i + 1)}
+            onClick={() => setPage(p => Math.max(1, p - 1))}
+            disabled={page === 1}
+            className={`px-3 py-1 rounded border transition
+              ${page === 1
+                ? 'opacity-40 cursor-not-allowed bg-gray-200 dark:bg-gray-700'
+                : 'bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700'}`}
           >
-            {i + 1}
+            ← 이전
           </button>
-        ))}
+
+          <span>
+            페이지 <span className="font-semibold">{page}</span> / {totalPages}
+          </span>
+
+          <button
+            onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+            disabled={page >= totalPages}
+            className={`px-3 py-1 rounded border transition
+              ${page >= totalPages
+                ? 'opacity-40 cursor-not-allowed bg-gray-200 dark:bg-gray-700'
+                : 'bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700'}`}
+          >
+            다음 →
+          </button>
+        </div>
+
+        <div>
+          {total > 0 ? (
+            <>
+              {((page - 1) * limit) + 1} - {Math.min(page * limit, total)} / 총 {total.toLocaleString()}건
+            </>
+          ) : (
+            '데이터 없음'
+          )}
+        </div>
       </div>
     </div>
   );

@@ -30,7 +30,7 @@ export default function AdminWithdrawPage() {
   const [hasMore, setHasMore] = useState(true);
   const [lastCursor, setLastCursor] = useState(null);
 
-  // 👇 item per
+  const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(25);
 
   const [showResultModal, setShowResultModal] = useState(false);
@@ -54,7 +54,7 @@ export default function AdminWithdrawPage() {
   useEffect(() => {
     resetAndFetch();
     // eslint-disable-next-line
-  }, [sortField, sortOrder, limit]); // 👈 limit 바뀌면 리셋
+  }, [sortField, sortOrder, limit, page]);
 
   const buildParams = () => {
     const params = {};
@@ -67,7 +67,8 @@ export default function AdminWithdrawPage() {
     if (enabled.status && filters.status) params.status = filters.status;
     params.sort = sortField;
     params.order = sortOrder;
-    params.limit = limit; // 👈 item per
+    params.limit = limit;
+    params.page = page;
     return params;
   };
 
@@ -95,7 +96,7 @@ export default function AdminWithdrawPage() {
       });
 
       setSelected([]);
-      if (newItems.length < limit) setHasMore(false); // 👈 limit
+      if (newItems.length < limit) setHasMore(false);
       if (newItems.length > 0) {
         setLastCursor(newItems[newItems.length - 1].created_at);
       }
@@ -105,7 +106,10 @@ export default function AdminWithdrawPage() {
     setLoading(false);
   };
 
-  const handleFilter = () => resetAndFetch();
+  const handleFilter = () => {
+    setPage(1);
+    resetAndFetch();
+  };
 
   const toggleSelect = (id) => {
     setSelected((prev) =>
@@ -185,13 +189,22 @@ export default function AdminWithdrawPage() {
     return sortOrder === 'asc' ? ' ▲' : ' ▼';
   };
 
+  // ✅ 상태별 색상 지정
+  const getStatusColor = (status) => {
+    if (status === '완료') return 'text-green-600 dark:text-green-400 font-semibold';
+    if (status === '취소') return 'text-red-600 dark:text-red-400 font-semibold';
+    return 'text-gray-800 dark:text-gray-200';
+  };
+
+  const totalPages = Math.max(1, Math.ceil(requests.length / limit));
+
   return (
     <div className="p-2 sm:p-6 w-full">
       <h2 className="text-base sm:text-2xl font-bold mb-3 sm:mb-4">출금 신청 목록</h2>
 
       {statusMsg && <div className="mb-2 text-green-600 dark:text-emerald-400">{statusMsg}</div>}
 
-      {/* 필터+버튼+item per (반응형) */}
+      {/* 필터+버튼+item per */}
       <div className="flex flex-wrap gap-2 items-center mb-3 sm:mb-4">
         {['username', 'name'].map((key) => (
           <div key={key} className="flex items-center gap-1 text-xs sm:text-sm">
@@ -249,7 +262,6 @@ export default function AdminWithdrawPage() {
             <option value="취소">취소</option>
           </select>
         </div>
-        {/* 👇 item per select */}
         <select
           value={limit}
           onChange={(e) => setLimit(Number(e.target.value))}
@@ -257,43 +269,23 @@ export default function AdminWithdrawPage() {
                      dark:bg-gray-900 dark:border-white/10 dark:text-gray-100"
         >
           {PAGE_SIZE_OPTIONS.map((n, i) => (
-            <option key={n} value={n}>
-              {PAGE_LABELS[i]}
-            </option>
+            <option key={n} value={n}>{PAGE_LABELS[i]}</option>
           ))}
         </select>
-        {/* 버튼: 모바일에선 2줄 이상 배치 */}
         <div className="flex gap-2 mt-2 sm:mt-0 w-full sm:w-auto">
-          <button className="bg-blue-600 text-white px-3 py-1 rounded text-xs sm:text-sm" onClick={handleFilter}>
-            검색
-          </button>
-          <button className="bg-green-600 text-white px-3 py-1 rounded text-xs sm:text-sm" onClick={exportExcel}>
-            내보내기
-          </button>
-          <button
-            className="bg-teal-600 text-white px-3 py-1 rounded text-xs sm:text-sm"
-            onClick={() => changeStatus('complete')}
-          >
-            완료처리
-          </button>
-          <button
-            className="bg-gray-600 text-white px-3 py-1 rounded text-xs sm:text-sm"
-            onClick={() => changeStatus('cancel')}
-          >
-            취소처리
-          </button>
+          <button className="bg-blue-600 text-white px-3 py-1 rounded text-xs sm:text-sm" onClick={handleFilter}>검색</button>
+          <button className="bg-green-600 text-white px-3 py-1 rounded text-xs sm:text-sm" onClick={exportExcel}>내보내기</button>
+          <button className="bg-teal-600 text-white px-3 py-1 rounded text-xs sm:text-sm" onClick={() => changeStatus('complete')}>완료처리</button>
+          <button className="bg-gray-600 text-white px-3 py-1 rounded text-xs sm:text-sm" onClick={() => changeStatus('cancel')}>취소처리</button>
         </div>
       </div>
 
-      {/* 테이블 (반응형, 가로 스크롤) */}
+      {/* 테이블 */}
       <div className="w-full overflow-x-auto">
-        <table
-          className="min-w-[1400px] w-full text-xs sm:text-sm text-center
-                     border border-gray-200 dark:border-white/10"
-        >
+        <table className="min-w-[1400px] w-full text-xs sm:text-sm text-center border border-gray-200 dark:border-white/10">
           <thead className="bg-gray-100 dark:bg-gray-700 dark:text-white">
             <tr>
-              <th className="border border-gray-200 dark:border-white/10 px-2 py-1">
+              <th className="border px-2 py-1">
                 <input
                   type="checkbox"
                   onChange={toggleSelectAll}
@@ -314,28 +306,22 @@ export default function AdminWithdrawPage() {
                 ['account_holder', '예금주'],
                 ['account_number', '계좌번호']
               ].map(([field, label]) => (
-                <th
-                  key={field}
-                  onClick={() => handleSort(field)}
-                  className="cursor-pointer border border-gray-200 dark:border-white/10 px-2 py-1 whitespace-nowrap"
-                >
-                  {label}
-                  {renderSortSymbol(field)}
+                <th key={field} onClick={() => handleSort(field)} className="cursor-pointer border px-2 py-1 whitespace-nowrap">
+                  {label}{renderSortSymbol(field)}
                 </th>
               ))}
-              <th className="border border-gray-200 dark:border-white/10 px-2 py-1">비고</th>
-              <th className="border border-gray-200 dark:border-white/10 px-2 py-1">저장</th>
-              <th className="border border-gray-200 dark:border-white/10 px-2 py-1">삭제</th>
+              <th className="border px-2 py-1">비고</th>
+              <th className="border px-2 py-1">저장</th>
+              <th className="border px-2 py-1">삭제</th>
             </tr>
           </thead>
-
           <tbody className="bg-white dark:bg-gray-800 dark:text-gray-100">
             {requests.map((r) => {
               const payout = r.payout ?? r.amount - r.fee;
               const shoppingPoint = r.shopping_point ?? 0;
               return (
                 <tr key={r.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/60">
-                  <td className="border border-gray-200 dark:border-white/10 px-2 py-1">
+                  <td className="border px-2 py-1">
                     <input
                       type="checkbox"
                       checked={selected.includes(r.id)}
@@ -343,68 +329,38 @@ export default function AdminWithdrawPage() {
                       disabled={r.status !== '요청'}
                     />
                   </td>
-                  <td className="border border-gray-200 dark:border-white/10 px-2 py-1 whitespace-nowrap">
-                    {r.created_at}
-                  </td>
-                  <td className="border border-gray-200 dark:border-white/10 px-2 py-1 whitespace-nowrap">{r.username}</td>
-                  <td className="border border-gray-200 dark:border-white/10 px-2 py-1 whitespace-nowrap">{r.name}</td>
-                  <td className="border border-gray-200 dark:border-white/10 px-2 py-1 whitespace-nowrap">
-                    {r.type === 'normal' ? '일반' : '센터'}
-                  </td>
-                  <td className="border border-gray-200 dark:border-white/10 px-2 py-1 whitespace-nowrap">{r.status}</td>
-                  <td className="border border-gray-200 dark:border-white/10 px-2 py-1 text-right whitespace-nowrap">
-                    {r.amount.toLocaleString()}
-                  </td>
-                  <td className="border border-gray-200 dark:border-white/10 px-2 py-1 text-right whitespace-nowrap">
-                    {r.fee.toLocaleString()}
-                  </td>
-                  <td className="border border-gray-200 dark:border-white/10 px-2 py-1 text-right whitespace-nowrap">
-                    {payout.toLocaleString()}
-                  </td>
-                  <td className="border border-gray-200 dark:border-white/10 px-2 py-1 text-right whitespace-nowrap">
-                    {shoppingPoint.toLocaleString()}
-                  </td>
-                  <td className="border border-gray-200 dark:border-white/10 px-2 py-1 whitespace-nowrap">{r.bank_name}</td>
-                  <td className="border border-gray-200 dark:border-white/10 px-2 py-1 whitespace-nowrap">{r.account_holder}</td>
-                  <td className="border border-gray-200 dark:border-white/10 px-2 py-1 whitespace-nowrap">
-                    {r.account_number}
-                  </td>
-                  <td className="border border-gray-200 dark:border-white/10 px-2 py-1">
+                  <td className="border px-2 py-1 whitespace-nowrap">{r.created_at}</td>
+                  <td className="border px-2 py-1 whitespace-nowrap">{r.username}</td>
+                  <td className="border px-2 py-1 whitespace-nowrap">{r.name}</td>
+                  <td className="border px-2 py-1 whitespace-nowrap">{r.type === 'normal' ? '일반' : '센터'}</td>
+                  <td className={`border px-2 py-1 whitespace-nowrap ${getStatusColor(r.status)}`}>{r.status}</td>
+                  <td className="border px-2 py-1 text-right whitespace-nowrap">{r.amount.toLocaleString()}</td>
+                  <td className="border px-2 py-1 text-right whitespace-nowrap">{r.fee.toLocaleString()}</td>
+                  <td className="border px-2 py-1 text-right whitespace-nowrap">{payout.toLocaleString()}</td>
+                  <td className="border px-2 py-1 text-right whitespace-nowrap">{shoppingPoint.toLocaleString()}</td>
+                  <td className="border px-2 py-1 whitespace-nowrap">{r.bank_name}</td>
+                  <td className="border px-2 py-1 whitespace-nowrap">{r.account_holder}</td>
+                  <td className="border px-2 py-1 whitespace-nowrap">{r.account_number}</td>
+                  <td className="border px-2 py-1">
                     <input
                       type="text"
-                      className="w-full border px-1 text-xs sm:text-sm
-                                 dark:bg-gray-900 dark:border-white/10 dark:text-gray-100"
+                      className="w-full border px-1 text-xs sm:text-sm dark:bg-gray-900 dark:border-white/10 dark:text-gray-100"
                       defaultValue={r.memo}
                       onChange={(e) => handleMemoChange(r.id, e.target.value)}
                     />
                   </td>
-                  <td className="border border-gray-200 dark:border-white/10 px-2 py-1">
-                    <button
-                      className="px-2 py-1 bg-blue-500 text-white rounded text-xs sm:text-sm"
-                      onClick={() => saveMemo(r.id, memoEdits[r.id] ?? r.memo)}
-                    >
-                      저장
-                    </button>
+                  <td className="border px-2 py-1">
+                    <button className="px-2 py-1 bg-blue-500 text-white rounded text-xs sm:text-sm" onClick={() => saveMemo(r.id, memoEdits[r.id] ?? r.memo)}>저장</button>
                   </td>
-                  <td className="border border-gray-200 dark:border-white/10 px-2 py-1">
-                    <button
-                      className="px-2 py-1 bg-red-600 text-white rounded text-xs sm:text-sm"
-                      onClick={() => deleteRequest(r.id)}
-                    >
-                      삭제
-                    </button>
+                  <td className="border px-2 py-1">
+                    <button className="px-2 py-1 bg-red-600 text-white rounded text-xs sm:text-sm" onClick={() => deleteRequest(r.id)}>삭제</button>
                   </td>
                 </tr>
               );
             })}
             {loading && (
               <tr>
-                <td
-                  colSpan={16}
-                  className="py-4 text-center text-gray-500 dark:text-gray-400 border border-gray-200 dark:border-white/10"
-                >
-                  로딩 중...
-                </td>
+                <td colSpan={16} className="py-4 text-center text-gray-500 dark:text-gray-400 border">로딩 중...</td>
               </tr>
             )}
           </tbody>
@@ -412,17 +368,40 @@ export default function AdminWithdrawPage() {
         <div ref={bottomRef}></div>
       </div>
 
+      {/* ✅ 페이지네이션 (화살표형) */}
+      <div className="mt-4 flex items-center justify-between flex-wrap gap-3 text-sm text-gray-700 dark:text-gray-300">
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setPage(p => Math.max(1, p - 1))}
+            disabled={page === 1}
+            className={`px-3 py-1 rounded border transition
+              ${page === 1
+                ? 'opacity-40 cursor-not-allowed bg-gray-200 dark:bg-gray-700'
+                : 'bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700'}`}
+          >
+            ← 이전
+          </button>
+          <span>페이지 <span className="font-semibold">{page}</span> / {totalPages}</span>
+          <button
+            onClick={() => setPage(p => p + 1)}
+            disabled={!hasMore}
+            className={`px-3 py-1 rounded border transition
+              ${!hasMore
+                ? 'opacity-40 cursor-not-allowed bg-gray-200 dark:bg-gray-700'
+                : 'bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700'}`}
+          >
+            다음 →
+          </button>
+        </div>
+        <div>총 {requests.length.toLocaleString()}건 로드됨</div>
+      </div>
+
       {/* 완료/취소 처리 후 모달 */}
       {showResultModal && (
         <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
           <div className="bg-white dark:bg-gray-900 dark:text-gray-100 p-6 rounded-lg shadow-xl text-center">
             <p className="text-xl font-semibold mb-4 text-green-700 dark:text-emerald-400">{resultMessage}</p>
-            <button
-              className="px-4 py-2 bg-blue-600 text-white rounded"
-              onClick={() => setShowResultModal(false)}
-            >
-              확인
-            </button>
+            <button className="px-4 py-2 bg-blue-600 text-white rounded" onClick={() => setShowResultModal(false)}>확인</button>
           </div>
         </div>
       )}

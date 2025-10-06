@@ -166,7 +166,6 @@ export default function AdminMembersPage() {
     '새마을금고','수협','신협','SBI저축','씨티은행','케이뱅크','카카오뱅크','토스뱅크'
   ];
 
-  // 정렬 UI 핸들러
   const handleSort = (field) => {
     if (sortField === field) {
       setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
@@ -180,6 +179,8 @@ export default function AdminMembersPage() {
     if (sortField !== field) return '';
     return sortOrder === 'asc' ? ' ▲' : ' ▼';
   };
+
+  const totalPages = Math.ceil(total / limit);
 
   return (
     <div className="p-2 sm:p-6 overflow-auto bg-white dark:bg-[#0f1120] text-black dark:text-gray-100 min-h-screen transition-colors">
@@ -258,7 +259,6 @@ export default function AdminMembersPage() {
           <table className="min-w-[900px] w-full border-collapse text-xs sm:text-sm mb-4">
             <thead className="bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200">
               <tr>
-                {/* 정렬 가능 컬럼 */}
                 <th
                   className="border dark:border-gray-700 p-1 text-center whitespace-nowrap cursor-pointer select-none"
                   onClick={() => handleSort('created_at')}
@@ -334,17 +334,45 @@ export default function AdminMembersPage() {
         </div>
       )}
 
-      {/* 페이지네이션 */}
-      <div className="space-x-1 mb-4">
-        {Array.from({ length: Math.ceil(total / limit) }, (_, i) => (
+      {/* ✅ 페이지네이션 (화살표형) */}
+      <div className="mt-4 flex items-center justify-between flex-wrap gap-3 text-sm text-gray-700 dark:text-gray-300">
+        <div className="flex items-center gap-2">
           <button
-            key={i}
-            className={`px-2 py-1 border dark:border-gray-700 rounded ${page === i + 1 ? 'bg-blue-600 text-white dark:bg-blue-500' : 'bg-transparent'}`}
-            onClick={() => setPage(i + 1)}
+            onClick={() => setPage(p => Math.max(1, p - 1))}
+            disabled={page === 1}
+            className={`px-3 py-1 rounded border transition
+              ${page === 1
+                ? 'opacity-40 cursor-not-allowed bg-gray-200 dark:bg-gray-700'
+                : 'bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700'}`}
           >
-            {i + 1}
+            ← 이전
           </button>
-        ))}
+
+          <span>
+            페이지 <span className="font-semibold">{page}</span> / {totalPages}
+          </span>
+
+          <button
+            onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+            disabled={page >= totalPages}
+            className={`px-3 py-1 rounded border transition
+              ${page >= totalPages
+                ? 'opacity-40 cursor-not-allowed bg-gray-200 dark:bg-gray-700'
+                : 'bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700'}`}
+          >
+            다음 →
+          </button>
+        </div>
+
+        <div>
+          {total > 0 ? (
+            <>
+              {((page - 1) * limit) + 1} - {Math.min(page * limit, total)} / 총 {total.toLocaleString()}건
+            </>
+          ) : (
+            '데이터 없음'
+          )}
+        </div>
       </div>
 
       {/* ✅ 수정 모달 */}

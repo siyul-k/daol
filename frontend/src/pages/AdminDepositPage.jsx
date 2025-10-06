@@ -213,7 +213,6 @@ export default function AdminDepositPage() {
                         onChange={() => toggleSelect(r.id, r.status)}
                       />
                     </td>
-                    {/* ✅ 시간 그대로 출력 */}
                     <td className="border px-2 py-1">{r.created_at || '-'}</td>
                     <td className="border px-2 py-1">
                       <button onClick={() => handleDelete(r.id)}>
@@ -223,7 +222,6 @@ export default function AdminDepositPage() {
                         />
                       </button>
                     </td>
-                    {/* ✅ 금액: 문자열/숫자 모두 1,000단위 콤마 */}
                     <td className="border px-2 py-1 text-right">{formatKRW(r.amount)}</td>
                     <td className="border px-2 py-1">{mapStatus(r.status)}</td>
                     <td className="border px-2 py-1">{r.username}</td>
@@ -239,19 +237,45 @@ export default function AdminDepositPage() {
         )}
       </div>
 
-      {/* 페이지네이션 */}
-      <div className="flex flex-wrap gap-2 my-4">
-        {Array.from({ length: totalPages }, (_, i) => (
+      {/* ✅ 페이지네이션 (화살표형) */}
+      <div className="mt-4 flex items-center justify-between flex-wrap gap-3 text-sm text-gray-700 dark:text-gray-300">
+        <div className="flex items-center gap-2">
           <button
-            key={i}
-            className={`px-2 py-1 border rounded ${
-              page === i + 1 ? 'bg-blue-600 text-white' : 'border-gray-300 dark:border-gray-600'
-            }`}
-            onClick={() => setPage(i + 1)}
+            onClick={() => setPage(p => Math.max(1, p - 1))}
+            disabled={page === 1}
+            className={`px-3 py-1 rounded border transition
+              ${page === 1
+                ? 'opacity-40 cursor-not-allowed bg-gray-200 dark:bg-gray-700'
+                : 'bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700'}`}
           >
-            {i + 1}
+            ← 이전
           </button>
-        ))}
+
+          <span>
+            페이지 <span className="font-semibold">{page}</span> / {totalPages}
+          </span>
+
+          <button
+            onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+            disabled={page >= totalPages}
+            className={`px-3 py-1 rounded border transition
+              ${page >= totalPages
+                ? 'opacity-40 cursor-not-allowed bg-gray-200 dark:bg-gray-700'
+                : 'bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700'}`}
+          >
+            다음 →
+          </button>
+        </div>
+
+        <div>
+          {total > 0 ? (
+            <>
+              {((page - 1) * limit) + 1} - {Math.min(page * limit, total)} / 총 {total.toLocaleString()}건
+            </>
+          ) : (
+            '데이터 없음'
+          )}
+        </div>
       </div>
     </div>
   );

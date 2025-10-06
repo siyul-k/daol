@@ -171,21 +171,47 @@ export default function AdminRewardsPage() {
         )}
       </div>
 
-      {/* 페이지네이션 */}
-      <div className="mt-4 flex flex-wrap gap-2">
-        {totalPages > 1 &&
-          Array.from({ length: totalPages }, (_, i) => (
-            <button
-              key={i}
-              onClick={() => setPage(i + 1)}
-              className={`px-3 py-1 rounded border text-xs sm:text-sm 
-                         ${page === i + 1 
-                           ? 'bg-blue-600 text-white' 
-                           : 'bg-white dark:bg-gray-800 dark:text-gray-100 dark:border-white/10'}`}
-            >
-              {i + 1}
-            </button>
-          ))}
+      {/* ✅ 페이지네이션 (화살표 전환) */}
+      <div className="mt-4 flex items-center justify-between flex-wrap gap-3 text-sm text-gray-700 dark:text-gray-300">
+        {/* 왼쪽: 이전 / 다음 버튼 */}
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setPage(p => Math.max(1, p - 1))}
+            disabled={page === 1}
+            className={`px-3 py-1 rounded border transition
+              ${page === 1
+                ? 'opacity-40 cursor-not-allowed bg-gray-200 dark:bg-gray-700'
+                : 'bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700'}`}
+          >
+            ← 이전
+          </button>
+
+          <span>
+            페이지 <span className="font-semibold">{page}</span> / {totalPages}
+          </span>
+
+          <button
+            onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+            disabled={page >= totalPages}
+            className={`px-3 py-1 rounded border transition
+              ${page >= totalPages
+                ? 'opacity-40 cursor-not-allowed bg-gray-200 dark:bg-gray-700'
+                : 'bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700'}`}
+          >
+            다음 →
+          </button>
+        </div>
+
+        {/* 오른쪽: 표시 범위 */}
+        <div>
+          {total > 0 ? (
+            <>
+              {((page - 1) * limit) + 1} - {Math.min(page * limit, total)} / 총 {total.toLocaleString()}건
+            </>
+          ) : (
+            '데이터 없음'
+          )}
+        </div>
       </div>
     </div>
   );
