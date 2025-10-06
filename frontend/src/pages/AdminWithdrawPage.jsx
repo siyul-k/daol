@@ -1,5 +1,5 @@
 // ✅ 파일 경로: frontend/src/pages/AdminWithdrawPage.jsx
-import React, { useEffect, useState, useRef, useCallback } from 'react';
+import React, { useEffect, useState } from 'react';
 import axios from '../axiosConfig';
 import * as XLSX from 'xlsx';
 
@@ -14,101 +14,78 @@ export default function AdminWithdrawPage() {
     name: '',
     startDate: '',
     endDate: '',
-    status: ''
+    status: '',
   });
   const [enabled, setEnabled] = useState({
     username: false,
     name: false,
     date: false,
-    status: false
+    status: false,
   });
   const [statusMsg, setStatusMsg] = useState('');
   const [memoEdits, setMemoEdits] = useState({});
   const [sortField, setSortField] = useState('created_at');
   const [sortOrder, setSortOrder] = useState('desc');
   const [loading, setLoading] = useState(false);
-  const [hasMore, setHasMore] = useState(true);
-  const [lastCursor, setLastCursor] = useState(null);
-
-  const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(25);
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
 
   const [showResultModal, setShowResultModal] = useState(false);
   const [resultMessage, setResultMessage] = useState('');
 
-  const observer = useRef();
-  const bottomRef = useCallback(
-    (node) => {
-      if (loading) return;
-      if (observer.current) observer.current.disconnect();
-      observer.current = new window.IntersectionObserver((entries) => {
-        if (entries[0].isIntersecting && hasMore) {
-          fetchData(true);
-        }
-      });
-      if (node) observer.current.observe(node);
-    },
-    [loading, hasMore]
-  );
-
-  useEffect(() => {
-    resetAndFetch();
-    // eslint-disable-next-line
-  }, [sortField, sortOrder, limit, page]);
-
-  const buildParams = () => {
-    const params = {};
-    if (enabled.username && filters.username) params.username = filters.username;
-    if (enabled.name && filters.name) params.name = filters.name;
-    if (enabled.date && filters.startDate && filters.endDate) {
-      params.startDate = filters.startDate;
-      params.endDate = filters.endDate;
-    }
-    if (enabled.status && filters.status) params.status = filters.status;
-    params.sort = sortField;
-    params.order = sortOrder;
-    params.limit = limit;
-    params.page = page;
-    return params;
+  // ✅ 상태 색상 지정
+  const getStatusColor = (status) => {
+    if (status === '완료') return 'text-green-600 dark:text-green-400 font-semibold';
+    if (status === '취소') return 'text-red-600 dark:text-red-400 font-semibold';
+    return 'text-gray-800 dark:text-gray-200';
   };
 
-  const resetAndFetch = () => {
-    setRequests([]);
-    setLastCursor(null);
-    setHasMore(true);
-    fetchData(false);
-  };
+  const totalPages = Math.max(1, Math.ceil(total / limit));
 
-  const fetchData = async (isScroll = false) => {
-    if (loading || (!isScroll && !hasMore)) return;
+  // ✅ 데이터 불러오기
+  const fetchData = async (_page = page, _limit = limit) => {
     setLoading(true);
     try {
-      const params = buildParams();
-      if (isScroll && lastCursor) params.cursor = lastCursor;
+      const params = {
+        page: _page,
+        limit: _limit,
+        sort: sortField,
+        order: sortOrder,
+      };
+      if (enabled.username && filters.username) params.username = filters.username;
+      if (enabled.name && filters.name) params.name = filters.name;
+      if (enabled.date) {
+        if (filters.startDate) params.startDate = filters.startDate;
+        if (filters.endDate) params.endDate = filters.endDate;
+      }
+      if (enabled.status && filters.status) params.status = filters.status;
 
       const res = await axios.get('/api/ad-da/withdraws', { params });
-      const newItems = res.data;
-
-      setRequests((prev) => {
-        const ids = new Set(prev.map((p) => p.id));
-        const uniqueItems = newItems.filter((item) => !ids.has(item.id));
-        return [...prev, ...uniqueItems];
-      });
-
-      setSelected([]);
-      if (newItems.length < limit) setHasMore(false);
-      if (newItems.length > 0) {
-        setLastCursor(newItems[newItems.length - 1].created_at);
+      if (res.data && Array.isArray(res.data.data)) {
+        setRequests(res.data.data);
+        setTotal(res.data.total || 0);
+      } else {
+        setRequests([]);
+        setTotal(0);
       }
     } catch (err) {
       console.error('데이터 로드 실패:', err);
+      setRequests([]);
+      setTotal(0);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
+
+  useEffect(() => {
+    fetchData();
+    // eslint-disable-next-line
+  }, [page, limit, sortField, sortOrder]);
 
   const handleFilter = () => {
     setPage(1);
-    resetAndFetch();
+    fetchData(1, limit);
   };
 
   const toggleSelect = (id) => {
@@ -129,7 +106,7 @@ export default function AdminWithdrawPage() {
       await axios.post(`/api/ad-da/withdraws/${action}`, { ids: selected });
       setResultMessage(action === 'complete' ? '완료 처리되었습니다.' : '취소 처리되었습니다.');
       setShowResultModal(true);
-      resetAndFetch();
+      fetchData();
     } catch (err) {
       console.error(`${action} 처리 실패`, err);
       alert('처리 중 오류가 발생했습니다.');
@@ -139,7 +116,7 @@ export default function AdminWithdrawPage() {
   const saveMemo = async (id, memo) => {
     await axios.post('/api/ad-da/withdraws/update-memo', { id, memo });
     setStatusMsg('비고가 변경되었습니다.');
-    resetAndFetch();
+    fetchData();
   };
 
   const handleMemoChange = (id, value) => {
@@ -149,7 +126,7 @@ export default function AdminWithdrawPage() {
   const deleteRequest = async (id) => {
     if (!window.confirm('정말 삭제하시겠습니까?')) return;
     await axios.delete(`/api/ad-da/withdraws/${id}`);
-    resetAndFetch();
+    fetchData();
   };
 
   const exportExcel = () => {
@@ -167,7 +144,7 @@ export default function AdminWithdrawPage() {
         은행: r.bank_name,
         예금주: r.account_holder,
         계좌번호: r.account_number,
-        비고: r.memo
+        비고: r.memo,
       }))
     );
     const wb = XLSX.utils.book_new();
@@ -189,22 +166,13 @@ export default function AdminWithdrawPage() {
     return sortOrder === 'asc' ? ' ▲' : ' ▼';
   };
 
-  // ✅ 상태별 색상 지정
-  const getStatusColor = (status) => {
-    if (status === '완료') return 'text-green-600 dark:text-green-400 font-semibold';
-    if (status === '취소') return 'text-red-600 dark:text-red-400 font-semibold';
-    return 'text-gray-800 dark:text-gray-200';
-  };
-
-  const totalPages = Math.max(1, Math.ceil(requests.length / limit));
-
   return (
     <div className="p-2 sm:p-6 w-full">
       <h2 className="text-base sm:text-2xl font-bold mb-3 sm:mb-4">출금 신청 목록</h2>
 
       {statusMsg && <div className="mb-2 text-green-600 dark:text-emerald-400">{statusMsg}</div>}
 
-      {/* 필터+버튼+item per */}
+      {/* 필터 및 버튼 */}
       <div className="flex flex-wrap gap-2 items-center mb-3 sm:mb-4">
         {['username', 'name'].map((key) => (
           <div key={key} className="flex items-center gap-1 text-xs sm:text-sm">
@@ -262,146 +230,224 @@ export default function AdminWithdrawPage() {
             <option value="취소">취소</option>
           </select>
         </div>
+
+        {/* limit 선택 */}
         <select
           value={limit}
-          onChange={(e) => setLimit(Number(e.target.value))}
+          onChange={(e) => {
+            setLimit(Number(e.target.value));
+            setPage(1);
+          }}
           className="border rounded px-2 py-1 text-xs sm:text-sm
                      dark:bg-gray-900 dark:border-white/10 dark:text-gray-100"
         >
           {PAGE_SIZE_OPTIONS.map((n, i) => (
-            <option key={n} value={n}>{PAGE_LABELS[i]}</option>
+            <option key={n} value={n}>
+              {PAGE_LABELS[i]}
+            </option>
           ))}
         </select>
+
         <div className="flex gap-2 mt-2 sm:mt-0 w-full sm:w-auto">
-          <button className="bg-blue-600 text-white px-3 py-1 rounded text-xs sm:text-sm" onClick={handleFilter}>검색</button>
-          <button className="bg-green-600 text-white px-3 py-1 rounded text-xs sm:text-sm" onClick={exportExcel}>내보내기</button>
-          <button className="bg-teal-600 text-white px-3 py-1 rounded text-xs sm:text-sm" onClick={() => changeStatus('complete')}>완료처리</button>
-          <button className="bg-gray-600 text-white px-3 py-1 rounded text-xs sm:text-sm" onClick={() => changeStatus('cancel')}>취소처리</button>
+          <button
+            className="bg-blue-600 text-white px-3 py-1 rounded text-xs sm:text-sm"
+            onClick={handleFilter}
+          >
+            검색
+          </button>
+          <button
+            className="bg-green-600 text-white px-3 py-1 rounded text-xs sm:text-sm"
+            onClick={exportExcel}
+          >
+            내보내기
+          </button>
+          <button
+            className="bg-teal-600 text-white px-3 py-1 rounded text-xs sm:text-sm"
+            onClick={() => changeStatus('complete')}
+          >
+            완료처리
+          </button>
+          <button
+            className="bg-gray-600 text-white px-3 py-1 rounded text-xs sm:text-sm"
+            onClick={() => changeStatus('cancel')}
+          >
+            취소처리
+          </button>
         </div>
       </div>
 
       {/* 테이블 */}
       <div className="w-full overflow-x-auto">
-        <table className="min-w-[1400px] w-full text-xs sm:text-sm text-center border border-gray-200 dark:border-white/10">
-          <thead className="bg-gray-100 dark:bg-gray-700 dark:text-white">
-            <tr>
-              <th className="border px-2 py-1">
-                <input
-                  type="checkbox"
-                  onChange={toggleSelectAll}
-                  checked={requests.length > 0 && requests.every((r) => selected.includes(r.id))}
-                />
-              </th>
-              {[
-                ['created_at', '등록일'],
-                ['username', '아이디'],
-                ['name', '이름'],
-                ['type', '종류'],
-                ['status', '상태'],
-                ['amount', '신청금액'],
-                ['fee', '수수료'],
-                ['payout', '출금액'],
-                ['shopping_point', '쇼핑포인트'],
-                ['bank_name', '은행'],
-                ['account_holder', '예금주'],
-                ['account_number', '계좌번호']
-              ].map(([field, label]) => (
-                <th key={field} onClick={() => handleSort(field)} className="cursor-pointer border px-2 py-1 whitespace-nowrap">
-                  {label}{renderSortSymbol(field)}
+        {loading ? (
+          <p className="text-center py-6 text-gray-500 dark:text-gray-400">로딩 중...</p>
+        ) : (
+          <table className="min-w-[1400px] w-full text-xs sm:text-sm text-center border border-gray-200 dark:border-white/10">
+            <thead className="bg-gray-100 dark:bg-gray-700 dark:text-white">
+              <tr>
+                <th className="border px-2 py-1">
+                  <input
+                    type="checkbox"
+                    onChange={toggleSelectAll}
+                    checked={requests.length > 0 && requests.every((r) => selected.includes(r.id))}
+                  />
                 </th>
-              ))}
-              <th className="border px-2 py-1">비고</th>
-              <th className="border px-2 py-1">저장</th>
-              <th className="border px-2 py-1">삭제</th>
-            </tr>
-          </thead>
-          <tbody className="bg-white dark:bg-gray-800 dark:text-gray-100">
-            {requests.map((r) => {
-              const payout = r.payout ?? r.amount - r.fee;
-              const shoppingPoint = r.shopping_point ?? 0;
-              return (
-                <tr key={r.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/60">
-                  <td className="border px-2 py-1">
-                    <input
-                      type="checkbox"
-                      checked={selected.includes(r.id)}
-                      onChange={() => toggleSelect(r.id)}
-                      disabled={r.status !== '요청'}
-                    />
-                  </td>
-                  <td className="border px-2 py-1 whitespace-nowrap">{r.created_at}</td>
-                  <td className="border px-2 py-1 whitespace-nowrap">{r.username}</td>
-                  <td className="border px-2 py-1 whitespace-nowrap">{r.name}</td>
-                  <td className="border px-2 py-1 whitespace-nowrap">{r.type === 'normal' ? '일반' : '센터'}</td>
-                  <td className={`border px-2 py-1 whitespace-nowrap ${getStatusColor(r.status)}`}>{r.status}</td>
-                  <td className="border px-2 py-1 text-right whitespace-nowrap">{r.amount.toLocaleString()}</td>
-                  <td className="border px-2 py-1 text-right whitespace-nowrap">{r.fee.toLocaleString()}</td>
-                  <td className="border px-2 py-1 text-right whitespace-nowrap">{payout.toLocaleString()}</td>
-                  <td className="border px-2 py-1 text-right whitespace-nowrap">{shoppingPoint.toLocaleString()}</td>
-                  <td className="border px-2 py-1 whitespace-nowrap">{r.bank_name}</td>
-                  <td className="border px-2 py-1 whitespace-nowrap">{r.account_holder}</td>
-                  <td className="border px-2 py-1 whitespace-nowrap">{r.account_number}</td>
-                  <td className="border px-2 py-1">
-                    <input
-                      type="text"
-                      className="w-full border px-1 text-xs sm:text-sm dark:bg-gray-900 dark:border-white/10 dark:text-gray-100"
-                      defaultValue={r.memo}
-                      onChange={(e) => handleMemoChange(r.id, e.target.value)}
-                    />
-                  </td>
-                  <td className="border px-2 py-1">
-                    <button className="px-2 py-1 bg-blue-500 text-white rounded text-xs sm:text-sm" onClick={() => saveMemo(r.id, memoEdits[r.id] ?? r.memo)}>저장</button>
-                  </td>
-                  <td className="border px-2 py-1">
-                    <button className="px-2 py-1 bg-red-600 text-white rounded text-xs sm:text-sm" onClick={() => deleteRequest(r.id)}>삭제</button>
+                {[
+                  ['created_at', '등록일'],
+                  ['username', '아이디'],
+                  ['name', '이름'],
+                  ['type', '종류'],
+                  ['status', '상태'],
+                  ['amount', '신청금액'],
+                  ['fee', '수수료'],
+                  ['payout', '출금액'],
+                  ['shopping_point', '쇼핑포인트'],
+                  ['bank_name', '은행'],
+                  ['account_holder', '예금주'],
+                  ['account_number', '계좌번호'],
+                ].map(([field, label]) => (
+                  <th
+                    key={field}
+                    onClick={() => handleSort(field)}
+                    className="cursor-pointer border px-2 py-1 whitespace-nowrap"
+                  >
+                    {label}
+                    {renderSortSymbol(field)}
+                  </th>
+                ))}
+                <th className="border px-2 py-1">비고</th>
+                <th className="border px-2 py-1">저장</th>
+                <th className="border px-2 py-1">삭제</th>
+              </tr>
+            </thead>
+            <tbody className="bg-white dark:bg-gray-800 dark:text-gray-100">
+              {requests.length === 0 ? (
+                <tr>
+                  <td colSpan={16} className="text-center py-6 text-gray-500 dark:text-gray-400">
+                    데이터가 없습니다.
                   </td>
                 </tr>
-              );
-            })}
-            {loading && (
-              <tr>
-                <td colSpan={16} className="py-4 text-center text-gray-500 dark:text-gray-400 border">로딩 중...</td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-        <div ref={bottomRef}></div>
+              ) : (
+                requests.map((r) => {
+                  const payout = r.payout ?? r.amount - r.fee;
+                  const shoppingPoint = r.shopping_point ?? 0;
+                  return (
+                    <tr key={r.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/60">
+                      <td className="border px-2 py-1">
+                        <input
+                          type="checkbox"
+                          checked={selected.includes(r.id)}
+                          onChange={() => toggleSelect(r.id)}
+                          disabled={r.status !== '요청'}
+                        />
+                      </td>
+                      <td className="border px-2 py-1 whitespace-nowrap">{r.created_at}</td>
+                      <td className="border px-2 py-1 whitespace-nowrap">{r.username}</td>
+                      <td className="border px-2 py-1 whitespace-nowrap">{r.name}</td>
+                      <td className="border px-2 py-1 whitespace-nowrap">
+                        {r.type === 'normal' ? '일반' : '센터'}
+                      </td>
+                      <td className={`border px-2 py-1 whitespace-nowrap ${getStatusColor(r.status)}`}>
+                        {r.status}
+                      </td>
+                      <td className="border px-2 py-1 text-right whitespace-nowrap">
+                        {r.amount.toLocaleString()}
+                      </td>
+                      <td className="border px-2 py-1 text-right whitespace-nowrap">
+                        {r.fee.toLocaleString()}
+                      </td>
+                      <td className="border px-2 py-1 text-right whitespace-nowrap">
+                        {payout.toLocaleString()}
+                      </td>
+                      <td className="border px-2 py-1 text-right whitespace-nowrap">
+                        {shoppingPoint.toLocaleString()}
+                      </td>
+                      <td className="border px-2 py-1 whitespace-nowrap">{r.bank_name}</td>
+                      <td className="border px-2 py-1 whitespace-nowrap">{r.account_holder}</td>
+                      <td className="border px-2 py-1 whitespace-nowrap">{r.account_number}</td>
+                      <td className="border px-2 py-1">
+                        <input
+                          type="text"
+                          className="w-full border px-1 text-xs sm:text-sm dark:bg-gray-900 dark:border-white/10 dark:text-gray-100"
+                          defaultValue={r.memo}
+                          onChange={(e) => handleMemoChange(r.id, e.target.value)}
+                        />
+                      </td>
+                      <td className="border px-2 py-1">
+                        <button
+                          className="px-2 py-1 bg-blue-500 text-white rounded text-xs sm:text-sm"
+                          onClick={() => saveMemo(r.id, memoEdits[r.id] ?? r.memo)}
+                        >
+                          저장
+                        </button>
+                      </td>
+                      <td className="border px-2 py-1">
+                        <button
+                          className="px-2 py-1 bg-red-600 text-white rounded text-xs sm:text-sm"
+                          onClick={() => deleteRequest(r.id)}
+                        >
+                          삭제
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        )}
       </div>
 
       {/* ✅ 페이지네이션 (화살표형) */}
       <div className="mt-4 flex items-center justify-between flex-wrap gap-3 text-sm text-gray-700 dark:text-gray-300">
         <div className="flex items-center gap-2">
           <button
-            onClick={() => setPage(p => Math.max(1, p - 1))}
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
             disabled={page === 1}
-            className={`px-3 py-1 rounded border transition
-              ${page === 1
+            className={`px-3 py-1 rounded border transition ${
+              page === 1
                 ? 'opacity-40 cursor-not-allowed bg-gray-200 dark:bg-gray-700'
-                : 'bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700'}`}
+                : 'bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700'
+            }`}
           >
             ← 이전
           </button>
-          <span>페이지 <span className="font-semibold">{page}</span> / {totalPages}</span>
+          <span>
+            페이지 <span className="font-semibold">{page}</span> / {totalPages}
+          </span>
           <button
-            onClick={() => setPage(p => p + 1)}
-            disabled={!hasMore}
-            className={`px-3 py-1 rounded border transition
-              ${!hasMore
+            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+            disabled={page >= totalPages}
+            className={`px-3 py-1 rounded border transition ${
+              page >= totalPages
                 ? 'opacity-40 cursor-not-allowed bg-gray-200 dark:bg-gray-700'
-                : 'bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700'}`}
+                : 'bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700'
+            }`}
           >
             다음 →
           </button>
         </div>
-        <div>총 {requests.length.toLocaleString()}건 로드됨</div>
+        <div>
+          {total > 0 ? (
+            <>
+              {((page - 1) * limit) + 1} - {Math.min(page * limit, total)} / 총 {total.toLocaleString()}건
+            </>
+          ) : (
+            '데이터 없음'
+          )}
+        </div>
       </div>
 
-      {/* 완료/취소 처리 후 모달 */}
+      {/* 완료/취소 모달 */}
       {showResultModal && (
         <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
           <div className="bg-white dark:bg-gray-900 dark:text-gray-100 p-6 rounded-lg shadow-xl text-center">
             <p className="text-xl font-semibold mb-4 text-green-700 dark:text-emerald-400">{resultMessage}</p>
-            <button className="px-4 py-2 bg-blue-600 text-white rounded" onClick={() => setShowResultModal(false)}>확인</button>
+            <button
+              className="px-4 py-2 bg-blue-600 text-white rounded"
+              onClick={() => setShowResultModal(false)}
+            >
+              확인
+            </button>
           </div>
         </div>
       )}

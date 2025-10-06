@@ -13,67 +13,86 @@ const getSetting = async (key) => {
   return rows[0]?.value || null;
 };
 
-// 출금 목록 조회 (무한스크롤 + 필터 + limit)
+// ✅ 출금 목록 조회 (page / limit 기반)
 router.get('/', async (req, res) => {
-  const {
-    username, name, status, startDate, endDate, cursor,
-    limit = 20 // default 20, 프론트에서 전달받은 값 사용
-  } = req.query;
-
-  const conditions = [];
-  const values = [];
-
-  if (username) {
-    conditions.push('w.username LIKE ?');
-    values.push(`%${username}%`);
-  }
-  if (name) {
-    conditions.push('m.name LIKE ?');
-    values.push(`%${name}%`);
-  }
-  if (status) {
-    conditions.push('w.status = ?');
-    values.push(status);
-  }
-  if (startDate && endDate) {
-    conditions.push('DATE(w.created_at) BETWEEN ? AND ?');
-    values.push(startDate, endDate);
-  }
-  if (cursor) {
-    conditions.push('w.created_at < ?');
-    values.push(cursor);
-  }
-
-  const whereClause = conditions.length ? 'WHERE ' + conditions.join(' AND ') : '';
-
-  // limit은 항상 양의 정수로 안전하게 처리
-  let itemLimit = parseInt(limit, 10);
-  if (isNaN(itemLimit) || itemLimit <= 0) itemLimit = 20;
-  if (itemLimit > 10000) itemLimit = 10000;
-
-  const sql = `
-    SELECT w.*, m.name,
-           DATE_FORMAT(CONVERT_TZ(w.created_at, '+00:00', '+09:00'), '%Y-%m-%d %H:%i:%s') AS created_at
-    FROM withdraw_requests w
-    LEFT JOIN members m ON w.username = m.username
-    ${whereClause}
-    ORDER BY w.created_at DESC
-    LIMIT ?
-  `;
-  values.push(itemLimit);
-
   try {
+    const {
+      username,
+      name,
+      status,
+      startDate,
+      endDate,
+      page = 1,
+      limit = 25,
+      sort = 'w.created_at',
+      order = 'DESC'
+    } = req.query;
+
+    const conditions = [];
+    const values = [];
+
+    if (username) {
+      conditions.push('w.username LIKE ?');
+      values.push(`%${username}%`);
+    }
+    if (name) {
+      conditions.push('m.name LIKE ?');
+      values.push(`%${name}%`);
+    }
+    if (status) {
+      conditions.push('w.status = ?');
+      values.push(status);
+    }
+    if (startDate) {
+      conditions.push('DATE(CONVERT_TZ(w.created_at,"+00:00","+09:00")) >= ?');
+      values.push(startDate);
+    }
+    if (endDate) {
+      conditions.push('DATE(CONVERT_TZ(w.created_at,"+00:00","+09:00")) <= ?');
+      values.push(endDate);
+    }
+
+    const whereClause = conditions.length ? 'WHERE ' + conditions.join(' AND ') : '';
+
+    // ✅ LIMIT / OFFSET
+    const offset = (page - 1) * limit;
+
+    const sql = `
+      SELECT w.*, m.name,
+             DATE_FORMAT(CONVERT_TZ(w.created_at, '+00:00', '+09:00'), '%Y-%m-%d %H:%i:%s') AS created_at
+      FROM withdraw_requests w
+      LEFT JOIN members m ON w.username = m.username
+      ${whereClause}
+      ORDER BY ${sort} ${order}
+      LIMIT ? OFFSET ?
+    `;
+    values.push(Number(limit), Number(offset));
+
+    const countSql = `
+      SELECT COUNT(*) AS total
+      FROM withdraw_requests w
+      LEFT JOIN members m ON w.username = m.username
+      ${whereClause}
+    `;
+
+    const [[countRow]] = await pool.query(countSql, values.slice(0, -2)); // count는 limit/offset 제외
     const [rows] = await pool.query(sql, values);
-    res.json(rows);
+
+    res.json({
+      data: rows,
+      total: countRow?.total || 0
+    });
   } catch (err) {
+    console.error('❌ 출금 목록 조회 실패:', err);
     res.status(500).json({ message: '출금 목록 조회 실패' });
   }
 });
 
-// 출금 완료 처리 (쇼핑포인트 적립 + 로그)
+// ✅ 출금 완료 처리
 router.post('/complete', async (req, res) => {
   const { ids } = req.body;
-  if (!Array.isArray(ids) || !ids.length) return res.status(400).json({ message: 'ID 배열이 필요합니다.' });
+  if (!Array.isArray(ids) || !ids.length)
+    return res.status(400).json({ message: 'ID 배열이 필요합니다.' });
 
   try {
     const feePercent = parseFloat(await getSetting('withdraw_fee_percent') || '0');
@@ -83,7 +102,6 @@ router.post('/complete', async (req, res) => {
       const [[row]] = await pool.query('SELECT * FROM withdraw_requests WHERE id = ?', [id]);
       if (!row || row.status !== '요청') continue;
 
-      // member_id 없는 경우 자동 채우기 (username → member_id)
       let member_id = row.member_id;
       if (!member_id && row.username) {
         const [[userRow]] = await pool.query('SELECT id FROM members WHERE username = ?', [row.username]);
@@ -99,7 +117,7 @@ router.post('/complete', async (req, res) => {
       const feeAmount = row.amount - afterFee;
 
       await pool.query(
-        'UPDATE withdraw_requests SET status = ?, fee = ?, payout = ?, shopping_point = ? WHERE id = ?',
+        'UPDATE withdraw_requests SET status=?, fee=?, payout=?, shopping_point=? WHERE id=?',
         ['완료', feeAmount, payout, shoppingPoint, id]
       );
 
@@ -116,7 +134,6 @@ router.post('/complete', async (req, res) => {
         );
       }
     }
-
     res.json({ success: true });
   } catch (err) {
     console.error('❌ 출금 완료 처리 오류:', err);
@@ -124,24 +141,25 @@ router.post('/complete', async (req, res) => {
   }
 });
 
-// 출금 취소 처리 (포인트 복구)
+// ✅ 출금 취소 처리
 router.post('/cancel', async (req, res) => {
   const { ids } = req.body;
-  if (!Array.isArray(ids) || !ids.length) return res.status(400).json({ message: 'ID 배열이 필요합니다.' });
+  if (!Array.isArray(ids) || !ids.length)
+    return res.status(400).json({ message: 'ID 배열이 필요합니다.' });
 
   try {
     for (const id of ids) {
       const [[row]] = await pool.query('SELECT * FROM withdraw_requests WHERE id = ?', [id]);
       if (!row || row.status !== '요청') continue;
 
-      await pool.query('UPDATE withdraw_requests SET status = ? WHERE id = ?', ['취소', id]);
+      await pool.query('UPDATE withdraw_requests SET status=? WHERE id=?', ['취소', id]);
 
       let member_id = row.member_id;
       if (!member_id && row.username) {
         const [[userRow]] = await pool.query('SELECT id FROM members WHERE username = ?', [row.username]);
         member_id = userRow?.id || null;
         if (member_id) {
-          await pool.query('UPDATE withdraw_requests SET member_id = ? WHERE id = ?', [member_id, id]);
+          await pool.query('UPDATE withdraw_requests SET member_id=? WHERE id=?', [member_id, id]);
         }
       }
 
@@ -159,7 +177,7 @@ router.post('/cancel', async (req, res) => {
   }
 });
 
-// 출금 삭제 처리 (포인트 복구 + 쇼핑포인트 회수 + 로그)
+// ✅ 출금 삭제 처리
 router.delete('/:id', async (req, res) => {
   const { id } = req.params;
   try {
@@ -171,7 +189,7 @@ router.delete('/:id', async (req, res) => {
       const [[userRow]] = await pool.query('SELECT id FROM members WHERE username = ?', [row.username]);
       member_id = userRow?.id || null;
       if (member_id) {
-        await pool.query('UPDATE withdraw_requests SET member_id = ? WHERE id = ?', [member_id, id]);
+        await pool.query('UPDATE withdraw_requests SET member_id=? WHERE id=?', [member_id, id]);
       }
     }
 
@@ -197,7 +215,7 @@ router.delete('/:id', async (req, res) => {
       }
     }
 
-    await pool.query('DELETE FROM withdraw_requests WHERE id = ?', [id]);
+    await pool.query('DELETE FROM withdraw_requests WHERE id=?', [id]);
     res.json({ success: true });
   } catch (err) {
     console.error('❌ 출금 삭제 실패:', err);
@@ -205,68 +223,23 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
-// 출금 비고 수정
+// ✅ 비고 수정
 router.post('/update-memo', async (req, res) => {
   const { id, memo } = req.body;
   if (!id) return res.status(400).json({ message: 'ID가 필요합니다.' });
-
   try {
-    await pool.query('UPDATE withdraw_requests SET memo = ? WHERE id = ?', [memo, id]);
+    await pool.query('UPDATE withdraw_requests SET memo=? WHERE id=?', [memo, id]);
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ message: '메모 저장 실패' });
   }
 });
 
-// 출금 통계 (신청금액 기준)
-router.get('/stats', async (req, res) => {
-  const { username, name, status, startDate, endDate } = req.query;
-  const conditions = [];
-  const values = [];
-
-  if (username) {
-    conditions.push('w.username LIKE ?');
-    values.push(`%${username}%`);
-  }
-  if (name) {
-    conditions.push('m.name LIKE ?');
-    values.push(`%${name}%`);
-  }
-  if (status) {
-    conditions.push('w.status = ?');
-    values.push(status);
-  }
-  if (startDate && endDate) {
-    conditions.push('DATE(w.created_at) BETWEEN ? AND ?');
-    values.push(startDate, endDate);
-  }
-
-  const whereClause = conditions.length ? 'WHERE ' + conditions.join(' AND ') : '';
-
-  const sql = `
-    SELECT
-      IFNULL(SUM(CASE WHEN w.status = '완료' THEN w.amount ELSE 0 END), 0) AS total,
-      IFNULL(SUM(CASE WHEN w.status = '완료' AND DATE(w.created_at) = CURDATE() THEN w.amount ELSE 0 END), 0) AS today,
-      IFNULL(SUM(CASE WHEN w.status = '완료' AND MONTH(w.created_at) = MONTH(CURDATE()) THEN w.amount ELSE 0 END), 0) AS thisMonth,
-      IFNULL(SUM(CASE WHEN w.status = '완료' AND MONTH(w.created_at) = MONTH(CURDATE() - INTERVAL 1 MONTH) THEN w.amount ELSE 0 END), 0) AS lastMonth
-    FROM withdraw_requests w
-    LEFT JOIN members m ON w.username = m.username
-    ${whereClause}
-  `;
-
-  try {
-    const [rows] = await pool.query(sql, values);
-    res.json(rows[0]);
-  } catch (err) {
-    res.status(500).json({ message: '출금 통계 조회 실패' });
-  }
-});
-
-// 엑셀 다운로드
+// ✅ 엑셀 다운로드
 router.get('/export', async (req, res) => {
   const sql = `
     SELECT w.*, m.name,
-           CONVERT_TZ(w.created_at, '+00:00', '+09:00') AS created_at
+           DATE_FORMAT(CONVERT_TZ(w.created_at, '+00:00', '+09:00'), '%Y-%m-%d %H:%i:%s') AS created_at
     FROM withdraw_requests w
     LEFT JOIN members m ON w.username = m.username
     ORDER BY w.created_at DESC
@@ -274,7 +247,6 @@ router.get('/export', async (req, res) => {
 
   try {
     const [rows] = await pool.query(sql);
-
     const workbook = new ExcelJS.Workbook();
     const sheet = workbook.addWorksheet('출금내역');
     sheet.columns = [
@@ -292,14 +264,13 @@ router.get('/export', async (req, res) => {
       { header: '비고', key: 'memo' },
       { header: '등록일', key: 'created_at' }
     ];
-
-    rows.forEach((row) => sheet.addRow(row));
-
+    rows.forEach(row => sheet.addRow(row));
     res.setHeader('Content-Disposition', `attachment; filename=withdraws_${Date.now()}.xlsx`);
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     await workbook.xlsx.write(res);
     res.end();
   } catch (err) {
+    console.error('엑셀 다운로드 오류:', err);
     res.status(500).json({ message: '엑셀 생성 실패' });
   }
 });
