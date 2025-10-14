@@ -4,7 +4,7 @@ const router = express.Router();
 const pool = require('../db.cjs');
 const ExcelJS = require('exceljs');
 
-// 설정값 가져오기 함수
+// ✅ 설정값 가져오기 함수 (settings 테이블)
 const getSetting = async (key) => {
   const [rows] = await pool.query(
     'SELECT value FROM settings WHERE key_name = ? LIMIT 1',
@@ -53,8 +53,6 @@ router.get('/', async (req, res) => {
     }
 
     const whereClause = conditions.length ? 'WHERE ' + conditions.join(' AND ') : '';
-
-    // ✅ LIMIT / OFFSET
     const offset = (page - 1) * limit;
 
     const sql = `
@@ -75,7 +73,7 @@ router.get('/', async (req, res) => {
       ${whereClause}
     `;
 
-    const [[countRow]] = await pool.query(countSql, values.slice(0, -2)); // count는 limit/offset 제외
+    const [[countRow]] = await pool.query(countSql, values.slice(0, -2));
     const [rows] = await pool.query(sql, values);
 
     res.json({
@@ -88,20 +86,22 @@ router.get('/', async (req, res) => {
   }
 });
 
-// ✅ 출금 완료 처리
+// ✅ 출금 완료 처리 (회원과 동일 계산 구조)
 router.post('/complete', async (req, res) => {
   const { ids } = req.body;
   if (!Array.isArray(ids) || !ids.length)
     return res.status(400).json({ message: 'ID 배열이 필요합니다.' });
 
   try {
-    const feePercent = parseFloat(await getSetting('withdraw_fee_percent') || '0');
-    const shopPercent = parseFloat(await getSetting('withdraw_shopping_point_percent') || '0');
+    // ✅ settings 테이블에서 실시간 불러오기
+    const feePercent  = parseFloat(await getSetting('withdraw_fee_percent') || '0');             // 0.05 (5%)
+    const shopPercent = parseFloat(await getSetting('withdraw_shopping_point_percent') || '0');  // 0.2  (20%)
 
     for (const id of ids) {
       const [[row]] = await pool.query('SELECT * FROM withdraw_requests WHERE id = ?', [id]);
       if (!row || row.status !== '요청') continue;
 
+      // ✅ member_id 보정
       let member_id = row.member_id;
       if (!member_id && row.username) {
         const [[userRow]] = await pool.query('SELECT id FROM members WHERE username = ?', [row.username]);
@@ -111,21 +111,25 @@ router.post('/complete', async (req, res) => {
         }
       }
 
-      const afterFee = Math.floor(row.amount * (1 - feePercent / 100));
-      const payout = Math.floor(afterFee * (1 - shopPercent / 100));
-      const shoppingPoint = afterFee - payout;
-      const feeAmount = row.amount - afterFee;
+      // ✅ 수수료/쇼핑포인트 계산 (회원 신청과 동일)
+      const feeAmount     = Math.floor(row.amount * feePercent);           // 5% → 0.05 × amount
+      const afterFee      = row.amount - feeAmount;
+      const shoppingPoint = Math.floor(afterFee * shopPercent);            // 20% → 0.2 × afterFee
+      const payout        = afterFee - shoppingPoint;                      // 최종 출금액
 
+      // ✅ 출금요청 상태 변경 + 금액 업데이트
       await pool.query(
         'UPDATE withdraw_requests SET status=?, fee=?, payout=?, shopping_point=? WHERE id=?',
         ['완료', feeAmount, payout, shoppingPoint, id]
       );
 
+      // ✅ 쇼핑포인트 적립 처리
       if (member_id && shoppingPoint > 0) {
         await pool.query(
           'UPDATE members SET shopping_point = shopping_point + ? WHERE id = ?',
           [shoppingPoint, member_id]
         );
+
         await pool.query(
           `INSERT INTO shopping_point_log 
             (member_id, amount, type, description, source, source_id, created_at)
@@ -134,6 +138,7 @@ router.post('/complete', async (req, res) => {
         );
       }
     }
+
     res.json({ success: true });
   } catch (err) {
     console.error('❌ 출금 완료 처리 오류:', err);
@@ -223,7 +228,7 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
-// ✅ 비고 수정
+// ✅ 메모 수정
 router.post('/update-memo', async (req, res) => {
   const { id, memo } = req.body;
   if (!id) return res.status(400).json({ message: 'ID가 필요합니다.' });
@@ -244,7 +249,6 @@ router.get('/export', async (req, res) => {
     LEFT JOIN members m ON w.username = m.username
     ORDER BY w.created_at DESC
   `;
-
   try {
     const [rows] = await pool.query(sql);
     const workbook = new ExcelJS.Workbook();
