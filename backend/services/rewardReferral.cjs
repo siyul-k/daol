@@ -33,7 +33,7 @@ async function hasAnyAvailable(memberId) {
   return ok;
 }
 
-async function processReferralRewards(dateArg = null) {
+async function processReferralRewards() {
   try {
     const [bonusRows] = await connection.query(`
       SELECT reward_type, level, rate
@@ -43,48 +43,24 @@ async function processReferralRewards(dateArg = null) {
     const centerRate    = Number(bonusRows.find(r => r.reward_type === 'center')?.rate ?? 0.03);
     const centerRecRate = Number(bonusRows.find(r => r.reward_type === 'center_recommend')?.rate ?? 0.01);
 
-    // 📌 날짜 조건 설정 (UTC → KST 변환)
-    let dateCondition;
-    let params = [];
-    if (dateArg) {
-      // 수동 실행 시: 지정된 날짜 구매건 (KST 기준)
-      dateCondition = "DATE(CONVERT_TZ(p.created_at, '+00:00', '+09:00')) = ?";
-      params.push(dateArg);
-    } else {
-      // 스케줄 실행 시: 전날 구매건 (KST 기준)
-      dateCondition = "DATE(CONVERT_TZ(p.created_at, '+00:00', '+09:00')) = CURDATE() - INTERVAL 1 DAY";
-    }
-
+    // ✅ 날짜 조건 제거 → 미정산된 승인 normal 구매건만 정산
     const [rows] = await connection.query(`
       SELECT p.id AS purchase_id, p.member_id, p.pv, m.center_id
       FROM purchases p
       JOIN members m ON p.member_id = m.id
       WHERE p.status = 'approved'
         AND p.type   = 'normal'
-        AND ${dateCondition}
+        AND p.id NOT IN (
+          SELECT DISTINCT ref_id
+          FROM rewards_log
+          WHERE type IN ('center','center_recommend')
+        )
       ORDER BY p.created_at ASC
-    `, params);
+    `);
 
     if (!rows.length) {
-      console.log(`[정산대상 없음] date=${dateArg || '전날'}`);
+      console.log(`[정산대상 없음] 미지급된 승인건 없음`);
       return;
-    }
-
-    const purchaseIds = rows.map(r => r.purchase_id);
-    const doneCenter = new Set();
-    const doneCenterRecommend = new Set();
-    if (purchaseIds.length) {
-      const [doneRows] = await connection.query(
-        `SELECT DISTINCT source, type
-         FROM rewards_log
-         WHERE source IN (${purchaseIds.map(()=>'?').join(',')})
-           AND type IN ('center','center_recommend')`,
-        purchaseIds
-      );
-      for (const r of doneRows) {
-        if (r.type === 'center') doneCenter.add(r.source);
-        if (r.type === 'center_recommend') doneCenterRecommend.add(r.source);
-      }
     }
 
     const centerIds = [...new Set(rows.map(r => r.center_id).filter(Boolean))];
@@ -116,10 +92,10 @@ async function processReferralRewards(dateArg = null) {
     }
 
     for (const row of rows) {
-      const { purchase_id, pv, center_id } = row;
+      const { purchase_id, member_id, pv, center_id } = row;
 
       // 센터피
-      if (!doneCenter.has(purchase_id) && center_id && centerCache[center_id]) {
+      if (center_id && centerCache[center_id]) {
         const centerOwnerId = centerCache[center_id].center_owner_id;
         if (centerOwnerId && !blockMap[centerOwnerId]) {
           const amount = toKRW(pv * centerRate);
@@ -131,8 +107,8 @@ async function processReferralRewards(dateArg = null) {
               VALUES (?, 'center', ?, ?, ?, 1, '센터피', NOW())
             `, [
               centerOwnerId,
-              purchase_id,
-              purchase_id,
+              member_id,       // ✅ source = 구매자(member_id)
+              purchase_id,     // ✅ ref_id = purchase_id
               canPay ? amount : 0
             ]);
           }
@@ -140,7 +116,7 @@ async function processReferralRewards(dateArg = null) {
       }
 
       // 센터추천피
-      if (!doneCenterRecommend.has(purchase_id) && center_id && centerCache[center_id]) {
+      if (center_id && centerCache[center_id]) {
         const centerRecId = centerCache[center_id].center_recommender_id;
         if (centerRecId && !blockMap[centerRecId]) {
           const amount = toKRW(pv * centerRecRate);
@@ -152,18 +128,16 @@ async function processReferralRewards(dateArg = null) {
               VALUES (?, 'center_recommend', ?, ?, ?, 1, '센터추천피', NOW())
             `, [
               centerRecId,
-              purchase_id,
+              member_id,       // ✅ source = 구매자(member_id)
               purchase_id,
               canPay ? amount : 0
             ]);
           }
         }
       }
-
-      // 추천수당 제거됨 (추후 필요 시 복원)
     }
 
-    console.log(`✅ 센터피/센터추천피 정산 완료 (구매 ${rows.length}건, date=${dateArg || '전날'})\n`);
+    console.log(`✅ 센터피/센터추천피 정산 완료 (총 ${rows.length}건 미지급 처리)\n`);
   } catch (err) {
     console.error('❌ 센터피/센터추천피 정산 실패:', err);
   }
