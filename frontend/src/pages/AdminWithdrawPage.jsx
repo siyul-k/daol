@@ -1,7 +1,6 @@
 // ✅ 파일 경로: frontend/src/pages/AdminWithdrawPage.jsx
 import React, { useEffect, useState } from 'react';
 import axios from '../axiosConfig';
-import * as XLSX from 'xlsx';
 
 const PAGE_SIZE_OPTIONS = [25, 50, 100, 150, 9999];
 const PAGE_LABELS = ['25개씩', '50개씩', '100개씩', '150개씩', '전체'];
@@ -129,27 +128,36 @@ export default function AdminWithdrawPage() {
     fetchData();
   };
 
-  const exportExcel = () => {
-    const ws = XLSX.utils.json_to_sheet(
-      requests.map((r) => ({
-        등록일: new Date(r.created_at).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' }),
-        아이디: r.username,
-        이름: r.name,
-        종류: r.type === 'normal' ? '일반' : '센터',
-        상태: r.status,
-        신청금액: r.amount,
-        수수료: r.fee,
-        출금액: r.payout ?? r.amount - r.fee,
-        쇼핑포인트: r.shopping_point || 0,
-        은행: r.bank_name,
-        예금주: r.account_holder,
-        계좌번호: r.account_number,
-        비고: r.memo,
-      }))
-    );
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, '출금내역');
-    XLSX.writeFile(wb, `withdraws_${Date.now()}.xlsx`);
+  // ✅ 전체 엑셀 다운로드 (317건 포함)
+  const exportExcel = async () => {
+    try {
+      const params = {};
+      if (enabled.username && filters.username) params.username = filters.username;
+      if (enabled.name && filters.name) params.name = filters.name;
+      if (enabled.date) {
+        if (filters.startDate) params.startDate = filters.startDate;
+        if (filters.endDate) params.endDate = filters.endDate;
+      }
+      if (enabled.status && filters.status) params.status = filters.status;
+
+      const res = await axios.get('/api/ad-da/withdraws/export', {
+        params,
+        responseType: 'blob',
+      });
+
+      const blob = new Blob([res.data], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      });
+      const link = document.createElement('a');
+      link.href = window.URL.createObjectURL(blob);
+      link.download = `withdraws_${Date.now()}.xlsx`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (err) {
+      console.error('엑셀 다운로드 실패:', err);
+      alert('엑셀 다운로드 중 오류가 발생했습니다.');
+    }
   };
 
   const handleSort = (field) => {
@@ -276,7 +284,7 @@ export default function AdminWithdrawPage() {
         </div>
       </div>
 
-      {/* 테이블 */}
+      {/* ✅ 테이블 */}
       <div className="w-full overflow-x-auto">
         {loading ? (
           <p className="text-center py-6 text-gray-500 dark:text-gray-400">로딩 중...</p>
@@ -397,7 +405,7 @@ export default function AdminWithdrawPage() {
         )}
       </div>
 
-      {/* ✅ 페이지네이션 (화살표형) */}
+      {/* ✅ 페이지네이션 */}
       <div className="mt-4 flex items-center justify-between flex-wrap gap-3 text-sm text-gray-700 dark:text-gray-300">
         <div className="flex items-center gap-2">
           <button
@@ -437,7 +445,7 @@ export default function AdminWithdrawPage() {
         </div>
       </div>
 
-      {/* 완료/취소 모달 */}
+      {/* ✅ 완료/취소 모달 */}
       {showResultModal && (
         <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
           <div className="bg-white dark:bg-gray-900 dark:text-gray-100 p-6 rounded-lg shadow-xl text-center">
