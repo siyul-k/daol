@@ -240,35 +240,83 @@ router.post('/update-memo', async (req, res) => {
   }
 });
 
-// ✅ 엑셀 다운로드
+// ✅ 엑셀 다운로드 (ID + 날짜 순서 수정 / 전체조회)
 router.get('/export', async (req, res) => {
-  const sql = `
-    SELECT w.*, m.name,
-           DATE_FORMAT(CONVERT_TZ(w.created_at, '+00:00', '+09:00'), '%Y-%m-%d %H:%i:%s') AS created_at
-    FROM withdraw_requests w
-    LEFT JOIN members m ON w.username = m.username
-    ORDER BY w.created_at DESC
-  `;
   try {
+    const { username, name, status, startDate, endDate } = req.query;
+
+    const conditions = [];
+    const values = [];
+
+    if (username) {
+      conditions.push('w.username LIKE ?');
+      values.push(`%${username}%`);
+    }
+    if (name) {
+      conditions.push('m.name LIKE ?');
+      values.push(`%${name}%`);
+    }
+    if (status) {
+      conditions.push('w.status = ?');
+      values.push(status);
+    }
+    if (startDate) {
+      conditions.push('DATE(CONVERT_TZ(w.created_at,"+00:00","+09:00")) >= ?');
+      values.push(startDate);
+    }
+    if (endDate) {
+      conditions.push('DATE(CONVERT_TZ(w.created_at,"+00:00","+09:00")) <= ?');
+      values.push(endDate);
+    }
+
+    const whereClause = conditions.length ? 'WHERE ' + conditions.join(' AND ') : '';
+
+    const sql = `
+      SELECT 
+        w.id,
+        DATE_FORMAT(CONVERT_TZ(w.created_at, '+00:00', '+09:00'), '%Y-%m-%d %H:%i:%s') AS created_at,
+        w.username,
+        m.name,
+        w.type,
+        w.status,
+        w.amount,
+        w.fee,
+        w.payout,
+        w.shopping_point,
+        w.bank_name,
+        w.account_holder,
+        w.account_number,
+        w.memo
+      FROM withdraw_requests w
+      LEFT JOIN members m ON w.username = m.username
+      ${whereClause}
+      ORDER BY w.created_at ASC
+    `;
+
     const [rows] = await pool.query(sql);
     const workbook = new ExcelJS.Workbook();
     const sheet = workbook.addWorksheet('출금내역');
+
+    // ✅ 컬럼 순서: ID → 등록일 → 아이디 → 이름 → 나머지 동일
     sheet.columns = [
-      { header: '아이디', key: 'username' },
-      { header: '이름', key: 'name' },
-      { header: '종류', key: 'type' },
-      { header: '상태', key: 'status' },
-      { header: '신청금액', key: 'amount' },
-      { header: '수수료', key: 'fee' },
-      { header: '출금액', key: 'payout' },
-      { header: '쇼핑포인트', key: 'shopping_point' },
-      { header: '은행', key: 'bank_name' },
-      { header: '예금주', key: 'account_holder' },
-      { header: '계좌번호', key: 'account_number' },
-      { header: '비고', key: 'memo' },
-      { header: '등록일', key: 'created_at' }
+      { header: 'ID', key: 'id', width: 10 },
+      { header: '등록일', key: 'created_at', width: 20 },
+      { header: '아이디', key: 'username', width: 15 },
+      { header: '이름', key: 'name', width: 15 },
+      { header: '종류', key: 'type', width: 10 },
+      { header: '상태', key: 'status', width: 10 },
+      { header: '신청금액', key: 'amount', width: 15 },
+      { header: '수수료', key: 'fee', width: 12 },
+      { header: '출금액', key: 'payout', width: 15 },
+      { header: '쇼핑포인트', key: 'shopping_point', width: 15 },
+      { header: '은행', key: 'bank_name', width: 15 },
+      { header: '예금주', key: 'account_holder', width: 15 },
+      { header: '계좌번호', key: 'account_number', width: 20 },
+      { header: '비고', key: 'memo', width: 20 },
     ];
+
     rows.forEach(row => sheet.addRow(row));
+
     res.setHeader('Content-Disposition', `attachment; filename=withdraws_${Date.now()}.xlsx`);
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     await workbook.xlsx.write(res);
